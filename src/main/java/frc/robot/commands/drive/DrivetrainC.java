@@ -111,7 +111,7 @@ public class DrivetrainC extends Command {
 		double maxDecel = DriveConstants.maxTranslationalAcceleration.get();
 
 		// measured & commanded translational speed magnitude (global)
-		ChassisSpeeds measured = drivetrainS.getFieldChassisSpeeds();
+		ChassisSpeeds measured = drivetrainS.getChassisSpeeds();
 		double measuredSpeed = Math.hypot(measured.vxMetersPerSecond, measured.vyMetersPerSecond);
 		double commandedSpeed = Math.hypot(speeds.vxMetersPerSecond, speeds.vyMetersPerSecond);
 		double maxSpeed = DriveConstants.kMaxSpeedMetersPerSecond;

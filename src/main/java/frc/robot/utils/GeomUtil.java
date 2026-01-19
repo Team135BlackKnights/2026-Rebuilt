@@ -45,7 +45,7 @@ public class GeomUtil {
 		double maxDecel = DriveConstants.maxTranslationalAcceleration.get();
 
 		// measured & commanded translational speed magnitude (global)
-		ChassisSpeeds measured = RobotContainer.drivetrainS.getFieldChassisSpeeds();
+		ChassisSpeeds measured = RobotContainer.drivetrainS.getChassisSpeeds();
 		double measuredSpeed = Math.hypot(measured.vxMetersPerSecond, measured.vyMetersPerSecond);
 		double commandedSpeed = Math.hypot(speeds.vxMetersPerSecond, speeds.vyMetersPerSecond);
 		double maxSpeed = DriveConstants.kMaxSpeedMetersPerSecond;

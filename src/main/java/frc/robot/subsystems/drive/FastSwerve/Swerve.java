@@ -408,7 +408,7 @@ public class Swerve extends SubsystemChecker implements DrivetrainS {
 	@AutoLogOutput(key = "RobotState/EstimatedPose")
 	@Override
 	public Pose2d getLookAheadPose() {
-		return estimatedPose.exp(getFieldChassisSpeeds().toTwist2d(lookAheadTime.get()));
+		return estimatedPose.exp(getChassisSpeeds().toTwist2d(lookAheadTime.get()));
 		/*
 		 * return estimatedPose.plus(new Transform2d(new Translation2d(),
 		 * DriveConstants.TrainConstants.robotOffsetAngleDirection));
@@ -643,7 +643,7 @@ public class Swerve extends SubsystemChecker implements DrivetrainS {
 				Logger.recordOutput("Vision/" + name + "/Distance", record.distance);
 			}
 		}
-		Logger.recordOutput("RobotState/AheadPose", getLookAheadPose().exp(getFieldChassisSpeeds().toTwist2d(.05)));
+		Logger.recordOutput("RobotState/AheadPose", getLookAheadPose().exp(getChassisSpeeds().toTwist2d(.05)));
 		Logger.recordOutput("SystemStatus/Periodic/DriveProcessMS", (systemTime - System.currentTimeMillis()));
 	}
 

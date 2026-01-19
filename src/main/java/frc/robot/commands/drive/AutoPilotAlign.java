@@ -4,8 +4,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 
-import org.littletonrobotics.junction.Logger;
-
 import com.pathplanner.lib.path.GoalEndState;
 import com.pathplanner.lib.path.PathConstraints;
 import com.therekrab.autopilot.APTarget;
@@ -66,18 +64,15 @@ public class AutoPilotAlign extends Command {
 
     @Override
     public void execute() {
-        long currentTime = System.currentTimeMillis();
+        long startTime = System.currentTimeMillis();
         Pose2d robotPose = m_drivetrain.getLookAheadPose();
         ChassisSpeeds currentRobotRelative = m_drivetrain.getChassisSpeeds();
         adStar.setStartPosition(robotPose.getTranslation());
         adStar.setGoalPosition(m_finalTarget.getReference().getTranslation());
         // get path from supplier
-        if (adStar.isNewPathAvailable()) {
-            pathConsumer.accept(DriveConstants.pathConstraints, goalEndState);
-            //calculates new path
-        }
+        pathConsumer.accept(DriveConstants.pathConstraints, goalEndState);
         List<Pose2d> path = adStar.cachedPath;
-        
+
         APTarget activeTarget;
         if (path == null || path.size() < 2) {
             activeTarget = m_finalTarget;
@@ -104,15 +99,17 @@ public class AutoPilotAlign extends Command {
                 robotPose.getTranslation(),
                 maskedRot);
         APResult out = Swerve.autopilot.calculate(maskedPose, maskedRobotRelative, activeTarget);
-        
+
         ChassisSpeeds fieldRelativeSpeeds = new ChassisSpeeds(out.vx().baseUnitMagnitude(),
                 out.vy().baseUnitMagnitude(), 0.0);
         ChassisSpeeds robotRelativeFromField = ChassisSpeeds.fromFieldRelativeSpeeds(fieldRelativeSpeeds,
                 m_drivetrain.getRotation2d());
 
         desiredRotation = goalEndState.rotation();
-        Logger.recordOutput("SystemStatus/Periodic/autoPilotProcessMS", System.currentTimeMillis() - currentTime);
         thetaControllerCommand.execute();
+
+        long endTime = System.currentTimeMillis();
+        System.out.println("Execution time: " + (endTime - startTime) + " ms");
 
         m_drivetrain
                 .setChassisSpeeds(robotRelativeFromField.plus(new ChassisSpeeds(0, 0, RobotContainer.angularSpeed)));
