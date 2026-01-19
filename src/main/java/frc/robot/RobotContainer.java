@@ -104,6 +104,30 @@ import frc.robot.Constants.TuningConstants;
 import frc.robot.commands.drive.AimToRotation;
 
 
+import frc.robot.commands.FeedForwardCharacterization;
+import frc.robot.commands.StaticCharacterization;
+import frc.robot.commands.drive.DrivetrainC;
+import frc.robot.commands.drive.WheelRadiusCharacterization;
+import frc.robot.subsystems.SubsystemChecker;
+import frc.robot.subsystems.advancedMechs.PinkArm.PinkArm;
+import frc.robot.subsystems.advancedMechs.PinkArm.PinkArm.WantedState;
+import frc.robot.subsystems.advancedMechs.PinkArm.extension.ExtensionIO;
+import frc.robot.subsystems.advancedMechs.PinkArm.extension.ExtensionIOSim;
+import frc.robot.subsystems.advancedMechs.PinkArm.extension.ExtensionIOTalonFX;
+import frc.robot.subsystems.advancedMechs.PinkArm.shoulder.ShoulderIO;
+import frc.robot.subsystems.advancedMechs.PinkArm.shoulder.ShoulderIOSim;
+import frc.robot.subsystems.advancedMechs.PinkArm.shoulder.ShoulderIOTalonFX;
+import frc.robot.subsystems.advancedMechs.PinkArm.wrist.WristIO;
+import frc.robot.subsystems.advancedMechs.PinkArm.wrist.WristIOSim;
+import frc.robot.subsystems.advancedMechs.PinkArm.wrist.WristIOTalonFX;
+import frc.robot.subsystems.drive.DrivetrainS;
+import frc.robot.subsystems.drive.FastSwerve.ModuleIO;
+import frc.robot.subsystems.drive.FastSwerve.ModuleIOKrakenFOC;
+import frc.robot.subsystems.drive.FastSwerve.ModuleIOKrakenFOCShifting;
+import frc.robot.subsystems.drive.FastSwerve.ModuleIOKrakenFOCWithThrifty;
+import frc.robot.subsystems.drive.FastSwerve.ModuleIOSim;
+import frc.robot.subsystems.drive.FastSwerve.ModuleIOSparkBase;
+import frc.robot.subsystems.drive.FastSwerve.Swerve;
 
 
 import frc.robot.subsystems.drive.FastSwerve.Swerve.ModuleLimits;
@@ -135,10 +159,16 @@ import frc.robot.utils.drive.Sensors.GyroIONavX;
 import frc.robot.utils.drive.Sensors.GyroIOPigeon2;
 import frc.robot.utils.drive.Sensors.GyroIOSim;
 import frc.robot.utils.leds.LEDConstants.ImageStates;
+import frc.robot.utils.robotToggles.Toggles;
+import frc.robot.utils.robotToggles.TogglesIO;
+import frc.robot.utils.robotToggles.TogglesIOHardware;
+import frc.robot.utils.robotToggles.TogglesIONetworkTables;
 
 import frc.robot.utils.Touchboard.PosePlotterUtil;
 import frc.robot.utils.Touchboard.JukeboxUtil;
 import frc.robot.utils.Touchboard.PosePlotterUtil.CommandPair;
+import frc.robot.utils.advancedMechs.AdvancedMechanismConstants;
+import frc.robot.utils.advancedMechs.AdvancedMechanismConstants.PinkArm.ArmPosition;
 
 /**
  * This code depends on WPILib 2025, Choreo 2025, PhotonLib 2025, Studica,
@@ -151,6 +181,8 @@ public class RobotContainer {
 	public static DrivetrainS drivetrainS;
 	private static final LEDs leds = new LEDs();
 	public static Vision visionS;
+	public static PinkArm pinkArm;
+	public static Toggles toggles;
 	public static LocalADStarAK pathFinder = new LocalADStarAK();
 	private final LoggedDashboardChooser<Command> autoChooser;
 	public static final LoggableTunedNumber humanPlayerWaitTime = new LoggableTunedNumber(
@@ -181,6 +213,7 @@ public class RobotContainer {
 			rightBumperTest = new JoystickButton(testingController, 6),
 			selectButtonTest = new JoystickButton(testingController, 7),
 			selectButtonDrive = new JoystickButton(driveController,7),
+			selectButtonDrive = new JoystickButton(driveController, 7),
 			selectButtonManip = new JoystickButton(manipController, 7),
 			startButtonTest = new JoystickButton(testingController, 8),
 			startButtonDrive = new JoystickButton(driveController, 8),
@@ -502,6 +535,12 @@ public class RobotContainer {
 								new VisionIOPhotonVision(() -> getSelectedAprilTagLayout(), VisionConstants.cameras[3].getId(),
 										GeomUtil.poseToTransform3d(VisionConstants.cameras[3].getPose().get())));
 				 */
+				ExtensionIO extensionIO = new ExtensionIOTalonFX();
+				ShoulderIO shoulderIO = new ShoulderIOTalonFX();
+				WristIO wristIO = new WristIOTalonFX();
+				pinkArm = new PinkArm(extensionIO, shoulderIO, wristIO);
+				//Advanced Mechs Require Toggles
+				toggles = new Toggles(new TogglesIOHardware());
 				System.out.println("REAL SETUP DONE!");
 				break;
 			case SIM:
@@ -612,6 +651,11 @@ public class RobotContainer {
 								GeomUtil.poseToTransform3d(VisionConstants.cameras[2].getPose().get()),() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()),
 						new VisionIOPhotonVisionSim(() -> getSelectedAprilTagLayout(), "BackLeftCam",
 								GeomUtil.poseToTransform3d(VisionConstants.cameras[3].getPose().get()), () -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()));
+				ExtensionIO extensionIOSim = new ExtensionIOSim();
+				ShoulderIO shoulderIOSim = new ShoulderIOSim();
+				WristIO wristIOSim = new WristIOSim();
+				pinkArm = new PinkArm(extensionIOSim, shoulderIOSim, wristIOSim);
+				toggles = new Toggles(new TogglesIONetworkTables());
 				System.out.println("SIM SETUP DONE!");
 				break;
 			default:
@@ -640,6 +684,15 @@ public class RobotContainer {
 						new VisionIO() {
 						}, new VisionIO() {
 						}); // MUST be same number of cameras as in real robot
+				ExtensionIO extensionIODummy = new ExtensionIO() {
+				};
+				ShoulderIO shoulderIODummy = new ShoulderIO() {
+				};
+				WristIO wristIODummy = new WristIO() {
+				};
+				pinkArm = new PinkArm(extensionIODummy, shoulderIODummy, wristIODummy);
+				toggles = new Toggles(new TogglesIO() {
+				});
 		}
 
 		drivetrainS.resetPose(GeomUtil.apply(startingPose, false));
