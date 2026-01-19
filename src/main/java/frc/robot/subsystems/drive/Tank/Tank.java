@@ -309,7 +309,11 @@ public class Tank extends SubsystemChecker implements DrivetrainS {
 	}
 	@Override
 	public Pose2d getLookAheadPose() {
-		return estimatedPose.exp(getChassisSpeeds().toTwist2d(.02));
+		return estimatedPose.exp(getFieldChassisSpeeds().toTwist2d(.02));
+	}
+		@Override
+	public ChassisSpeeds getFieldChassisSpeeds(){
+		return ChassisSpeeds.fromRobotRelativeSpeeds(getChassisSpeeds(), getRotation2d());
 	}
 
 	/** Resets the current odometry pose. */

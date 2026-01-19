@@ -125,6 +125,10 @@ public class Mecanum extends SubsystemChecker implements DrivetrainS {
 						getBackLeftVelocityMetersPerSec(),
 						getBackRightVelocityMetersPerSec()));
 	}
+	@Override
+	public ChassisSpeeds getFieldChassisSpeeds(){
+		return ChassisSpeeds.fromRobotRelativeSpeeds(getChassisSpeeds(), getRotation2d());
+	}
 
 	@Override
 	public void setChassisSpeeds(ChassisSpeeds speeds) {

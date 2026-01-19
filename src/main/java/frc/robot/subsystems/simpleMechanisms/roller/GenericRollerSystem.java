@@ -1,39 +1,47 @@
 package frc.robot.subsystems.simpleMechanisms.roller;
 
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.subsystems.SubsystemChecker;
 import frc.robot.utils.selfCheck.SelfChecking;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
 import org.littletonrobotics.junction.Logger;
 
 import com.ctre.phoenix6.hardware.ParentDevice;
 import com.ctre.phoenix6.hardware.TalonFX;
 
-public abstract class GenericRollerSystem<G extends GenericRollerSystem.VoltageGoal> extends SubsystemChecker {
-  public interface VoltageGoal {
-    DoubleSupplier getVoltageSupplier();
+public abstract class GenericRollerSystem<G extends GenericRollerSystem.RollGoalSupplier> extends SubsystemChecker {
+  public interface RollGoalSupplier {
+    BooleanSupplier getIsVoltageSupplier();
+    DoubleSupplier getValueSupplier();
   }
 
   public abstract G getGoal();
 
-  private final String name;
-  private final GenericRollerSystemIO io;
+  protected final String name;
+  protected final GenericRollerSystemIO io;
   protected final GenericRollerSystemIOInputsAutoLogged inputs = new GenericRollerSystemIOInputsAutoLogged();
   protected final Timer stateTimer = new Timer();
-  private G lastGoal;
-
+  protected G lastGoal;
+  protected boolean lastTimeout = false;
+  protected boolean hasTimeout = false;
+  protected double radsBeforeLock = 0;
+  protected double integratedRadians =0;
   public GenericRollerSystem(String name, GenericRollerSystemIO io) {
     this.name = name;
+    this.setName(name);
     this.io = io;
 
     stateTimer.start();
     registerSelfCheckHardware();
+		CommandScheduler.getInstance().unregisterSubsystem(this);//Let SuperStructure handle it.
   }
-
+  @Override
   public void periodic() {
     io.updateInputs(inputs);
     Logger.processInputs(name, inputs);
@@ -42,9 +50,18 @@ public abstract class GenericRollerSystem<G extends GenericRollerSystem.VoltageG
       stateTimer.reset();
       lastGoal = getGoal();
     }
-
-    io.runVolts(getGoal().getVoltageSupplier().getAsDouble());
-    Logger.recordOutput("Rollers/" + name + "Goal", getGoal().toString());
+    if (getGoal().getIsVoltageSupplier().getAsBoolean()){
+        io.runVolts(getGoal().getValueSupplier().getAsDouble());
+        /*if (integratedRadians <= radsBeforeLock){
+          io.runVolts(getGoal().getValueSupplier().getAsDouble());
+        }else{
+          io.runVolts(0);
+        }*/
+    }else{
+      io.runCurrent(getGoal().getValueSupplier().getAsDouble());
+    }
+    Logger.recordOutput("SuperStructure/" + name + "Goal", getGoal().toString());
+    Logger.recordOutput("SuperStructure/" + name + "stateTimer",stateTimer.get());
   }
 
   public HashMap<String, Double> getTemps() {
@@ -52,11 +69,11 @@ public abstract class GenericRollerSystem<G extends GenericRollerSystem.VoltageG
     tempMap.put(inputs.name, inputs.tempCelsius);
     return tempMap;
   }
+  public double getRadians(){
+    return inputs.positionRads;
+  }
   public double getAppliedVolts(){
     return inputs.appliedVoltage;
-  }
-  public String getName(){
-    return name;
   }
   private void registerSelfCheckHardware() {
     super.registerAllHardware(io.getSelfCheckingHardware());
@@ -76,11 +93,14 @@ public abstract class GenericRollerSystem<G extends GenericRollerSystem.VoltageG
 
   @Override
   public double getCurrent() {
-    return inputs.supplyCurrentAmps;
+    return inputs.torqueCurrentAmps;
   }
 
   @Override
   public void setCurrentLimit(int amps) {
     io.setCurrentLimit(amps);
+  }
+  public List<SelfChecking> getHardware(){
+    return io.getSelfCheckingHardware();
   }
 }

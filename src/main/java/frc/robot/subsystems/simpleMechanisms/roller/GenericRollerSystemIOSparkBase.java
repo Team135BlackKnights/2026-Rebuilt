@@ -12,12 +12,11 @@ import com.revrobotics.PersistMode;
 import com.revrobotics.spark.config.SparkBaseConfig;
 import com.revrobotics.spark.config.SparkFlexConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
+import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 
 import edu.wpi.first.math.util.Units;
-import frc.robot.utils.drive.DriveConstants.MotorVendor;
 import frc.robot.utils.selfCheck.SelfChecking;
 import frc.robot.utils.selfCheck.drive.SelfCheckingSparkBase;
-import frc.robot.utils.simpleMechanisms.SimpleMechanismConstants;
 
 /**
  * Generic roller IO implementation for a roller or series of rollers using a
@@ -31,27 +30,45 @@ public abstract class GenericRollerSystemIOSparkBase implements GenericRollerSys
   private final String name;
 
   public GenericRollerSystemIOSparkBase(
-      int id, String name, int currentLimitAmps, boolean invert, boolean brake, double reduction) {
+      int id, String name, int currentLimitAmps, boolean invert, boolean brake, boolean isSparkMax, double reduction) {
     this.reduction = reduction;
-    if (SimpleMechanismConstants.Roller.motorType == MotorVendor.NEO_SPARK_MAX) {
-      motor = new SparkMax(id, SparkBase.MotorType.kBrushless);
-      config = new SparkMaxConfig();
-    } else {
-      motor = new SparkFlex(id, SparkBase.MotorType.kBrushless);
-      config = new SparkFlexConfig();
+    if (!name.equals("CoralMotor")){
+      if (isSparkMax) {
+        motor = new SparkMax(id, SparkBase.MotorType.kBrushless);
+        config = new SparkMaxConfig();
+      } else {
+        motor = new SparkFlex(id, SparkBase.MotorType.kBrushless);
+        config = new SparkFlexConfig();
+      }
+      this.name = name;
+      config = config.smartCurrentLimit(currentLimitAmps).voltageCompensation(12);
+      config.inverted(invert);
+      motor.configure(config, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
+      encoder = motor.getEncoder();
+    }else{
+      if (isSparkMax) {
+        motor = new SparkMax(id, SparkBase.MotorType.kBrushless);
+        config = new SparkMaxConfig();
+      } else {
+        motor = new SparkFlex(id, SparkBase.MotorType.kBrushless);
+        config = new SparkFlexConfig();
+      }
+      this.name = name;
+      config = config.smartCurrentLimit(currentLimitAmps).voltageCompensation(12);
+      config.inverted(invert).idleMode(IdleMode.kBrake);
+      motor.configure(config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
+      encoder = motor.getEncoder();
     }
-    this.name = name;
-    config = config.smartCurrentLimit(currentLimitAmps).voltageCompensation(12);
-    config.inverted(invert);
-    motor.configureAsync(config, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
-    encoder = motor.getEncoder();
+    
   }
 
   public void updateInputs(GenericRollerSystemIOInputs inputs) {
+    inputs.name = name;
+
     inputs.positionRads = Units.rotationsToRadians(encoder.getPosition()) / reduction;
     inputs.velocityRadsPerSec = Units.rotationsPerMinuteToRadiansPerSecond(encoder.getVelocity()) / reduction;
     inputs.appliedVoltage = motor.getAppliedOutput() * motor.getBusVoltage();
-    inputs.supplyCurrentAmps = motor.getOutputCurrent();
+    inputs.torqueCurrentAmps = motor.getOutputCurrent();
     inputs.tempCelsius = motor.getMotorTemperature();
   }
 

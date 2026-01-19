@@ -68,8 +68,7 @@ public class AutoPilotAlign extends Command {
     public void execute() {
         long currentTime = System.currentTimeMillis();
         Pose2d robotPose = m_drivetrain.getLookAheadPose();
-        ChassisSpeeds currentRobotRelative = ChassisSpeeds.fromRobotRelativeSpeeds(m_drivetrain.getChassisSpeeds(),
-                robotPose.getRotation());
+        ChassisSpeeds currentRobotRelative = m_drivetrain.getChassisSpeeds();
         adStar.setStartPosition(robotPose.getTranslation());
         adStar.setGoalPosition(m_finalTarget.getReference().getTranslation());
         // get path from supplier

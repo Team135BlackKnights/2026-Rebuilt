@@ -35,7 +35,7 @@ import java.lang.Double;
 public class PathFinder {
 	public static Command goToAutoPilotPose(LocalADStarAK adStar, APTarget target, DrivetrainS drive,
 			Supplier<PathConstraints> constraints, double beelineMeters, double tolerance) {
-		return new AutoPilotAlign(adStar, target, drive, 2).until(() -> {
+		return new AutoPilotAlign(adStar, target, drive, 4).until(() -> {
 			return drive.getPose().getTranslation().getDistance(target.getReference().getTranslation()) < beelineMeters;
 		}).andThen(
 				new DriveAndAimToRotation(drive, target.getReference(), constraints, (Supplier<Double>)() -> tolerance)).until(

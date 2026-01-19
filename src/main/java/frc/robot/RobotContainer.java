@@ -104,18 +104,6 @@ import frc.robot.Constants.TuningConstants;
 import frc.robot.commands.drive.AimToRotation;
 
 
-import frc.robot.subsystems.advancedMechs.PinkArm.PinkArm;
-import frc.robot.subsystems.advancedMechs.PinkArm.extension.ExtensionIO;
-import frc.robot.subsystems.advancedMechs.PinkArm.extension.ExtensionIOSim;
-import frc.robot.subsystems.advancedMechs.PinkArm.extension.ExtensionIOTalonFX;
-import frc.robot.subsystems.advancedMechs.PinkArm.shoulder.ShoulderIO;
-import frc.robot.subsystems.advancedMechs.PinkArm.shoulder.ShoulderIOSim;
-import frc.robot.subsystems.advancedMechs.PinkArm.shoulder.ShoulderIOTalonFX;
-import frc.robot.subsystems.advancedMechs.PinkArm.wrist.WristIO;
-import frc.robot.subsystems.advancedMechs.PinkArm.wrist.WristIOSim;
-import frc.robot.subsystems.advancedMechs.PinkArm.wrist.WristIOTalonFX;
-
-
 import frc.robot.subsystems.drive.FastSwerve.Swerve.ModuleLimits;
 import frc.robot.subsystems.leds.LEDs;
 import frc.robot.subsystems.simpleMechanisms.roller.ExampleIntake.Intake;
@@ -154,7 +142,6 @@ public class RobotContainer {
 	public static DrivetrainS drivetrainS;
 	private static final LEDs leds = new LEDs();
 	public static Vision visionS;
-	public static PinkArm pinkArm;
 	public static Toggles toggles;
 	public static LocalADStarAK pathFinder = new LocalADStarAK();
 	public static Climber climber;
@@ -509,10 +496,6 @@ public class RobotContainer {
 								new VisionIOPhotonVision(() -> getSelectedAprilTagLayout(), VisionConstants.cameras[3].getId(),
 										GeomUtil.poseToTransform3d(VisionConstants.cameras[3].getPose().get())));
 				 */
-				ExtensionIO extensionIO = new ExtensionIOTalonFX();
-				ShoulderIO shoulderIO = new ShoulderIOTalonFX();
-				WristIO wristIO = new WristIOTalonFX();
-				pinkArm = new PinkArm(extensionIO, shoulderIO, wristIO);
 				//Advanced Mechs Require Toggles
 				toggles = new Toggles(new TogglesIOHardware());
 				System.out.println("REAL SETUP DONE!");
@@ -659,10 +642,6 @@ public class RobotContainer {
 								GeomUtil.poseToTransform3d(VisionConstants.cameras[2].getPose().get()),() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()),
 						new VisionIOPhotonVisionSim(() -> getSelectedAprilTagLayout(), "BackLeftCam",
 								GeomUtil.poseToTransform3d(VisionConstants.cameras[3].getPose().get()), () -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()));
-				ExtensionIO extensionIOSim = new ExtensionIOSim();
-				ShoulderIO shoulderIOSim = new ShoulderIOSim();
-				WristIO wristIOSim = new WristIOSim();
-				pinkArm = new PinkArm(extensionIOSim, shoulderIOSim, wristIOSim);
 				toggles = new Toggles(new TogglesIONetworkTables());
 				System.out.println("SIM SETUP DONE!");
 				climber = new Climber(new ClimberIOSim());
@@ -708,13 +687,6 @@ public class RobotContainer {
 						new VisionIO() {
 						}, new VisionIO() {
 						}); // MUST be same number of cameras as in real robot
-				ExtensionIO extensionIODummy = new ExtensionIO() {
-				};
-				ShoulderIO shoulderIODummy = new ShoulderIO() {
-				};
-				WristIO wristIODummy = new WristIO() {
-				};
-				pinkArm = new PinkArm(extensionIODummy, shoulderIODummy, wristIODummy);
 				toggles = new Toggles(new TogglesIO() {
 				});
 				climber = new Climber(new ClimberIO(){});
@@ -903,7 +875,7 @@ public class RobotContainer {
 		// aButtonDrive.whileTrue(superStructure.setGoalCommand(Goal.ONE_METER));
 		yButtonDrive.whileTrue(Commands.defer(() -> new AimToAprilTag(() -> getSelectedAprilTagLayout(), drivetrainS,visionS,2,true),
 		Set.of()));
-		bButtonDrive.whileTrue(Commands.defer(() -> new AimToRotation((Supplier<Rotation2d>) () -> startingPoseCache.getRotation(), drivetrainS, DriveConstants.pathConstraints),Set.of(drivetrainS)));
+		//bButtonDrive.whileTrue(Commands.defer(() -> new AimToRotation((Supplier<Rotation2d>) () -> startingPoseCache.getRotation(), drivetrainS, DriveConstants.pathConstraints),Set.of(drivetrainS)));
 		aButtonDrive.whileTrue(
 				Commands.defer(() -> PathFinder.goToPose(GeomUtil.apply(new Pose2d(8,3.5,Rotation2d.fromDegrees(-45)),false),() -> DriveConstants.pathConstraints, drivetrainS, false, 2, .5, .05),
 						Set.of(drivetrainS))); //3.5,4

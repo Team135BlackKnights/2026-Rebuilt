@@ -137,7 +137,7 @@ public class DriveToTranslation extends Command {
 		// Reset all controllers
 		running = true;
 		var currentPose = currentPoseSupplier.get();
-		ChassisSpeeds fieldVelocity = drive.getChassisSpeeds();
+		ChassisSpeeds fieldVelocity = drive.getFieldChassisSpeeds();
 		Translation2d fieldVelocityTranslation = new Translation2d(
 				fieldVelocity.vxMetersPerSecond, fieldVelocity.vyMetersPerSecond);
 		driveController.reset(

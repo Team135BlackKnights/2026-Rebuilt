@@ -17,7 +17,7 @@ public interface GenericRollerSystemIO {
     public double supplyCurrentAmps = 0.0;
     public double torqueCurrentAmps = 0.0;
     public double tempCelsius = 0.0;
-    public String name = "";
+    public String name = "NotInitialized";
   }
 
   default void updateInputs(GenericRollerSystemIOInputs inputs) {
@@ -25,6 +25,10 @@ public interface GenericRollerSystemIO {
 
   /** Run feeder at volts */
   default void runVolts(double volts) {
+  }
+  /** Run feeder at current */
+  default void runCurrent(double amperes){
+    
   }
 
   default void setCurrentLimit(double amps) {

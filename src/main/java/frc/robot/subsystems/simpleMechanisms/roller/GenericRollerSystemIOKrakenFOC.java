@@ -8,6 +8,7 @@ import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.NeutralOut;
+import com.ctre.phoenix6.controls.TorqueCurrentFOC;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
@@ -36,9 +37,9 @@ public abstract class GenericRollerSystemIOKrakenFOC implements GenericRollerSys
   private final StatusSignal<Temperature> tempCelsius;
 
   // Single shot for voltage mode, robot loop will call continuously
-  private final VoltageOut voltageOut = new VoltageOut(0.0).withEnableFOC(true).withUpdateFreqHz(0);
+  private final VoltageOut voltageOut = new VoltageOut(0.0).withEnableFOC(false);
   private final NeutralOut neutralOut = new NeutralOut();
-
+  private final TorqueCurrentFOC currentControl = new TorqueCurrentFOC(0.0);
   private final double reduction;
   private final String name;
 
@@ -52,7 +53,10 @@ public abstract class GenericRollerSystemIOKrakenFOC implements GenericRollerSys
     config.MotorOutput.Inverted = invert ? InvertedValue.Clockwise_Positive : InvertedValue.CounterClockwise_Positive;
     config.MotorOutput.NeutralMode = brake ? NeutralModeValue.Brake : NeutralModeValue.Coast;
     config.CurrentLimits.SupplyCurrentLimit = currentLimitAmps;
-    config.CurrentLimits.SupplyCurrentLimitEnable = true;
+    config.TorqueCurrent.PeakForwardTorqueCurrent = currentLimitAmps;
+    config.TorqueCurrent.PeakReverseTorqueCurrent = -currentLimitAmps;
+    config.CurrentLimits.SupplyCurrentLimitEnable = false;
+    config.CurrentLimits.StatorCurrentLimitEnable = false;
     talon.getConfigurator().apply(config);
 
     position = talon.getPosition();
@@ -72,6 +76,7 @@ public abstract class GenericRollerSystemIOKrakenFOC implements GenericRollerSys
     inputs.connected = BaseStatusSignal.refreshAll(
         position, velocity, appliedVoltage, supplyCurrent, torqueCurrent, tempCelsius)
         .isOK();
+    inputs.name = name;
     inputs.positionRads = Units.rotationsToRadians(position.getValueAsDouble()) / reduction;
     inputs.velocityRadsPerSec = Units.rotationsToRadians(velocity.getValueAsDouble()) / reduction;
     inputs.appliedVoltage = appliedVoltage.getValueAsDouble();
@@ -91,7 +96,10 @@ public abstract class GenericRollerSystemIOKrakenFOC implements GenericRollerSys
   public void runVolts(double volts) {
     talon.setControl(voltageOut.withOutput(volts));
   }
-
+  @Override
+  public void runCurrent(double amperes){
+    talon.setControl(currentControl.withOutput(amperes));
+  }
   @Override
   public void stop() {
     talon.setControl(neutralOut);

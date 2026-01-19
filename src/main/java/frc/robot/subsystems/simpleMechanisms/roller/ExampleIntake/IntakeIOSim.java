@@ -5,7 +5,7 @@ import static frc.robot.utils.simpleMechanisms.SimpleMechanismConstants.Roller.*
 
 public class IntakeIOSim extends GenericRollerSystemIOSim implements IntakeIO {
     public IntakeIOSim() {
-        super(motorModel, reduction, moi);
+        super(motorModel, name, reduction, moi);
     }
 
 }

@@ -5,6 +5,6 @@ import static frc.robot.utils.simpleMechanisms.SimpleMechanismConstants.Roller.*
 
 public class IntakeIOSparkBase extends GenericRollerSystemIOSparkBase implements IntakeIO {
     public IntakeIOSparkBase() {
-        super(motorID, name, currentLimitAmps, invert, brake, reduction);
+        super(motorID, name, currentLimitAmps, invert, brake, true, reduction);
     }
 }

@@ -42,7 +42,7 @@ public class VisionConstants {
 	public static class FieldConstants {
 		public static final double kFieldBorderMargin = 0.5;
 		public static final double kFieldTagMinTrust = .8;
-		public static double[] aprilTagOffsets = { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 };
+		public static double[] aprilTagOffsets = { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 }; //0 -1, trust.
 	}
 
 	public static final boolean debug = true;
