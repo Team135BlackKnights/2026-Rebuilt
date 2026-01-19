@@ -142,6 +142,15 @@ import frc.robot.subsystems.drive.Tank.TankIOSim;
 import frc.robot.subsystems.drive.Tank.TankIOSparkBase;
 import frc.robot.subsystems.drive.Tank.TankIOTalonFX;
 import frc.robot.subsystems.leds.LEDs;
+import frc.robot.subsystems.simpleMechanisms.roller.ExampleIntake.Intake;
+import frc.robot.subsystems.simpleMechanisms.roller.ExampleIntake.IntakeIO;
+import frc.robot.subsystems.simpleMechanisms.roller.ExampleIntake.IntakeIOKrakenFOC;
+import frc.robot.subsystems.simpleMechanisms.roller.ExampleIntake.IntakeIOSim;
+import frc.robot.subsystems.simpleMechanisms.roller.ExampleIntake.IntakeIOSparkBase;
+import frc.robot.subsystems.simpleMechanisms.slamElevator.ExampleClimber.Climber;
+import frc.robot.subsystems.simpleMechanisms.slamElevator.ExampleClimber.ClimberIO;
+import frc.robot.subsystems.simpleMechanisms.slamElevator.ExampleClimber.ClimberIOKrakenFOC;
+import frc.robot.subsystems.simpleMechanisms.slamElevator.ExampleClimber.ClimberIOSim;
 
 import frc.robot.utils.DriverStationHID;
 import frc.robot.utils.GeomUtil;
@@ -163,6 +172,7 @@ import frc.robot.utils.robotToggles.Toggles;
 import frc.robot.utils.robotToggles.TogglesIO;
 import frc.robot.utils.robotToggles.TogglesIOHardware;
 import frc.robot.utils.robotToggles.TogglesIONetworkTables;
+import frc.robot.utils.simpleMechanisms.SimpleMechanismConstants;
 
 import frc.robot.utils.Touchboard.PosePlotterUtil;
 import frc.robot.utils.Touchboard.JukeboxUtil;
@@ -184,6 +194,8 @@ public class RobotContainer {
 	public static PinkArm pinkArm;
 	public static Toggles toggles;
 	public static LocalADStarAK pathFinder = new LocalADStarAK();
+	public static Climber climber;
+	public static Intake intake;
 	private final LoggedDashboardChooser<Command> autoChooser;
 	public static final LoggableTunedNumber humanPlayerWaitTime = new LoggableTunedNumber(
 			"AutoToggles/HumanPlayerWaitTime", .425, TuningConstants.isTuningMacros);
@@ -542,6 +554,40 @@ public class RobotContainer {
 				//Advanced Mechs Require Toggles
 				toggles = new Toggles(new TogglesIOHardware());
 				System.out.println("REAL SETUP DONE!");
+				switch (SimpleMechanismConstants.Climber.motorType) {
+					case CTRE_ON_RIO:
+					case CTRE_ON_CANIVORE:
+						climber = new Climber(new ClimberIOKrakenFOC());
+						break;
+					default:
+						throw new IllegalArgumentException(
+								"Unknown implementation type for climber (REV NOT SUPPORTED!), please check SimpleMechanismConstants.java!");
+				}
+				switch (SimpleMechanismConstants.Roller.motorType) {
+					case NEO_SPARK_MAX:
+					case VORTEX_SPARK_FLEX:
+						intake = new Intake(new IntakeIOSparkBase());
+						break;
+					case CTRE_ON_RIO:
+					case CTRE_ON_CANIVORE:
+						intake = new Intake(new IntakeIOKrakenFOC());
+						break;
+					default:
+						throw new IllegalArgumentException(
+								"Unknown implementation type for intake, please check SimpleMechanismConstants.java!");
+				}
+				autoCommands.addAll(Arrays.asList(
+						// new Pair<String, Command>("AimAtAmp",new AimToPose(drivetrainS, new
+						// Pose2d(1.9,7.7, new Rotation2d(Units.degreesToRadians(0))))),
+						//new Pair<String, Command>("BranchGrabbingGamePiece",
+						//		new BranchAuto("Shoot",
+						//				new Pose2d(7.4, 5.8, new Rotation2d()), 4))
+				// new Pair<String, Command>("BotAborter", new BotAborter(drivetrainS)), //NEEDS
+				// A WAY TO KNOW WHEN TO ABORT FOR THE EXAMPLE AUTO!!!
+				// new Pair<String, Command>("DriveToAmp",new DriveToPose(drivetrainS, false,new
+				// Pose2d(1.9,7.7,new Rotation2d(Units.degreesToRadians(90))))),
+				// new Pair<String, Command>("PlayMiiSong", new OrchestraC("mii")),
+				));
 				break;
 			case SIM:
 				GyroSimulation gyroSimulation = null;
@@ -657,6 +703,22 @@ public class RobotContainer {
 				pinkArm = new PinkArm(extensionIOSim, shoulderIOSim, wristIOSim);
 				toggles = new Toggles(new TogglesIONetworkTables());
 				System.out.println("SIM SETUP DONE!");
+				climber = new Climber(new ClimberIOSim());
+				intake = new Intake(new IntakeIOSim());
+				/*autoCommands.addAll(Arrays.asList(
+						 new Pair<String, Command>("AimAtAmp",new AimToPose(drivetrainS, new
+						 Pose2d(1.9,7.7, new Rotation2d(Units.degreesToRadians(0))))),
+						new Pair<String, Command>("SmartShoot", Commands.none()),
+						new Pair<String, Command>("SmartIntake", Commands.none())
+						new Pair<String, Command>("BranchGrabbingGamePiece",
+								new BranchAuto("Shoot",
+										new Pose2d(7.4, 5.8, new Rotation2d()), 4))
+				// new Pair<String, Command>("BotAborter", new BotAborter(drivetrainS)), //NEEDS
+				// A WAY TO KNOW WHEN TO ABORT FOR THE EXAMPLE AUTO!!!
+				// new Pair<String, Command>("DriveToAmp",new DriveToPose(drivetrainS, false,new
+				// Pose2d(1.9,7.7,new Rotation2d(Units.degreesToRadians(90))))),
+				// new Pair<String, Command>("PlayMiiSong", new OrchestraC("mii")),
+				));*/
 				break;
 			default:
 				switch (DriveConstants.driveType) {
@@ -693,6 +755,8 @@ public class RobotContainer {
 				pinkArm = new PinkArm(extensionIODummy, shoulderIODummy, wristIODummy);
 				toggles = new Toggles(new TogglesIO() {
 				});
+				climber = new Climber(new ClimberIO(){});
+				intake = new Intake(new IntakeIO(){});
 		}
 
 		drivetrainS.resetPose(GeomUtil.apply(startingPose, false));
@@ -996,7 +1060,7 @@ public class RobotContainer {
 	 */
 	public static double[] getCurrentDraw() {
 
-		return new double[] { Math.min(drivetrainS.getCurrent(), 200) };
+		return new double[] { Math.min(drivetrainS.getCurrent(), 200), climber.getCurrent(),intake.getCurrent() };
 		// superStructure.getCurrent() };
 	}
 
@@ -1017,10 +1081,12 @@ public class RobotContainer {
 		return Commands.sequence(
 				drivetrainS.getRunnableSystemCheckCommand(),
 				visionS.getSystemCheckCommand(),
-				leds.getSystemCheckCommand());
+				leds.getSystemCheckCommand(),
+				climber.getSystemCheckCommand(),
+				intake.getSystemCheckCommand());
 
 	}
-
+	//TODO: FIX FOR OUR SUBSYSTEMS
 	public static HashMap<String, Double> combineMaps(
 			List<HashMap<String, Double>> maps) {
 		HashMap<String, Double> combinedMap = new HashMap<>();
@@ -1033,7 +1099,7 @@ public class RobotContainer {
 
 	public static HashMap<String, Double> getAllTemps() {
 		// List of HashMaps
-		List<HashMap<String, Double>> maps = List.of(drivetrainS.getTemps(), visionS.getTemps());
+		List<HashMap<String, Double>> maps = List.of(drivetrainS.getTemps(), visionS.getTemps(), climber.getTemps(), intake.getTemps());
 		// Combine all maps
 		HashMap<String, Double> combinedMap = combineMaps(maps);
 		return combinedMap;
@@ -1047,19 +1113,23 @@ public class RobotContainer {
 	public static boolean allSystemsOK() {
 		return drivetrainS.getTrueSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& leds.getSystemStatus() == SubsystemChecker.SystemStatus.OK
-				&& visionS.getSystemStatus() == SubsystemChecker.SystemStatus.OK;
+				&& visionS.getSystemStatus() == SubsystemChecker.SystemStatus.OK
+				&& climber.getSystemStatus() == SubsystemChecker.SystemStatus.OK
+				&& intake.getSystemStatus() == SubsystemChecker.SystemStatus.OK;
 	}
 
 	public static Collection<ParentDevice> getOrchestraDevices() {
 
 		Collection<ParentDevice> devices = new ArrayList<>();
 		devices.addAll(drivetrainS.getDriveOrchestraDevices());
+		devices.addAll(climber.getOrchestraDevices());
+		devices.addAll(intake.getOrchestraDevices());
 		return devices;
 	}
 
 	public static SubsystemChecker[] getAllSubsystems() {
 
-		SubsystemChecker[] subsystems = new SubsystemChecker[2];
+		SubsystemChecker[] subsystems = new SubsystemChecker[4];
 		switch (DriveConstants.driveType) {
 			case SWERVE:
 				subsystems[0] = (Swerve) drivetrainS;
@@ -1072,6 +1142,8 @@ public class RobotContainer {
 				break;
 		}
 		subsystems[1] = visionS;
+		subsystems[2] = climber;
+		subsystems[3] = intake;
 		return subsystems;
 	}
 
