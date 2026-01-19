@@ -123,7 +123,7 @@ public class DriveConstants {
 	}
 
 	public static final LoggableTunedNumber maxTranslationalAcceleration = new LoggableTunedNumber(
-			"Drive/MaxTranslationalAcceleration", 35,TuningConstants.isTuningMacros);
+			"Drive/MaxTranslationalAcceleration", 41,TuningConstants.isTuningMacros);
 	public static final LoggableTunedNumber maxRotationalAcceleration = new LoggableTunedNumber(
 			"Drive/MaxRotationalAcceleration", 2 * Math.PI * 50,TuningConstants.isTuningMacros);
 	public static boolean fieldOriented = true;
@@ -132,10 +132,10 @@ public class DriveConstants {
 	public static boolean autoIntake = false;
 	// 135-Blocks was tested on a chassis with all CANSparkMaxes, as well as all
 	// Kraken-x60s.
-	public static final double kChassisWidth = Units.inchesToMeters(24.25), // Distance between Left and Right wheels
-			kChassisLength = Units.inchesToMeters(24.25), // Distance betwwen Front and Back wheels
-			kBumperToBumperWidth = Units.inchesToMeters(37.5), // Distance between bumpers
-			kBumperToBumperLength = Units.inchesToMeters(37.5), // Distance between bumpers
+	public static final double kChassisWidth = Units.inchesToMeters(25), // Distance between Left and Right wheels
+			kChassisLength = Units.inchesToMeters(20), // Distance betwwen Front and Back wheels
+			kBumperToBumperWidth = .962, // Distance between bumpers
+			kBumperToBumperLength = .834, // Distance between bumpers
 			kDriveBaseRadius = Math.sqrt(
 					kChassisLength * kChassisLength + kChassisWidth * kChassisWidth)
 					/ 2,
@@ -156,10 +156,10 @@ public class DriveConstants {
 			SKID_THRESHOLD = .5, // Meters per second
 			TURN_DEADBAND_AMPS = 5, //minimum amperage allowed on turn motors (to prevent weirdo noises/eating voltage)
 			MAX_G = 1.5;
-	public static double kMaxSpeedMetersPerSecond = 6.0, // 15.1
-			kMaxTurningSpeedRadPerSec = 3.914667 * 2 * Math.PI; // 1.33655 *2 *Math.PI
+	public static double kMaxSpeedMetersPerSecond = 4.558, // 15.1
+			kMaxTurningSpeedRadPerSec = 11.2; // 1.33655 *2 *Math.PI
 	public static PathConstraints pathConstraints = new PathConstraints(
-			6, 17.5,
+			4.558, 24,
 			kMaxTurningSpeedRadPerSec, maxRotationalAcceleration.get());
 	// kP = 0.1, kI = 0, kD = 0, kDistanceMultipler = .2; //for autoLock
 	// Declare the position of each module
@@ -246,7 +246,7 @@ public class DriveConstants {
 				extendTime = new LoggableTunedNumber("Drive/Module/extendTime", 200,TuningConstants.isTuningModules);
 		public static final double kMaxAngularSpeedRadiansPerSecond = 2 * DriveConstants.kMaxSpeedMetersPerSecond
 				/ (kWheelDiameter.get()),
-				kDriveMotorGearRatioLow = 5.14, kDriveMotorGearRatioHigh = 3, kTurningMotorGearRatio = 25,
+				kDriveMotorGearRatioLow = 6.75, kDriveMotorGearRatioHigh = 3, kTurningMotorGearRatio = 25,
 				kT = 1.0 / getDriveTrainMotors(1).KtNMPerAmp,
 				moi = 2.8732, // kg m^2, moment of inertia of the robot
 				weight = Units.lbsToKilograms(56); // test chassis
