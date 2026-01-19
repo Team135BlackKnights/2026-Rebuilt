@@ -8,6 +8,8 @@ import frc.robot.commands.FeedForwardCharacterization;
 import frc.robot.commands.StaticCharacterization;
 import frc.robot.commands.drive.DrivetrainC;
 import frc.robot.commands.drive.WheelRadiusCharacterization;
+import frc.robot.commands.drive.vision.AimToAprilTag;
+import frc.robot.commands.drive.vision.AimToObject;
 import frc.robot.subsystems.SubsystemChecker;
 import frc.robot.subsystems.drive.DrivetrainS;
 import frc.robot.subsystems.drive.FastSwerve.Swerve;
@@ -28,7 +30,6 @@ import frc.robot.subsystems.drive.Tank.TankIOSparkBase;
 import frc.robot.subsystems.drive.Tank.TankIOTalonFX;
 import frc.robot.subsystems.drive.Tank.Tank;
 import frc.robot.utils.CompetitionFieldUtils.FieldConstants;
-import frc.robot.utils.CompetitionFieldUtils.FieldObjects.Reefscape2025FieldObjects;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.AIRobotInSimulation;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.MecanumDriveSimulation;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.TankDriveSimulation;
@@ -36,6 +37,12 @@ import frc.robot.utils.CompetitionFieldUtils.Simulation.drive.GyroSimulation;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.drive.Swerve.SwerveDriveSimulation;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.drive.Swerve.SwerveModuleSimulation;
 import frc.robot.utils.drive.DriveConstants;
+import frc.robot.subsystems.vision.Vision;
+import frc.robot.subsystems.vision.VisionIO;
+import frc.robot.subsystems.vision.VisionIOPhotonVisionSim;
+import frc.robot.subsystems.vision.VisionIOSouthmoon;
+import frc.robot.utils.vision.VisionConstants;
+import frc.robot.utils.vision.VisionConstants.AprilTagLayoutType;
 import frc.robot.utils.drive.LocalADStarAK;
 import frc.robot.utils.drive.PathFinder;
 import frc.robot.utils.drive.Sensors.GyroIO;
@@ -90,9 +97,13 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
+
 import edu.wpi.first.wpilibj2.command.button.JoystickButton;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.TuningConstants;
+import frc.robot.commands.drive.AimToRotation;
+
+
 
 
 import frc.robot.subsystems.drive.FastSwerve.Swerve.ModuleLimits;
@@ -126,6 +137,7 @@ import frc.robot.utils.drive.Sensors.GyroIOSim;
 import frc.robot.utils.leds.LEDConstants.ImageStates;
 
 import frc.robot.utils.Touchboard.PosePlotterUtil;
+import frc.robot.utils.Touchboard.JukeboxUtil;
 import frc.robot.utils.Touchboard.PosePlotterUtil.CommandPair;
 
 /**
@@ -138,6 +150,7 @@ public class RobotContainer {
 	// The robot's subsystems and commands are defined here...
 	public static DrivetrainS drivetrainS;
 	private static final LEDs leds = new LEDs();
+	public static Vision visionS;
 	public static LocalADStarAK pathFinder = new LocalADStarAK();
 	private final LoggedDashboardChooser<Command> autoChooser;
 	public static final LoggableTunedNumber humanPlayerWaitTime = new LoggableTunedNumber(
@@ -167,6 +180,7 @@ public class RobotContainer {
 			leftBumperTest = new JoystickButton(driveController, 5),
 			rightBumperTest = new JoystickButton(testingController, 6),
 			selectButtonTest = new JoystickButton(testingController, 7),
+			selectButtonDrive = new JoystickButton(driveController,7),
 			selectButtonManip = new JoystickButton(manipController, 7),
 			startButtonTest = new JoystickButton(testingController, 8),
 			startButtonDrive = new JoystickButton(driveController, 8),
@@ -244,6 +258,7 @@ public class RobotContainer {
 	public static String closestChoreoPath = ""; // auto updates from Pathfinder, DON'T TOUCH!
 	public static boolean grabbingAlgae = false; // auto updates from Pathfinder, DON'T TOUCH!
 	int currentUpdate = 0;
+	public static Pose2d startingPoseCache = new Pose2d();
 	// Adjustable PathFollowing
 	public static LoggableTunedNumber pathFollowingMaxLinearSpeed = new LoggableTunedNumber(
 			"PathFollowing/MaxLinearSpeed", 5.5,
@@ -296,6 +311,8 @@ public class RobotContainer {
 		}
 	}
 
+	// POVButton manipPOVZero = new POVButton(manipController, 0);
+	// POVButton manipPOV180 = new POVButton(manipController, 180);
 	/**
 	 * The container for the robot. Contains subsystems, OI devices, and
 	 * commands. y * @throws NotActiveException IF mecanum and Replay
@@ -465,6 +482,26 @@ public class RobotContainer {
 						throw new IllegalArgumentException(
 								"Unknown drivetrain implementation type, please check DriveConstants.java!");
 				}
+				visionS = new Vision(() -> getSelectedAprilTagLayout(),
+						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "FrontRightCam",0,
+								VisionConstants.cameras[0]),
+						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "FrontLeftCam",1,
+								VisionConstants.cameras[1]),
+						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackRightCam",2,
+								VisionConstants.cameras[2]),
+						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackLeftCam",3,
+								VisionConstants.cameras[3]));
+				/**
+				 * visionS = new Vision(() -> getSelectedAprilTagLayout(),
+								new VisionIOPhotonVision(() -> getSelectedAprilTagLayout(), VisionConstants.cameras[0].getId(),
+										GeomUtil.poseToTransform3d(VisionConstants.cameras[0].getPose().get())),
+								new VisionIOPhotonVision(() -> getSelectedAprilTagLayout(), VisionConstants.cameras[1].getId(),
+										GeomUtil.poseToTransform3d(VisionConstants.cameras[1].getPose().get())),
+								new VisionIOPhotonVision(() -> getSelectedAprilTagLayout(), VisionConstants.cameras[2].getId(),
+										GeomUtil.poseToTransform3d(VisionConstants.cameras[2].getPose().get())),
+								new VisionIOPhotonVision(() -> getSelectedAprilTagLayout(), VisionConstants.cameras[3].getId(),
+										GeomUtil.poseToTransform3d(VisionConstants.cameras[3].getPose().get())));
+				 */
 				System.out.println("REAL SETUP DONE!");
 				break;
 			case SIM:
@@ -557,7 +594,24 @@ public class RobotContainer {
 						AIRobotInSimulation.startOpponentRobotSimulations(); // Start your engines...
 						break;
 				}
-
+				/*visionS = new Vision(() -> getSelectedAprilTagLayout(),
+						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "FrontRightCam",0,
+								VisionConstants.cameras[0]),
+						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "FrontLeftCam",1,
+								VisionConstants.cameras[1]),
+						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackRightCam",2,
+								VisionConstants.cameras[2]),
+						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackLeftCam",3,
+								VisionConstants.cameras[3]));*/
+				visionS = new Vision(() -> getSelectedAprilTagLayout(),
+						new VisionIOPhotonVisionSim(() -> getSelectedAprilTagLayout(),"FrontRightCam",
+								GeomUtil.poseToTransform3d(VisionConstants.cameras[0].getPose().get()),() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()),
+						new VisionIOPhotonVisionSim(() -> getSelectedAprilTagLayout(), "FrontLeftCam",
+								GeomUtil.poseToTransform3d(VisionConstants.cameras[1].getPose().get()),() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()),
+						new VisionIOPhotonVisionSim(() -> getSelectedAprilTagLayout(), "BackRightCam",
+								GeomUtil.poseToTransform3d(VisionConstants.cameras[2].getPose().get()),() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()),
+						new VisionIOPhotonVisionSim(() -> getSelectedAprilTagLayout(), "BackLeftCam",
+								GeomUtil.poseToTransform3d(VisionConstants.cameras[3].getPose().get()), () -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()));
 				System.out.println("SIM SETUP DONE!");
 				break;
 			default:
@@ -579,6 +633,13 @@ public class RobotContainer {
 						drivetrainS = new Mecanum(new MecanumIO() {
 						});
 				}
+
+				visionS = new Vision(() -> getSelectedAprilTagLayout(), new VisionIO() {
+				}, new VisionIO() {
+				},
+						new VisionIO() {
+						}, new VisionIO() {
+						}); // MUST be same number of cameras as in real robot
 		}
 
 		drivetrainS.resetPose(GeomUtil.apply(startingPose, false));
@@ -660,6 +721,10 @@ public class RobotContainer {
 		if (!AutoBuilder.isConfigured()) {
 			throw new RuntimeException(
 					"AutoBuilder was not configured before attempting to build an auto chooser");
+		}
+		JukeboxUtil jukebox = new JukeboxUtil();
+		for (ParentDevice device : getOrchestraDevices()){
+			jukebox.addTalon(device);
 		}
 		autoChooser = new LoggedDashboardChooser<>("Auto Routine", AutoBuilder.buildAutoChooser());
 		autoChooser.addDefaultOption("DynamicPathing",
@@ -749,10 +814,17 @@ public class RobotContainer {
 					drivetrainS.zeroHeading();
 					// drivetrainS.resetPose(GeomUtil.apply(startingPose.get(), false));
 				}));
-
+		selectButtonDrive.toggleOnTrue(new AimToObject(drivetrainS,"A42",1.25));
+		driverPOVUp.onChange(new InstantCommand(() -> {
+			DriveConstants.autoIntake = !DriveConstants.autoIntake;
+		}));
+		//AITargets.values()[classId].name()
 		startButtonDrive
 				.onTrue(new InstantCommand(() -> DriveConstants.autoAvoidance = !DriveConstants.autoAvoidance));
 		// aButtonDrive.whileTrue(superStructure.setGoalCommand(Goal.ONE_METER));
+		yButtonDrive.whileTrue(Commands.defer(() -> new AimToAprilTag(() -> getSelectedAprilTagLayout(), drivetrainS,visionS,2,true),
+		Set.of()));
+		bButtonDrive.whileTrue(Commands.defer(() -> new AimToRotation((Supplier<Rotation2d>) () -> startingPoseCache.getRotation(), drivetrainS, DriveConstants.pathConstraints),Set.of(drivetrainS)));
 		aButtonDrive.whileTrue(
 				Commands.defer(() -> PathFinder.goToPose(GeomUtil.apply(new Pose2d(8,3.5,Rotation2d.fromDegrees(-45)),false),() -> DriveConstants.pathConstraints, drivetrainS, false, 2, .5, .05),
 						Set.of(drivetrainS))); //3.5,4
@@ -810,7 +882,7 @@ public class RobotContainer {
 									65);
 							miloMad = false;
 						}), () -> !miloMad));
-
+		
 		leftStickDrive.onTrue(drivetrainS.orientModules(Swerve.getXOrientations()));
 		// rightStickDrive.whileTrue(new OrchestraC("rocky"));
 		// VisionConstants.Controls.autoIntake
@@ -820,7 +892,7 @@ public class RobotContainer {
 		// Button Board Controls
 
 		if (Constants.currentMode == Mode.SIM) {
-			testDPadUp.onTrue(new InstantCommand(() -> {
+			/*testDPadUp.onTrue(new InstantCommand(() -> {
 				try {
 					System.out.println("Creating Algae");
 					fieldSimulation.addGamePiece(new Reefscape2025FieldObjects.AlgaeBallOnManipulator(
@@ -838,12 +910,16 @@ public class RobotContainer {
 				} catch (Exception e) {
 					System.out.println("Failed to Create Algae");
 				}
-			}));
+			}));*/
 		}
 	}
 	// Interface for command factories
 	public interface CommandFactory {
 		Command generate();
+	}
+
+	public static AprilTagLayoutType getSelectedAprilTagLayout() {
+		return AprilTagLayoutType.OFFICIAL;
 	}
 
 	/**
@@ -887,6 +963,7 @@ public class RobotContainer {
 	public static Command allSystemsCheck() {
 		return Commands.sequence(
 				drivetrainS.getRunnableSystemCheckCommand(),
+				visionS.getSystemCheckCommand(),
 				leds.getSystemCheckCommand());
 
 	}
@@ -903,8 +980,7 @@ public class RobotContainer {
 
 	public static HashMap<String, Double> getAllTemps() {
 		// List of HashMaps
-		List<HashMap<String, Double>> maps = List.of(drivetrainS.getTemps());
-
+		List<HashMap<String, Double>> maps = List.of(drivetrainS.getTemps(), visionS.getTemps());
 		// Combine all maps
 		HashMap<String, Double> combinedMap = combineMaps(maps);
 		return combinedMap;
@@ -917,7 +993,8 @@ public class RobotContainer {
 	 */
 	public static boolean allSystemsOK() {
 		return drivetrainS.getTrueSystemStatus() == SubsystemChecker.SystemStatus.OK
-				&& leds.getSystemStatus() == SubsystemChecker.SystemStatus.OK;
+				&& leds.getSystemStatus() == SubsystemChecker.SystemStatus.OK
+				&& visionS.getSystemStatus() == SubsystemChecker.SystemStatus.OK;
 	}
 
 	public static Collection<ParentDevice> getOrchestraDevices() {
@@ -929,7 +1006,7 @@ public class RobotContainer {
 
 	public static SubsystemChecker[] getAllSubsystems() {
 
-		SubsystemChecker[] subsystems = new SubsystemChecker[1];
+		SubsystemChecker[] subsystems = new SubsystemChecker[2];
 		switch (DriveConstants.driveType) {
 			case SWERVE:
 				subsystems[0] = (Swerve) drivetrainS;
@@ -941,6 +1018,7 @@ public class RobotContainer {
 				subsystems[0] = (Tank) drivetrainS;
 				break;
 		}
+		subsystems[1] = visionS;
 		return subsystems;
 	}
 

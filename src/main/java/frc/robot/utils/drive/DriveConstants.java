@@ -1,5 +1,6 @@
 package frc.robot.utils.drive;
 
+import org.littletonrobotics.junction.AutoLogOutput;
 import static edu.wpi.first.units.Units.Centimeters;
 import static edu.wpi.first.units.Units.Degrees;
 
@@ -122,11 +123,13 @@ public class DriveConstants {
 	}
 
 	public static final LoggableTunedNumber maxTranslationalAcceleration = new LoggableTunedNumber(
-			"Drive/MaxTranslationalAcceleration", 30,TuningConstants.isTuningMacros);
+			"Drive/MaxTranslationalAcceleration", 35,TuningConstants.isTuningMacros);
 	public static final LoggableTunedNumber maxRotationalAcceleration = new LoggableTunedNumber(
 			"Drive/MaxRotationalAcceleration", 2 * Math.PI * 50,TuningConstants.isTuningMacros);
 	public static boolean fieldOriented = true;
 	public static boolean autoAvoidance = false;
+	@AutoLogOutput(key = "Drive/AutoIntake")
+	public static boolean autoIntake = false;
 	// 135-Blocks was tested on a chassis with all CANSparkMaxes, as well as all
 	// Kraken-x60s.
 	public static final double kChassisWidth = Units.inchesToMeters(24.25), // Distance between Left and Right wheels
@@ -151,7 +154,7 @@ public class DriveConstants {
 			kFrontLeftAbsEncoderOffsetRad = 0, kFrontRightAbsEncoderOffsetRad = 0, // -.935 , BR -.7792
 			kBackLeftAbsEncoderOffsetRad = 0, kBackRightAbsEncoderOffsetRad = 0, // -.2392 FL -.5813
 			SKID_THRESHOLD = .5, // Meters per second
-			TURN_DEADBAND_AMPS = 10, //minimum amperage allowed on turn motors (to prevent weirdo noises/eating voltage)
+			TURN_DEADBAND_AMPS = 5, //minimum amperage allowed on turn motors (to prevent weirdo noises/eating voltage)
 			MAX_G = 1.5;
 	public static double kMaxSpeedMetersPerSecond = 6.0, // 15.1
 			kMaxTurningSpeedRadPerSec = 3.914667 * 2 * Math.PI; // 1.33655 *2 *Math.PI
@@ -186,8 +189,8 @@ public class DriveConstants {
 			kMaxDriveCurrent = 65, kMaxTurnCurrent = 20;
 	public static final boolean kFrontLeftDriveReversed = false,
 			kFrontLeftTurningReversed = false, kFrontLeftAbsEncoderReversed = false,
-			kFrontRightDriveReversed = false, kFrontRightTurningReversed = false,
-			kFrontRightAbsEncoderReversed = false, kBackLeftDriveReversed = true,
+			kFrontRightDriveReversed = true, kFrontRightTurningReversed = false,
+			kFrontRightAbsEncoderReversed = false, kBackLeftDriveReversed = false,
 			kBackLeftTurningReversed = false, kBackLeftAbsEncoderReversed = false,
 			kBackRightDriveReversed = true, kBackRightTurningReversed = false,
 			kBackRightAbsEncoderReversed = false;
@@ -287,10 +290,10 @@ public class DriveConstants {
 			if (robotMotorController == MotorVendor.CTRE_ON_CANIVORE
 					|| robotMotorController == MotorVendor.CTRE_ON_RIO) {
 				overallTurningMotorConstantContainer = new MotorConstantContainer(
-						0.25, 0.04, 0.001, 1000, 0, 50); // Average the turning motors for these vals.
+						0.25, 0.04, 0.001, 1500, 0, 35); // Average the turning motors for these vals.
 						//Test chassis: 1.65, 125, 0.6, 200, 35, 13.25
-				overallDriveMotorConstantContainer = new MotorConstantContainer(5, 
-						.09, 0.001, 35, 0.0, 0.00);
+				overallDriveMotorConstantContainer = new MotorConstantContainer(1.5, 
+						.09, 0.001, 50, 0.0, 0.085);
 			} else {
 				overallTurningMotorConstantContainer = new MotorConstantContainer(
 						0.001, 0.001, 0.001, 5, 0, 0.001); // Average the turning motors for these vals.

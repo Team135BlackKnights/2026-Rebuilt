@@ -17,6 +17,13 @@ import org.littletonrobotics.junction.networktables.NT4Publisher;
 import org.littletonrobotics.junction.wpilog.WPILOGReader;
 import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 
+import frc.robot.Constants.FRCMatchState;
+import frc.robot.subsystems.SubsystemChecker;
+import frc.robot.subsystems.drive.FastSwerve.Swerve.ModuleLimits;
+import frc.robot.utils.Elastic;
+import frc.robot.utils.LoggableTunedNumber;
+import frc.robot.utils.drive.DriveConstants;
+import frc.robot.utils.drive.DriveConstants.DriveTrainType;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.CANBus.CANBusStatus;
 import com.ctre.phoenix6.SignalLogger;
@@ -43,20 +50,13 @@ import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Subsystem;
-import frc.robot.Constants.FRCMatchState;
 import frc.robot.Constants.TuningConstants;
-import frc.robot.subsystems.SubsystemChecker;
-import frc.robot.subsystems.drive.FastSwerve.Swerve.ModuleLimits;
-import frc.robot.utils.Elastic;
 import frc.robot.utils.GeomUtil;
 import frc.robot.utils.LogTimingReceiver;
-import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.VirtualSubsystem;
 import frc.robot.utils.CompetitionFieldUtils.FieldConstants;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.motorsims.SimulatedBattery;
 import frc.robot.utils.Touchboard.PosePlotterUtil;
-import frc.robot.utils.drive.DriveConstants;
-import frc.robot.utils.drive.DriveConstants.DriveTrainType;
 import frc.robot.utils.maths.TimeUtil;
 
 /*
@@ -395,6 +395,7 @@ public class Robot extends LoggedRobot {
 			}
 			double theta = Units.degreesToRadians(Double.parseDouble(auto[0]));
 			Pose2d startingPose = new Pose2d(x, y, new Rotation2d(theta));
+			RobotContainer.startingPoseCache = startingPose;
 			RobotContainer.drivetrainS.resetPose(GeomUtil.apply(startingPose, false));
 			if (Constants.currentMode == frc.robot.Constants.Mode.SIM) {
 				RobotContainer.fieldSimulation.getMainDriveSimulation()
@@ -625,6 +626,8 @@ public class Robot extends LoggedRobot {
 				}
 			}
 			Logger.recordOutput("Scoring/SimMatchOver", matchHasEnded);
+			//add a log for vision error
+			Logger.recordOutput("Vision/Error", RobotContainer.drivetrainS.getLookAheadPose().getTranslation().getDistance(RobotContainer.fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d().getTranslation()));
 		}
 
 	}
