@@ -49,7 +49,6 @@ public class LoggableTunedNumber {
 	 *
 	 * @param defaultValue The default value
 	 */
-	@SuppressWarnings("unused")
 	public void initDefault(double defaultValue, boolean enableValue) {
 		this.defaultValue = defaultValue;
 		this.canLogSpecific = enableValue;
@@ -68,7 +67,6 @@ public class LoggableTunedNumber {
 	 *
 	 * @return The current value
 	 */
-	@SuppressWarnings("unused")
 	public double get() {
 		if (!hasDefault) {
 			return 0.0;
@@ -115,7 +113,6 @@ public class LoggableTunedNumber {
 		return false;
 	}
 
-	@SuppressWarnings("unused")
 	public void changeDefault(double value){
 		defaultValue = value;
 		if (TuningConstants.isTuningPID && canLogSpecific && dashboardNumber == null) {

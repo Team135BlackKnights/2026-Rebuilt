@@ -1,13 +1,16 @@
 package frc.robot.utils.simpleMechanisms;
 
+import com.ctre.phoenix6.CANBus;
+
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.util.Units;
+import frc.robot.Robot;
 import frc.robot.utils.drive.DriveConstants.MotorVendor;
 
 public class SimpleMechanismConstants {
     public static class Roller {
         public static final int motorID = 40;
-        public static final String bus = "";
+        public static final CANBus bus = Robot.everythingCanBus;
         public static final String name = "RollerMotor";
         public static final double reduction = 1.0 / 1.0;
         public static final MotorVendor motorType = MotorVendor.NEO_SPARK_MAX;
@@ -22,7 +25,7 @@ public class SimpleMechanismConstants {
 
     public static class Climber {
         public static final int id = 41;
-        public static final String bus = "";
+        public static final CANBus bus = Robot.everythingCanBus;
         public static final String name = "ClimbMotor";
         public static final MotorVendor motorType = MotorVendor.CTRE_ON_RIO;
         public static final int currentLimitAmps = 40;

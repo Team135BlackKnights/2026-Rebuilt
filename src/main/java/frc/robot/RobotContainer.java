@@ -104,13 +104,7 @@ import frc.robot.Constants.TuningConstants;
 import frc.robot.commands.drive.AimToRotation;
 
 
-import frc.robot.commands.FeedForwardCharacterization;
-import frc.robot.commands.StaticCharacterization;
-import frc.robot.commands.drive.DrivetrainC;
-import frc.robot.commands.drive.WheelRadiusCharacterization;
-import frc.robot.subsystems.SubsystemChecker;
 import frc.robot.subsystems.advancedMechs.PinkArm.PinkArm;
-import frc.robot.subsystems.advancedMechs.PinkArm.PinkArm.WantedState;
 import frc.robot.subsystems.advancedMechs.PinkArm.extension.ExtensionIO;
 import frc.robot.subsystems.advancedMechs.PinkArm.extension.ExtensionIOSim;
 import frc.robot.subsystems.advancedMechs.PinkArm.extension.ExtensionIOTalonFX;
@@ -120,27 +114,9 @@ import frc.robot.subsystems.advancedMechs.PinkArm.shoulder.ShoulderIOTalonFX;
 import frc.robot.subsystems.advancedMechs.PinkArm.wrist.WristIO;
 import frc.robot.subsystems.advancedMechs.PinkArm.wrist.WristIOSim;
 import frc.robot.subsystems.advancedMechs.PinkArm.wrist.WristIOTalonFX;
-import frc.robot.subsystems.drive.DrivetrainS;
-import frc.robot.subsystems.drive.FastSwerve.ModuleIO;
-import frc.robot.subsystems.drive.FastSwerve.ModuleIOKrakenFOC;
-import frc.robot.subsystems.drive.FastSwerve.ModuleIOKrakenFOCShifting;
-import frc.robot.subsystems.drive.FastSwerve.ModuleIOKrakenFOCWithThrifty;
-import frc.robot.subsystems.drive.FastSwerve.ModuleIOSim;
-import frc.robot.subsystems.drive.FastSwerve.ModuleIOSparkBase;
-import frc.robot.subsystems.drive.FastSwerve.Swerve;
 
 
 import frc.robot.subsystems.drive.FastSwerve.Swerve.ModuleLimits;
-import frc.robot.subsystems.drive.Mecanum.Mecanum;
-import frc.robot.subsystems.drive.Mecanum.MecanumIO;
-import frc.robot.subsystems.drive.Mecanum.MecanumIOSim;
-import frc.robot.subsystems.drive.Mecanum.MecanumIOSparkBase;
-import frc.robot.subsystems.drive.Mecanum.MecanumIOTalonFX;
-import frc.robot.subsystems.drive.Tank.Tank;
-import frc.robot.subsystems.drive.Tank.TankIO;
-import frc.robot.subsystems.drive.Tank.TankIOSim;
-import frc.robot.subsystems.drive.Tank.TankIOSparkBase;
-import frc.robot.subsystems.drive.Tank.TankIOTalonFX;
 import frc.robot.subsystems.leds.LEDs;
 import frc.robot.subsystems.simpleMechanisms.roller.ExampleIntake.Intake;
 import frc.robot.subsystems.simpleMechanisms.roller.ExampleIntake.IntakeIO;
@@ -156,17 +132,6 @@ import frc.robot.utils.DriverStationHID;
 import frc.robot.utils.GeomUtil;
 import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.Reefscape2025FieldSimulation;
-import frc.robot.utils.CompetitionFieldUtils.Simulation.TankDriveSimulation;
-import frc.robot.utils.CompetitionFieldUtils.Simulation.drive.GyroSimulation;
-import frc.robot.utils.CompetitionFieldUtils.Simulation.drive.Swerve.SwerveDriveSimulation;
-import frc.robot.utils.CompetitionFieldUtils.Simulation.drive.Swerve.SwerveModuleSimulation;
-import frc.robot.utils.drive.DriveConstants;
-import frc.robot.utils.drive.LocalADStarAK;
-import frc.robot.utils.drive.PathFinder;
-import frc.robot.utils.drive.Sensors.GyroIO;
-import frc.robot.utils.drive.Sensors.GyroIONavX;
-import frc.robot.utils.drive.Sensors.GyroIOPigeon2;
-import frc.robot.utils.drive.Sensors.GyroIOSim;
 import frc.robot.utils.leds.LEDConstants.ImageStates;
 import frc.robot.utils.robotToggles.Toggles;
 import frc.robot.utils.robotToggles.TogglesIO;
@@ -177,8 +142,6 @@ import frc.robot.utils.simpleMechanisms.SimpleMechanismConstants;
 import frc.robot.utils.Touchboard.PosePlotterUtil;
 import frc.robot.utils.Touchboard.JukeboxUtil;
 import frc.robot.utils.Touchboard.PosePlotterUtil.CommandPair;
-import frc.robot.utils.advancedMechs.AdvancedMechanismConstants;
-import frc.robot.utils.advancedMechs.AdvancedMechanismConstants.PinkArm.ArmPosition;
 
 /**
  * This code depends on WPILib 2025, Choreo 2025, PhotonLib 2025, Studica,
@@ -225,7 +188,6 @@ public class RobotContainer {
 			rightBumperTest = new JoystickButton(testingController, 6),
 			selectButtonTest = new JoystickButton(testingController, 7),
 			selectButtonDrive = new JoystickButton(driveController,7),
-			selectButtonDrive = new JoystickButton(driveController, 7),
 			selectButtonManip = new JoystickButton(manipController, 7),
 			startButtonTest = new JoystickButton(testingController, 8),
 			startButtonDrive = new JoystickButton(driveController, 8),

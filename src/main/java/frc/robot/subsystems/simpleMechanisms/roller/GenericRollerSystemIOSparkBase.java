@@ -7,8 +7,8 @@ import com.revrobotics.RelativeEncoder;
 import com.revrobotics.spark.SparkBase;
 import com.revrobotics.spark.SparkFlex;
 import com.revrobotics.spark.SparkMax;
-import com.revrobotics.spark.SparkBase.PersistMode;
-import com.revrobotics.spark.SparkBase.ResetMode;
+import com.revrobotics.ResetMode;
+import com.revrobotics.PersistMode;
 import com.revrobotics.spark.config.SparkBaseConfig;
 import com.revrobotics.spark.config.SparkFlexConfig;
 import com.revrobotics.spark.config.SparkMaxConfig;
@@ -43,7 +43,7 @@ public abstract class GenericRollerSystemIOSparkBase implements GenericRollerSys
     this.name = name;
     config = config.smartCurrentLimit(currentLimitAmps).voltageCompensation(12);
     config.inverted(invert);
-    motor.configure(config, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
+    motor.configureAsync(config, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
     encoder = motor.getEncoder();
   }
 

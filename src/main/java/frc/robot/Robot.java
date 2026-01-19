@@ -85,7 +85,6 @@ public class Robot extends LoggedRobot {
 	private boolean isPracticeDSMode = false, loggerStarted = false, matchHasEnded = false;
 	public static double matchTime = 0;
 	private double lastMatchTime = 0, previousTime = Logger.getTimestamp(), accumulatedCharge = 0;
-	@SuppressWarnings("unused")
 	private static final List<PeriodicFunction> periodicFunctions = new ArrayList<>();
 	public static final CANBus rioCanBus = CANBus.roboRIO();
 	public static final CANBus everythingCanBus = new CANBus("everything");

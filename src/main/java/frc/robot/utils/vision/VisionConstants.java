@@ -25,7 +25,7 @@ import frc.robot.Constants.Mode;
 import frc.robot.Constants.TuningConstants;
 
 public class VisionConstants {
-	public static final FieldType fieldType = FieldType.CUSTOM;
+	public static final FieldType fieldType = FieldType.ANDYMARK;
 
 	public enum AITargets {
 		//Make SURE these are in ORDER of the actual classID.
@@ -197,11 +197,8 @@ public static final boolean bumperDetection = false;
 
   @Getter
   public enum AprilTagLayoutType {
-    OFFICIAL("2025-official"),
-    NO_BARGE("2025-no-barge"),
-    BLUE_REEF("2025-blue-reef"),
-    RED_REEF("2025-red-reef"),
-    NONE("2025-none");
+    OFFICIAL("2026-official"),
+    NONE("2026-none");
 
 
     AprilTagLayoutType(String name) {
@@ -215,7 +212,7 @@ public static final boolean bumperDetection = false;
                       "deploy",
                       "apriltags",
                       fieldType.getJsonFolder(),
-                      "2025-sim.json"));
+                      "2026-sim.json"));
         } catch (IOException e) {
           throw new RuntimeException(e);
         }

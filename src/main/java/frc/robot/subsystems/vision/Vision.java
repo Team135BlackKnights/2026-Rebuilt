@@ -168,7 +168,6 @@ public class Vision extends SubsystemChecker {
 			if (cameraTypes[cameraIndex] == CameraType.PHOTONVISION) {
 				processPhotonVisionCamera(cameraIndex, allTagPoses, allRobotPoses,
 						allRobotPosesAccepted, allRobotPosesRejected);
-				// TODO add tx ty obs for photonvision? unnecessary?
 			} else {
 				allTxTyObservations = processSouthmoonCamera(cameraIndex, allTagPoses, allRobotPoses,
 						allRobotPosesAccepted, allRobotPosesRejected, allTxTyObservations);

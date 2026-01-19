@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.ctre.phoenix6.BaseStatusSignal;
+import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.NeutralOut;
@@ -42,7 +43,7 @@ public abstract class GenericRollerSystemIOKrakenFOC implements GenericRollerSys
   private final String name;
 
   public GenericRollerSystemIOKrakenFOC(
-      int id, String bus, String name, int currentLimitAmps, boolean invert, boolean brake, double reduction) {
+      int id, CANBus bus, String name, int currentLimitAmps, boolean invert, boolean brake, double reduction) {
     this.reduction = reduction;
     this.name = name;
     talon = new TalonFX(id, bus);
