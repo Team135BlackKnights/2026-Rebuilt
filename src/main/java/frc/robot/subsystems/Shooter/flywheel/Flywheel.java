@@ -1,11 +1,11 @@
-package frc.robot.subsystems.Shooter.flywheel;
+package frc.robot.subsystems.shooter.flywheel;
 
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.TuningConstants;
 import frc.robot.subsystems.SubsystemChecker;
-import frc.robot.subsystems.Shooter.ShotCalculator;
-import frc.robot.subsystems.Shooter.flywheel.FlywheelIO.FlywheelIOOutputs;
+import frc.robot.subsystems.shooter.ShotCalculator;
+import frc.robot.subsystems.shooter.flywheel.FlywheelIO.FlywheelIOOutputs;
 import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.selfCheck.SelfChecking;
 
