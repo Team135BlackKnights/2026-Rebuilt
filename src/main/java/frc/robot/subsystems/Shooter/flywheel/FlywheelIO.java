@@ -9,7 +9,7 @@ import frc.robot.utils.selfCheck.SelfChecking;
 
 public interface FlywheelIO {
   @AutoLog
-  public static class FlywheelIOInputs {
+  public class FlywheelIOInputs {
     public boolean connected;
     public double positionRads;
     public double velocityRadsPerSec;
@@ -19,7 +19,7 @@ public interface FlywheelIO {
     public double tempCelsius;
   }
 
-  public static class FlywheelIOOutputs {
+  public class FlywheelIOOutputs {
     public double velocityRadsPerSec = 0.0;
     public double feedForward = 0.0;
     public boolean coast = true;

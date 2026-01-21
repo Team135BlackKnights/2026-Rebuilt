@@ -16,6 +16,8 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
+
+import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
@@ -94,7 +96,15 @@ public class FlywheelIOKrakenFOC implements FlywheelIO{
         
         @Override
         public void applyOutputs(FlywheelIOOutputs outputs){
-            //TODO: implement this
+            PIDController pid = new PIDController(outputs.kP, 0, outputs.kD); //kP and kD
+            talon.set(pid.calculate(outputs.velocityRadsPerSec/Flywheel.kVMaxVelocity.get())+outputs.feedForward); //velocity NOT CORRECT!!! this logic doesn't make sense!
+            pid.close();
+            TalonFXConfiguration config = new TalonFXConfiguration();
+            config.MotorOutput.NeutralMode = outputs.coast ? NeutralModeValue.Coast : NeutralModeValue.Brake; //neutral mode
+            talon.getConfigurator().apply(config);
+            
+            
+            
 
         }
     }

@@ -58,7 +58,7 @@ public class Flywheel extends SubsystemChecker {
         io.applyOutputs(outputs);
 
     }
-    private void runVelocity(double velocityRadsPerSec) {
+    public void runVelocity(double velocityRadsPerSec) {
         outputs.coast = false;
         outputs.velocityRadsPerSec = slewRateLimiter.calculate(velocityRadsPerSec);
         outputs.feedForward = kS.get() * Math.signum(velocityRadsPerSec)
