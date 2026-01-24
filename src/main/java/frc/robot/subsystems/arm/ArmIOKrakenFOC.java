@@ -36,12 +36,18 @@ public abstract class ArmIOKrakenFOC implements ArmIO {
     config.CurrentLimits.SupplyCurrentLimitEnable = true;
   }
 
-  public void updateInputs(LiftIOInputs inputs) {
-    //TODO: add correct update inputs
+  public void updateInputs(ArmIOInputs inputs) {
+    inputs.motorPositionRads = talon.getPosition().getValueAsDouble();
+    inputs.currentAmps = talon.getSupplyCurrent().getValueAsDouble();
+    inputs.motorTemperatureC = talon.getDeviceTemp().getValueAsDouble();
+    inputs.voltage = talon.getMotorVoltage().getValueAsDouble();
+    inputs.velocityRadsPerSec = talon.get();
+
+
   }
 
-  public void setAngle(double angleRads) {
-    //TODO: convert angle to voltage using pid
+  public void applyPID(double desAngleRads) {
+    talon.set(pid.calculate(talon.getPosition().getValueAsDouble()*2*Math.PI,desAngleRads));
   }
 
   @Override

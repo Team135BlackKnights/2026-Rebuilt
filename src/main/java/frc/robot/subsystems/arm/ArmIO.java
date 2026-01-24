@@ -9,10 +9,9 @@ import frc.robot.utils.selfCheck.SelfChecking;
 
 public interface ArmIO {
     @AutoLog
-    abstract class LiftIOInputs {
-        double liftPositionMeters = 0;
-        double leftMotorTemperatureC = 0;
-        double rightMotorTemperatureC = 0;
+    abstract class ArmIOInputs {
+        double motorPositionRads = 0;
+        double motorTemperatureC = 0;
         double voltage = 0;
         String name = "armIntakeMotor";
         double velocityRadsPerSec = 0;
@@ -20,11 +19,11 @@ public interface ArmIO {
         double currentAmps = 0;
     }
     
-    default void updateInputs(LiftIOInputs inputs) {
+    default void updateInputs(ArmIOInputs inputs) {
     }
 
     /** set angle of manip*/
-    default void setAngle(double meters) {
+    default void applyPID(double meters) {
     }
 
     default void setCurrentLimit(int amps) {

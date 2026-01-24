@@ -32,7 +32,7 @@ public abstract class Arm<G extends Arm.positionRadiansGoal> extends SubsystemCh
     public void periodic(){
         io.updateInputs(inputs);
         Logger.processInputs("Lift", inputs);
-        io.setAngle(getGoal().getPositionSupplier().getAsDouble());
+        io.applyPID(getGoal().getPositionSupplier().getAsDouble());
     }
 
 
