@@ -106,11 +106,11 @@ import frc.robot.commands.drive.AimToRotation;
 
 import frc.robot.subsystems.drive.FastSwerve.Swerve.ModuleLimits;
 import frc.robot.subsystems.leds.LEDs;
-import frc.robot.subsystems.simpleMechanisms.roller.compliantsRebuilt.Intake;
-import frc.robot.subsystems.simpleMechanisms.roller.compliantsRebuilt.IntakeIO;
-import frc.robot.subsystems.simpleMechanisms.roller.compliantsRebuilt.IntakeIOKrakenFOC;
-import frc.robot.subsystems.simpleMechanisms.roller.compliantsRebuilt.IntakeIOSim;
-import frc.robot.subsystems.simpleMechanisms.roller.compliantsRebuilt.IntakeIOSparkBase;
+import frc.robot.subsystems.simpleMechanisms.roller.ExampleIntake.Intake;
+import frc.robot.subsystems.simpleMechanisms.roller.ExampleIntake.IntakeIO;
+import frc.robot.subsystems.simpleMechanisms.roller.ExampleIntake.IntakeIOKrakenFOC;
+import frc.robot.subsystems.simpleMechanisms.roller.ExampleIntake.IntakeIOSim;
+import frc.robot.subsystems.simpleMechanisms.roller.ExampleIntake.IntakeIOSparkBase;
 import frc.robot.subsystems.simpleMechanisms.slamElevator.ExampleClimber.Climber;
 import frc.robot.subsystems.simpleMechanisms.slamElevator.ExampleClimber.ClimberIO;
 import frc.robot.subsystems.simpleMechanisms.slamElevator.ExampleClimber.ClimberIOKrakenFOC;
