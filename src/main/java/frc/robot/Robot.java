@@ -23,14 +23,10 @@ import frc.robot.subsystems.drive.FastSwerve.Swerve.ModuleLimits;
 import frc.robot.utils.Elastic;
 import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.drive.DriveConstants;
-import frc.robot.utils.drive.DriveConstants.DriveTrainType;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.CANBus.CANBusStatus;
 import com.ctre.phoenix6.SignalLogger;
-import com.pathplanner.lib.commands.PathPlannerAuto;
 import com.pathplanner.lib.path.PathConstraints;
-import com.pathplanner.lib.path.PathPlannerPath;
-import com.pathplanner.lib.util.FlippingUtil;
 import au.grapplerobotics.CanBridge;
 import edu.wpi.first.math.MathShared;
 import edu.wpi.first.math.MathSharedStore;
@@ -60,7 +56,6 @@ import frc.robot.utils.Touchboard.PosePlotterUtil;
 import frc.robot.utils.maths.TimeUtil;
 
 /*
-TODO: Setup TODOTree to go through the year-by-year updating checklist. 
 
 Install TODOTree from here https://marketplace.visualstudio.com/items?itemName=Gruntfuggly.todo-tree
 Once installed, open settings (gear icon at the very bottom),
@@ -451,41 +446,14 @@ public class Robot extends LoggedRobot {
 				hasCalculatedAuto = true;
 			}
 			if (Constants.currentMode == frc.robot.Constants.Mode.SIM) {
-				RobotContainer.fieldSimulation.resetField(true);
-				if (RobotContainer.currentAuto != null) {
-					try {
-						PathPlannerPath path = PathPlannerAuto
-								.getPathGroupFromAutoFile(
-										RobotContainer.currentAuto.getName())
-								.get(0);
-						if (DriveConstants.driveType == DriveTrainType.TANK) {
-							RobotContainer.fieldSimulation.getMainDriveSimulation()
-									.setSimulationWorldPose(path.getStartingDifferentialPose());
-						} else {
-							RobotContainer.fieldSimulation.getMainDriveSimulation()
-									.setSimulationWorldPose(
-											Robot.isRed ? FlippingUtil.flipFieldPose(new Pose2d(
-													path.getPoint(0).position,
-													path.getIdealStartingState().rotation()))
-													: new Pose2d(
-															path.getPoint(0).position,
-															path.getIdealStartingState().rotation()));
-						}
-					} catch (Exception e) {
-
-					}
-					RobotContainer.fieldSimulation.getMainDriveSimulation()
-							.resetOdometryToActualRobotPose();
-					RobotContainer.fieldSimulation.resetField(true);
-					RobotContainer.fieldSimulation.addPoints(3);
-				}
+				m_robotContainer.resetSimulationField();
 			}
 			matchHasEnded = false;
 			System.out.println("Scheduling Auto: " + m_autonomousCommand.getName());
 			CommandScheduler.getInstance().schedule(m_autonomousCommand);
 		}
 	}
-
+	
 	/** This function is called periodically during autonomous. */
 	@Override
 	public void autonomousPeriodic() {
@@ -618,10 +586,9 @@ public class Robot extends LoggedRobot {
 	@Override
 	public void simulationPeriodic() {
 		if (Constants.currentMode != frc.robot.Constants.Mode.REPLAY) {
-			RobotContainer.updateSimulationWorld();
+			m_robotContainer.updateSimulationWorld();
 			if (Constants.currentMatchState == Constants.FRCMatchState.MATCHOVER) {
 				if (!matchHasEnded) {
-					RobotContainer.fieldSimulation.addPoints(2);
 					matchHasEnded = true;
 				}
 			}

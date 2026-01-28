@@ -79,7 +79,7 @@ public class Flywheel extends SubsystemChecker {
 
     public Command runTrackTargetCommand() {
         return runEnd(
-                () -> runVelocity(ShotCalculator.getInstance().getParameters().flywheelSpeed()),
+                () -> runVelocity(ShotCalculator.createArena().getParameters().flywheelSpeed()),
                 this::stop);
     }
 

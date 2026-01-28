@@ -1,4 +1,4 @@
-package frc.robot.subsystems.shooter;
+package frc.robot.subsystems.Shooter;
 
 import edu.wpi.first.math.filter.LinearFilter;
 import edu.wpi.first.math.geometry.Pose2d;
@@ -64,7 +64,7 @@ public class ShotCalculator {
     }
 
     // Calculate distance from turret to target
-    Translation2d target = GeomUtil.apply(new Translation2d()); //TODO find hub center
+    Translation2d target = GeomUtil.toCurrentAllianceTranslation(new Translation2d()); //TODO find hub center
     Pose2d turretPosition = RobotContainer.drivetrainS.getLookAheadPose().transformBy(robotToTurret);
     double turretToTargetDistance = target.getDistance(turretPosition.getTranslation());
 

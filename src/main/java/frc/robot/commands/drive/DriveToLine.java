@@ -16,8 +16,6 @@ import frc.robot.RobotContainer;
 import frc.robot.subsystems.drive.DrivetrainS;
 import frc.robot.utils.GeomUtil;
 import frc.robot.utils.LoggableTunedNumber;
-import frc.robot.utils.CompetitionFieldUtils.FieldConstants;
-import frc.robot.utils.CompetitionFieldUtils.FieldObjects.Reefscape2025FieldObjects;
 import frc.robot.utils.drive.DriveConstants;
 
 import org.littletonrobotics.junction.Logger;
@@ -87,17 +85,7 @@ public class DriveToLine extends Command {
         userControlCommand = new DrivetrainC(drive);
         userControlCommand.initialize();
         hasGottenCoral = false;
-        if ("redLeft".equals(corner.get())) {
-            possiblePoints = FieldConstants.CoralStation.validRedLeft;
-        } else if ("redRight".equals(corner.get())) {
-            possiblePoints = FieldConstants.CoralStation.validRedRight;
-        } else if ("blueLeft".equals(corner.get())) {
-            possiblePoints = FieldConstants.CoralStation.validBlueLeft;
-        } else if ("blueRight".equals(corner.get()))
-            possiblePoints = FieldConstants.CoralStation.validBlueRight;
-        else {
-            possiblePoints = null;
-        }
+        possiblePoints = null; //unused, so i don't care.
         if (timeout != -1 && timeout != 999){
             timeoutTimer.reset();
             timeoutTimer.start();
@@ -181,8 +169,7 @@ public class DriveToLine extends Command {
             // if in sim, gimme game piece
             if (Constants.currentMode == Mode.SIM && !hasGottenCoral) {
                 hasGottenCoral = true;
-                RobotContainer.fieldSimulation
-                        .addGamePiece(new Reefscape2025FieldObjects.ReefscapeCoralOnManipulator());
+                //RobotContainer.fieldSimulation.addGamePiece();
 
             }
         }

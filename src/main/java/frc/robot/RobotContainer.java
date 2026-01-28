@@ -29,14 +29,15 @@ import frc.robot.subsystems.drive.Tank.TankIOSim;
 import frc.robot.subsystems.drive.Tank.TankIOSparkBase;
 import frc.robot.subsystems.drive.Tank.TankIOTalonFX;
 import frc.robot.subsystems.drive.Tank.Tank;
-import frc.robot.utils.CompetitionFieldUtils.FieldConstants;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.AIRobotInSimulation;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.MecanumDriveSimulation;
+import frc.robot.utils.CompetitionFieldUtils.Simulation.SimulatedArena;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.TankDriveSimulation;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.drive.GyroSimulation;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.drive.Swerve.SwerveDriveSimulation;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.drive.Swerve.SwerveModuleSimulation;
 import frc.robot.utils.drive.DriveConstants;
+import frc.robot.utils.drive.DriveConstants.DriveTrainType;
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOPhotonVisionSim;
@@ -52,6 +53,7 @@ import frc.robot.utils.drive.Sensors.GyroIOSim;
 
 import com.ctre.phoenix6.hardware.ParentDevice;
 import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.commands.PathPlannerAuto;
 import com.pathplanner.lib.commands.PathfindingCommand;
 import com.pathplanner.lib.pathfinding.Pathfinding;
 import com.pathplanner.lib.util.PPLibTelemetry;
@@ -67,7 +69,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Supplier;
 
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
@@ -78,12 +79,12 @@ import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 import com.pathplanner.lib.path.PathConstraints;
 import com.pathplanner.lib.path.PathPlannerPath;
 import com.pathplanner.lib.util.FileVersionException;
+import com.pathplanner.lib.util.FlippingUtil;
 import com.therekrab.autopilot.APTarget;
 
 import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
 import edu.wpi.first.math.kinematics.MecanumDriveKinematics;
@@ -101,7 +102,6 @@ import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.JoystickButton;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.TuningConstants;
-import frc.robot.commands.drive.AimToRotation;
 
 
 import frc.robot.subsystems.drive.FastSwerve.Swerve.ModuleLimits;
@@ -119,7 +119,6 @@ import frc.robot.subsystems.simpleMechanisms.slamElevator.ExampleClimber.Climber
 import frc.robot.utils.DriverStationHID;
 import frc.robot.utils.GeomUtil;
 import frc.robot.utils.LoggableTunedNumber;
-import frc.robot.utils.CompetitionFieldUtils.Simulation.Reefscape2025FieldSimulation;
 import frc.robot.utils.leds.LEDConstants.ImageStates;
 import frc.robot.utils.robotToggles.Toggles;
 import frc.robot.utils.robotToggles.TogglesIO;
@@ -239,14 +238,12 @@ public class RobotContainer {
 	@AutoLogOutput(key = "RobotState/currentPath")
 	public static String currentPath = "";
 	public static Field2d field = new Field2d();
-	public static Translation2d[] algaeStartingLocations = FieldConstants.ALGAE_BALL_INITIAL_POSITIONS;
-	public static Translation2d[] coralStartingLocations = FieldConstants.REEFSCAPE_CORAL_INITIAL_POSITIONS;
 	public static boolean userDrive = true;
 	public static boolean withinLineTolerance = false;
 	@AutoLogOutput(key = "RobotState/miloMad")
 	public static boolean miloMad = false;
 	// Simulation
-	public static Reefscape2025FieldSimulation fieldSimulation = null;
+	public static SimulatedArena fieldSimulation = null;
 	public static Command currentAuto, lastAuto = null;
 	public static Map<String, Pair<Pose2d, Pose2d>> autoPaths = new HashMap<>();
 	public static String closestChoreoPath = ""; // auto updates from Pathfinder, DON'T TOUCH!
@@ -581,8 +578,7 @@ public class RobotContainer {
 										moduleSimulations[2], moduleSimulations[3]
 								}, DriveConstants.kModuleTranslations, gyroSimulation,
 								GeomUtil.apply(startingPose, false), drivetrainS::resetPose);
-						fieldSimulation = new Reefscape2025FieldSimulation(driveSim);
-						fieldSimulation.placeGamePiecesOnField(true);
+						fieldSimulation = SimulatedArena.createArena(driveSim);
 						AIRobotInSimulation.startOpponentRobotSimulations(); // Start your engines...
 						break;
 					case TANK:
@@ -598,8 +594,7 @@ public class RobotContainer {
 								(Tank) drivetrainS,
 								tankIOSim,
 								drivetrainS::resetPose);
-						fieldSimulation = new Reefscape2025FieldSimulation(tankSim);
-						fieldSimulation.placeGamePiecesOnField(true);
+						fieldSimulation = SimulatedArena.createArena(tankSim);
 						AIRobotInSimulation.startOpponentRobotSimulations(); // Start your engines...
 
 						break;
@@ -619,8 +614,7 @@ public class RobotContainer {
 								(Mecanum) drivetrainS,
 								mecanumIOSim,
 								drivetrainS::resetPose);
-						fieldSimulation = new Reefscape2025FieldSimulation(mecanumSim);
-						fieldSimulation.placeGamePiecesOnField(true);
+						fieldSimulation = SimulatedArena.createArena(mecanumSim);
 						AIRobotInSimulation.startOpponentRobotSimulations(); // Start your engines...
 						break;
 				}
@@ -703,7 +697,7 @@ public class RobotContainer {
 
 		// Make sure to watch your flipped poses. Our custom DriveToPose and all of
 		// those do NOT auto flip for red.
-		autoCommands.addAll(Arrays.asList(
+		/*autoCommands.addAll(Arrays.asList(
 				new Pair<String, CommandPair>("RT", // Example Drive to the right top face of the coral station
 						new CommandPair(
 								(Supplier<Command>) () -> PathFinder.goToPose(
@@ -740,7 +734,7 @@ public class RobotContainer {
 									GeomUtil.apply(new Pose2d(3.211,3.883,new Rotation2d(0)), false),
 									() -> DriveConstants.pathConstraints, drivetrainS, false, 1, .5,.05),
 							Set.of(drivetrainS)))
-								));
+								));*/
 		precalculateAllStartAndEndChoreos();
 
 		for (Pair<String, CommandPair> autoCommand : autoCommands) {
@@ -891,48 +885,6 @@ public class RobotContainer {
 		 * pathFollowingToleranceDuringExactLineUp.get(),scoreMinimumSpeed.get()),
 		 * Set.of(drivetrainS) )));
 		 */
-		// These are examples of the go to line command
-
-		leftBumperDrive.whileTrue(PathFinder.goToLine(drivetrainS,
-				() -> Robot.isRed ? FieldConstants.CoralStation.redLeftTopFace.getTranslation()
-						: FieldConstants.CoralStation.blueLeftTopFace.getTranslation(),
-				() -> Robot.isRed ? FieldConstants.CoralStation.redLeftBottomFace.getTranslation()
-						: FieldConstants.CoralStation.blueLeftBottomFace.getTranslation(),
-				1.5,
-				.125,
-				999,
-				() -> Robot.isRed ? FieldConstants.CoralStation.redLeftCenterFace.getRotation()
-						: FieldConstants.CoralStation.blueLeftCenterFace.getRotation(),
-				() -> DriveConstants.pathConstraints, () -> Robot.isRed ? "redLeft" : "blueLeft"));
-
-		rightBumperDrive.whileTrue(PathFinder.goToLine(drivetrainS,
-				() -> Robot.isRed ? FieldConstants.CoralStation.redRightTopFace.getTranslation()
-						: FieldConstants.CoralStation.blueRightTopFace.getTranslation(),
-				() -> Robot.isRed ? FieldConstants.CoralStation.redRightBottomFace.getTranslation()
-						: FieldConstants.CoralStation.blueRightBottomFace.getTranslation(),
-				1.5,
-				.125,
-				999,
-				() -> Robot.isRed ? FieldConstants.CoralStation.redRightCenterFace.getRotation()
-						: FieldConstants.CoralStation.blueRightCenterFace.getRotation(),
-				() -> DriveConstants.pathConstraints, () -> Robot.isRed ? "redRight" : "blueRight"));
-		driverPOVRight.onTrue(
-				Commands.either(
-						Commands.runOnce(() -> {
-							((Swerve) drivetrainS).setCurrentModuleLimits(
-									new ModuleLimits(normalSpeeds.maxDriveVelocity(), 99,
-											normalSpeeds.maxSteeringVelocity()));
-							((Swerve) drivetrainS).setCurrentLimit(
-									999);
-							miloMad = true;
-						}),
-						Commands.runOnce(() -> {
-							((Swerve) drivetrainS).setCurrentModuleLimits(
-									normalSpeeds);
-							((Swerve) drivetrainS).setCurrentLimit(
-									65);
-							miloMad = false;
-						}), () -> !miloMad));
 		
 		leftStickDrive.onTrue(drivetrainS.orientModules(Swerve.getXOrientations()));
 		// rightStickDrive.whileTrue(new OrchestraC("rocky"));
@@ -1080,9 +1032,47 @@ public class RobotContainer {
 		subsystems[3] = intake;
 		return subsystems;
 	}
+private void resetPoseFromSim(){
+		try {
+						PathPlannerPath path = PathPlannerAuto
+								.getPathGroupFromAutoFile(
+										RobotContainer.currentAuto.getName())
+								.get(0);
+						if (DriveConstants.driveType == DriveTrainType.TANK) {
+							RobotContainer.fieldSimulation.getMainDriveSimulation()
+									.setSimulationWorldPose(path.getStartingDifferentialPose());
+						} else {
+							RobotContainer.fieldSimulation.getMainDriveSimulation()
+									.setSimulationWorldPose(
+											Robot.isRed ? FlippingUtil.flipFieldPose(new Pose2d(
+													path.getPoint(0).position,
+													path.getIdealStartingState().rotation()))
+													: new Pose2d(
+															path.getPoint(0).position,
+															path.getIdealStartingState().rotation()));
+						}
+					} catch (Exception e) {
 
-	public static void updateSimulationWorld() {
-		if (fieldSimulation != null)
-			fieldSimulation.updateSimulationWorld();
+					}
+					RobotContainer.fieldSimulation.getMainDriveSimulation()
+							.resetOdometryToActualRobotPose();
+							
 	}
+	public void resetSimulationField() {
+        if (Constants.currentMode != Constants.Mode.SIM) return;
+
+        resetPoseFromSim();
+        RobotContainer.fieldSimulation.resetFieldForAuto();
+    }
+
+    public void updateSimulationWorld() {
+        if (Constants.currentMode != Constants.Mode.SIM) return;
+
+        RobotContainer.fieldSimulation.simulationPeriodic();
+        Logger.recordOutput("FieldSimulation/RobotPosition", RobotContainer.fieldSimulation.getMainDriveSimulation().getSimulatedDriveTrainPose());
+        Logger.recordOutput(
+                "FieldSimulation/Coral", RobotContainer.fieldSimulation.getGamePiecesArrayByType("Coral"));
+        Logger.recordOutput(
+                "FieldSimulation/Algae", RobotContainer.fieldSimulation.getGamePiecesArrayByType("Algae"));
+    }
 }

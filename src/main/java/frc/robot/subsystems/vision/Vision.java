@@ -42,8 +42,6 @@ import frc.robot.subsystems.vision.VisionIO.CameraID;
 import frc.robot.subsystems.vision.VisionIO.PoseObservation;
 import frc.robot.subsystems.vision.VisionIO.TargetObservation;
 import frc.robot.utils.GeomUtil;
-import frc.robot.utils.CompetitionFieldUtils.FieldObjects.Reefscape2025FieldObjects;
-import frc.robot.utils.CompetitionFieldUtils.Simulation.CompetitionFieldSimulation;
 import frc.robot.utils.drive.DriveConstants;
 import frc.robot.utils.maths.TimeUtil;
 import frc.robot.utils.selfCheck.SelfChecking;
@@ -177,8 +175,8 @@ public class Vision extends SubsystemChecker {
 		if (Constants.currentMode == Mode.SIM) {
 			// Pose2d simedAIPose = new Pose2d(2,2,Rotation2d.fromDegrees(0));
 			// grab opposting robot sim poses
-			Pose2d simedAIPose = CompetitionFieldSimulation.getClosestRobotPose(currentOdomPose.getTranslation());
-			Pose2d simedAICoralPose = CompetitionFieldSimulation.getClosestGamePiece(Reefscape2025FieldObjects.ReefscapeCoralOnFieldSimulated.class, currentOdomPose.getTranslation());
+			Pose2d simedAIPose = RobotContainer.fieldSimulation.getClosestRobotPose(currentOdomPose.getTranslation());
+			Pose2d simedAICoralPose = RobotContainer.fieldSimulation.getClosestGamePiece(currentOdomPose.getTranslation());
 			if (simedAIPose != null) {
 				TxTyObservation simedAIObservation = new TxTyObservation(AITargets.BLUE_BOT.name(), 0, new double[4],
 						new double[4],
