@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.function.Supplier;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.AllArgsConstructor;
@@ -194,61 +193,62 @@ public class VisionConstants {
 
 public static final double aprilTagWidth = Units.inchesToMeters(6.50);
 public static final boolean bumperDetection = false;
+@RequiredArgsConstructor
+  public enum FieldType {
+    ANDYMARK("andymark"),
+	OFFSEASON("offseason"),
+    WELDED("welded");
 
-  @Getter
+    @Getter private final String jsonFolder;
+  }
+
   public enum AprilTagLayoutType {
     OFFICIAL("2026-official"),
     NONE("2026-none");
 
+    private final String name;
+    private volatile AprilTagFieldLayout layout;
+    private volatile String layoutString;
 
     AprilTagLayoutType(String name) {
-      if (Constants.currentMode == Mode.SIM) {
-        try {
-          layout =
-              new AprilTagFieldLayout(
-                  Path.of(
-                      "src",
-                      "main",
-                      "deploy",
-                      "apriltags",
-                      fieldType.getJsonFolder(),
-                      "2026-sim.json"));
-        } catch (IOException e) {
-          throw new RuntimeException(e);
-        }
-      } else {
-        try {
-          layout =
-              new AprilTagFieldLayout(
-                  Path.of(
-                      Filesystem.getDeployDirectory().getPath(),
-                      "apriltags",
-                      fieldType.getJsonFolder(),
-                      name + ".json"));
-        } catch (IOException e) {
-          throw new RuntimeException(e);
-        }
-      }
-
-      try {
-        layoutString = new ObjectMapper().writeValueAsString(layout);
-      } catch (JsonProcessingException e) {
-        throw new RuntimeException(
-            "Failed to serialize AprilTag layout JSON " + toString() + "for Northstar");
-      }
+      this.name = name;
     }
 
-    private final AprilTagFieldLayout layout;
-    private final String layoutString;
-  }
-  @RequiredArgsConstructor
-  public enum FieldType {
-    ANDYMARK("andymark"),
-    WELDED("welded"),
-	CUSTOM("offseason");
+    public AprilTagFieldLayout getLayout() {
+      if (layout == null) {
+        synchronized (this) {
+          if (layout == null) {
+            try {
+              Path p =
+                  Constants.currentMode == Mode.SIM
+                      ? Path.of(
+                          "src",
+                          "main",
+                          "deploy",
+                          "apriltags",
+                          fieldType.getJsonFolder(),
+                          "2026-sim" + ".json")
+                      : Path.of(
+                          Filesystem.getDeployDirectory().getPath(),
+                          "apriltags",
+                          fieldType.getJsonFolder(),
+                          name + ".json");
+              layout = new AprilTagFieldLayout(p);
+              layoutString = new ObjectMapper().writeValueAsString(layout);
+            } catch (IOException e) {
+              throw new RuntimeException(e);
+            }
+          }
+        }
+      }
+      return layout;
+    }
 
-    @Getter private final String jsonFolder;
+    public String getLayoutString() {
+      if (layoutString == null) {
+        getLayout();
+      }
+      return layoutString;
+    }
   }
-	private VisionConstants() {
-	}
 }

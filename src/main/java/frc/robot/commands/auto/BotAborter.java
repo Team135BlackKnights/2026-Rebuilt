@@ -16,6 +16,8 @@ import frc.robot.Constants.Mode;
 import frc.robot.RobotContainer;
 import frc.robot.subsystems.drive.DrivetrainS;
 import frc.robot.utils.GeomUtil;
+import frc.robot.utils.CompetitionFieldUtils.FieldObjects.Rebuilt2026FieldObjects;
+import frc.robot.utils.CompetitionFieldUtils.Simulation.CompetitionFieldSimulation;
 import frc.robot.utils.vision.LimelightHelpers;
 import frc.robot.utils.vision.VisionConstants;
 import frc.robot.utils.vision.VisionConstants.AITargets;
@@ -41,8 +43,8 @@ public class BotAborter extends Command {
 		isFinished = false;
 		if (Constants.currentMode == Mode.SIM) {
 			//If the robot is in sim, target the closest game piece to drive to
-			this.targetPieceLocation = RobotContainer.fieldSimulation
-					.getClosestGamePiece(drive.getPose().getTranslation()).getTranslation();
+			targetPieceLocation =  RobotContainer.fieldSimulation
+					.getClosestGamePiecePose2d(List.of(Rebuilt2026FieldObjects.FuelOnFieldSimulated.class)).getTranslation();
 		}
 	}
 
@@ -55,7 +57,7 @@ public class BotAborter extends Command {
 			//In simulation, get the current pose, and set the degree value to 
 			currentPose = drive.getPose();
 			targetPieceLocation =  RobotContainer.fieldSimulation
-					.getClosestGamePiece( drive.getPose().getTranslation()).getTranslation();
+					.getClosestGamePiecePose2d(List.of(Rebuilt2026FieldObjects.FuelOnFieldSimulated.class)).getTranslation();
 			if (targetPieceLocation == null) {
 				return;
 			}
@@ -74,7 +76,7 @@ public class BotAborter extends Command {
 			gamePieceTy = Units.radiansToDegrees(tyRad);
 			gamePieceTv = true;
 			if (Constants.currentMatchState == FRCMatchState.AUTO) {
-				Pose2d opposingBotPose =  RobotContainer.fieldSimulation
+				Pose2d opposingBotPose =  CompetitionFieldSimulation
 						.getClosestRobotPose(currentPose.getTranslation());
 				Logger.recordOutput("OpposingRobot/GivenPose", opposingBotPose);
 				double robotDeltaX = opposingBotPose.getX() - currentPose.getX();

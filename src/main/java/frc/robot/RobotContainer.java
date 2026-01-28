@@ -119,7 +119,7 @@ import frc.robot.subsystems.simpleMechanisms.slamElevator.ExampleClimber.Climber
 import frc.robot.utils.DriverStationHID;
 import frc.robot.utils.GeomUtil;
 import frc.robot.utils.LoggableTunedNumber;
-import frc.robot.utils.CompetitionFieldUtils.Simulation.Reefscape2025FieldSimulation;
+import frc.robot.utils.CompetitionFieldUtils.Simulation.Rebuilt2026FieldSimulation;
 import frc.robot.utils.leds.LEDConstants.ImageStates;
 import frc.robot.utils.robotToggles.Toggles;
 import frc.robot.utils.robotToggles.TogglesIO;
@@ -239,14 +239,12 @@ public class RobotContainer {
 	@AutoLogOutput(key = "RobotState/currentPath")
 	public static String currentPath = "";
 	public static Field2d field = new Field2d();
-	public static Translation2d[] algaeStartingLocations = FieldConstants.ALGAE_BALL_INITIAL_POSITIONS;
-	public static Translation2d[] coralStartingLocations = FieldConstants.REEFSCAPE_CORAL_INITIAL_POSITIONS;
 	public static boolean userDrive = true;
 	public static boolean withinLineTolerance = false;
 	@AutoLogOutput(key = "RobotState/miloMad")
 	public static boolean miloMad = false;
 	// Simulation
-	public static Reefscape2025FieldSimulation fieldSimulation = null;
+	public static Rebuilt2026FieldSimulation fieldSimulation = null;
 	public static Command currentAuto, lastAuto = null;
 	public static Map<String, Pair<Pose2d, Pose2d>> autoPaths = new HashMap<>();
 	public static String closestChoreoPath = ""; // auto updates from Pathfinder, DON'T TOUCH!
@@ -581,7 +579,7 @@ public class RobotContainer {
 										moduleSimulations[2], moduleSimulations[3]
 								}, DriveConstants.kModuleTranslations, gyroSimulation,
 								GeomUtil.apply(startingPose, false), drivetrainS::resetPose);
-						fieldSimulation = new Reefscape2025FieldSimulation(driveSim);
+						fieldSimulation = new Rebuilt2026FieldSimulation(driveSim);
 						fieldSimulation.placeGamePiecesOnField(true);
 						AIRobotInSimulation.startOpponentRobotSimulations(); // Start your engines...
 						break;
@@ -598,7 +596,7 @@ public class RobotContainer {
 								(Tank) drivetrainS,
 								tankIOSim,
 								drivetrainS::resetPose);
-						fieldSimulation = new Reefscape2025FieldSimulation(tankSim);
+						fieldSimulation = new Rebuilt2026FieldSimulation(tankSim);
 						fieldSimulation.placeGamePiecesOnField(true);
 						AIRobotInSimulation.startOpponentRobotSimulations(); // Start your engines...
 
@@ -619,7 +617,7 @@ public class RobotContainer {
 								(Mecanum) drivetrainS,
 								mecanumIOSim,
 								drivetrainS::resetPose);
-						fieldSimulation = new Reefscape2025FieldSimulation(mecanumSim);
+						fieldSimulation = new Rebuilt2026FieldSimulation(mecanumSim);
 						fieldSimulation.placeGamePiecesOnField(true);
 						AIRobotInSimulation.startOpponentRobotSimulations(); // Start your engines...
 						break;
@@ -704,7 +702,7 @@ public class RobotContainer {
 		// Make sure to watch your flipped poses. Our custom DriveToPose and all of
 		// those do NOT auto flip for red.
 		autoCommands.addAll(Arrays.asList(
-				new Pair<String, CommandPair>("RT", // Example Drive to the right top face of the coral station
+				/*new Pair<String, CommandPair>("RT", // Example Drive to the right top face of the coral station
 						new CommandPair(
 								(Supplier<Command>) () -> PathFinder.goToPose(
 										GeomUtil.apply(FieldConstants.CoralStation.blueRightTopFace, false),
@@ -740,7 +738,7 @@ public class RobotContainer {
 									GeomUtil.apply(new Pose2d(3.211,3.883,new Rotation2d(0)), false),
 									() -> DriveConstants.pathConstraints, drivetrainS, false, 1, .5,.05),
 							Set.of(drivetrainS)))
-								));
+								*/));
 		precalculateAllStartAndEndChoreos();
 
 		for (Pair<String, CommandPair> autoCommand : autoCommands) {
@@ -892,47 +890,6 @@ public class RobotContainer {
 		 * Set.of(drivetrainS) )));
 		 */
 		// These are examples of the go to line command
-
-		leftBumperDrive.whileTrue(PathFinder.goToLine(drivetrainS,
-				() -> Robot.isRed ? FieldConstants.CoralStation.redLeftTopFace.getTranslation()
-						: FieldConstants.CoralStation.blueLeftTopFace.getTranslation(),
-				() -> Robot.isRed ? FieldConstants.CoralStation.redLeftBottomFace.getTranslation()
-						: FieldConstants.CoralStation.blueLeftBottomFace.getTranslation(),
-				1.5,
-				.125,
-				999,
-				() -> Robot.isRed ? FieldConstants.CoralStation.redLeftCenterFace.getRotation()
-						: FieldConstants.CoralStation.blueLeftCenterFace.getRotation(),
-				() -> DriveConstants.pathConstraints, () -> Robot.isRed ? "redLeft" : "blueLeft"));
-
-		rightBumperDrive.whileTrue(PathFinder.goToLine(drivetrainS,
-				() -> Robot.isRed ? FieldConstants.CoralStation.redRightTopFace.getTranslation()
-						: FieldConstants.CoralStation.blueRightTopFace.getTranslation(),
-				() -> Robot.isRed ? FieldConstants.CoralStation.redRightBottomFace.getTranslation()
-						: FieldConstants.CoralStation.blueRightBottomFace.getTranslation(),
-				1.5,
-				.125,
-				999,
-				() -> Robot.isRed ? FieldConstants.CoralStation.redRightCenterFace.getRotation()
-						: FieldConstants.CoralStation.blueRightCenterFace.getRotation(),
-				() -> DriveConstants.pathConstraints, () -> Robot.isRed ? "redRight" : "blueRight"));
-		driverPOVRight.onTrue(
-				Commands.either(
-						Commands.runOnce(() -> {
-							((Swerve) drivetrainS).setCurrentModuleLimits(
-									new ModuleLimits(normalSpeeds.maxDriveVelocity(), 99,
-											normalSpeeds.maxSteeringVelocity()));
-							((Swerve) drivetrainS).setCurrentLimit(
-									999);
-							miloMad = true;
-						}),
-						Commands.runOnce(() -> {
-							((Swerve) drivetrainS).setCurrentModuleLimits(
-									normalSpeeds);
-							((Swerve) drivetrainS).setCurrentLimit(
-									65);
-							miloMad = false;
-						}), () -> !miloMad));
 		
 		leftStickDrive.onTrue(drivetrainS.orientModules(Swerve.getXOrientations()));
 		// rightStickDrive.whileTrue(new OrchestraC("rocky"));

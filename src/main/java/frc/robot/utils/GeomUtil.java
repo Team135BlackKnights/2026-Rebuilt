@@ -9,6 +9,7 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.geometry.Twist2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -346,12 +347,17 @@ public class GeomUtil {
 
 	public static Pose2d apply(Pose2d pose, boolean forceFlip) {
 		if (pose == null) {
-			return FieldConstants.START_POSE_LEFT; // default to left
+			return new Pose2d(); // default to left
 		}
 		return shouldFlip() || forceFlip
 				? new Pose2d(apply(pose.getTranslation()), apply(pose.getRotation()))
 				: pose;
 	}
+public static Pose3d flip(Pose3d toFlip) {
+        return new Pose3d(
+                new Translation3d(FieldConstants.FIELD_WIDTH - toFlip.getX(), FieldConstants.FIELD_HEIGHT - toFlip.getY(), toFlip.getZ()),
+                toFlip.getRotation());
+    }
 
 	public static Translation2d apply(Translation2d translation, boolean forceFlip) {
 		return new Translation2d(applyX(translation.getX(), forceFlip), applyY(translation.getY(), forceFlip));
