@@ -1,6 +1,6 @@
-package frc.robot.subsystems.shooter.turret.turretSwivel;
+package frc.robot.subsystems.Shooter.turret.turretSwivel;
 
-import frc.robot.subsystems.shooter.turret.Turret;
+import frc.robot.subsystems.Shooter.turret.Turret;
 
 public class TurretSwivel extends Turret{
         public TurretSwivel(TurretSwivelIO io){

@@ -1,6 +1,6 @@
-package frc.robot.subsystems.shooter.turret.turretSwivel;
+package frc.robot.subsystems.Shooter.turret.turretSwivel;
 
-import frc.robot.subsystems.shooter.turret.TurretIOKrakenFOC;
+import frc.robot.subsystems.Shooter.turret.TurretIOKrakenFOC;
 
 public class TurretSwivelIOKrakenFOC extends TurretIOKrakenFOC implements TurretSwivelIO {
     public TurretSwivelIOKrakenFOC(){

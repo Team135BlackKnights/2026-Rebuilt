@@ -1,4 +1,4 @@
-package frc.robot.subsystems.shooter.flywheel;
+package frc.robot.subsystems.Shooter.flywheel;
 
 import java.util.ArrayList;
 import java.util.List;

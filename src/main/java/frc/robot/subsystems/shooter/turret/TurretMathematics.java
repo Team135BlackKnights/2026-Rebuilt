@@ -1,4 +1,4 @@
-package frc.robot.subsystems.shooter.turret;
+package frc.robot.subsystems.Shooter.turret;
 
 import edu.wpi.first.math.geometry.Rotation2d;
 

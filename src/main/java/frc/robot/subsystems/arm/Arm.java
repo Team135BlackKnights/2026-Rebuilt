@@ -12,7 +12,6 @@ import com.ctre.phoenix6.hardware.ParentDevice;
 import com.ctre.phoenix6.hardware.TalonFX;
 
 import frc.robot.subsystems.SubsystemChecker;
-import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.selfCheck.SelfChecking;
 
 
@@ -22,9 +21,8 @@ public abstract class Arm<G extends Arm.positionRadiansGoal> extends SubsystemCh
     DoubleSupplier getPositionSupplier();
     }
     public abstract G getGoal();
-    public ArmIO io;
-    public LiftIOInputsAutoLogged inputs = new LiftIOInputsAutoLogged();
-    
+    public ArmIO io;    
+    public final ArmIOInputsAutoLogged inputs = new ArmIOInputsAutoLogged();
     public Arm(ArmIO io){
         this.io = io;
     }
@@ -54,8 +52,7 @@ public abstract class Arm<G extends Arm.positionRadiansGoal> extends SubsystemCh
 
 	public HashMap<String, Double> getTemps() {
         HashMap<String, Double> tempMap = new HashMap<>();
-        tempMap.put(inputs.leftName, inputs.leftMotorTemperatureC);
-        tempMap.put(inputs.rightName, inputs.rightMotorTemperatureC);
+        tempMap.put(inputs.name, inputs.motorTemperatureC);
         return tempMap;
     };
 

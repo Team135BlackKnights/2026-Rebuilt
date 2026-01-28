@@ -1,11 +1,12 @@
-package frc.robot.subsystems.shooter.turret;
+package frc.robot.subsystems.Shooter.turret;
 
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.TuningConstants;
 import frc.robot.subsystems.SubsystemChecker;
-import frc.robot.subsystems.shooter.ShotCalculator;
-import frc.robot.subsystems.shooter.turret.TurretIO.TurretIOOutputs;
+import frc.robot.subsystems.Shooter.ShotCalculator;
+import frc.robot.subsystems.Shooter.turret.TurretIO.TurretIOOutputs;
+import frc.robot.subsystems.Shooter.turret.TurretIOInputsAutoLogged;
 import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.selfCheck.SelfChecking;
 

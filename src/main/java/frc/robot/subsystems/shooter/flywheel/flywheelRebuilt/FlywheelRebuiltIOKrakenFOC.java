@@ -1,6 +1,6 @@
-package frc.robot.subsystems.shooter.flywheel.flywheelRebuilt;
+package frc.robot.subsystems.Shooter.flywheel.flywheelRebuilt;
 
-import frc.robot.subsystems.shooter.flywheel.FlywheelIOKrakenFOC;
+import frc.robot.subsystems.Shooter.flywheel.FlywheelIOKrakenFOC;
 
 public class FlywheelRebuiltIOKrakenFOC extends FlywheelIOKrakenFOC{
     public FlywheelRebuiltIOKrakenFOC(){
