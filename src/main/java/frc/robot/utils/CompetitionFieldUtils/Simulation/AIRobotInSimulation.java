@@ -162,7 +162,7 @@ public class AIRobotInSimulation {
                 }, driveSimulation).ignoringDisable(true));
 
                 SmartDashboard.putData("AIRobotBehaviors/Opponent Robot " + id + " Behavior", behaviorChooser);
-                RobotContainer.fieldSimulation.addDriveTrainSimulation(driveSimulation);
+                RobotContainer.fieldSimulation.addRobot(driveSimulation);
 
         }
 

@@ -1,7 +1,5 @@
 package frc.robot.utils;
 
-import java.util.Optional;
-
 import org.littletonrobotics.junction.Logger;
 
 import edu.wpi.first.math.MathUtil;
@@ -11,7 +9,6 @@ import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation2d;
-import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.geometry.Twist2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -314,6 +311,7 @@ public class GeomUtil {
 			Translation2d currentTranslation, Translation2d objectTranslation) {
 		return currentTranslation.getDistance(objectTranslation);
 	}
+
 	public static double applyX(double x) {
 		return shouldFlip() ? FieldConstants.FIELD_WIDTH - x : x;
 	}
@@ -338,20 +336,20 @@ public class GeomUtil {
 		return shouldFlip() || forceFlip ? FieldConstants.FIELD_HEIGHT - y : y;
 	}
 
-	public static Translation2d toCurrentAllianceTranslation(Translation2d translation) {
+	public static Translation2d apply(Translation2d translation) {
 		return new Translation2d(applyX(translation.getX()), applyY(translation.getY()));
 	}
 
-	public static Rotation2d toCurrentAllianceRotation(Rotation2d rotation) {
+	public static Rotation2d apply(Rotation2d rotation) {
 		return shouldFlip() ? rotation.rotateBy(Rotation2d.kPi) : rotation;
 	}
 
 	public static Pose2d apply(Pose2d pose, boolean forceFlip) {
 		if (pose == null) {
-			return new Pose2d(); 
+			return FieldConstants.START_POSE_LEFT; // default to left
 		}
 		return shouldFlip() || forceFlip
-				? new Pose2d(toCurrentAllianceTranslation(pose.getTranslation()), toCurrentAllianceRotation(pose.getRotation()))
+				? new Pose2d(apply(pose.getTranslation()), apply(pose.getRotation()))
 				: pose;
 	}
 
@@ -363,35 +361,4 @@ public class GeomUtil {
 		return DriverStation.getAlliance().isPresent()
 				&& DriverStation.getAlliance().get() == DriverStation.Alliance.Red;
 	}
-	public static Pose3d flip(Pose3d toFlip) {
-        return new Pose3d(
-                new Translation3d(FieldConstants.FIELD_WIDTH - toFlip.getX(), FieldConstants.FIELD_HEIGHT - toFlip.getY(), toFlip.getZ()),
-                toFlip.getRotation());
-    }
-
-    public static Translation3d toCurrentAllianceTranslation(Translation3d translation3dAtBlueSide) {
-        final Translation2d translation3dAtCurrentAlliance =
-                toCurrentAllianceTranslation(translation3dAtBlueSide.toTranslation2d());
-        if (isSidePresentedAsRed())
-            return new Translation3d(
-                    translation3dAtCurrentAlliance.getX(),
-                    translation3dAtCurrentAlliance.getY(),
-                    translation3dAtBlueSide.getZ());
-        return translation3dAtBlueSide;
-    }
-
-    public static Pose2d toCurrentAlliancePose(Pose2d poseAtBlueSide) {
-        return new Pose2d(
-                toCurrentAllianceTranslation(poseAtBlueSide.getTranslation()),
-                toCurrentAllianceRotation(poseAtBlueSide.getRotation()));
-    }
-
-    public static boolean isSidePresentedAsRed() {
-        final Optional<DriverStation.Alliance> alliance = DriverStation.getAlliance();
-        return alliance.isPresent() && alliance.get().equals(DriverStation.Alliance.Red);
-    }
-
-    public static Rotation2d getCurrentAllianceDriverStationFacing() {
-        return toCurrentAllianceRotation(Rotation2d.kZero);
-    }
 }

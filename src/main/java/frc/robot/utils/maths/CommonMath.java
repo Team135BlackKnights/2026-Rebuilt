@@ -4,9 +4,6 @@ import frc.robot.BuildConstants;
 
 import java.util.Random;
 
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation2d;
-
 public class CommonMath {
 	/**
 	 * random object that generates random variables the seed is the hash of
@@ -48,18 +45,4 @@ public class CommonMath {
 		return Math.copySign(Math.min(Math.abs(value), Math.abs(maxMagnitude)),
 				value);
 	}
-	/**
-     *
-     *
-     * <h2>Obtains the angle of a translation, ignores zero translation.</h2>
-     *
-     * <p>This prevents the driver-station from throwing a bunch of "x and y components of Rotation2d are zero" warning.
-     *
-     * @param translation2d the translation
-     * @return the angle of the translation, or zero if the translation is zero
-     */
-    public static Rotation2d getAngle(Translation2d translation2d) {
-        final double tooSmall = 1e-6;
-        return translation2d.getNorm() < tooSmall ? Rotation2d.fromDegrees(0) : translation2d.getAngle();
-    }
 }
