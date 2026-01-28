@@ -15,7 +15,7 @@ import frc.robot.subsystems.arm.Arm;
 public class ArmIntake extends Arm<ArmIntake.Goal> {
     public enum Goal implements Arm.positionRadiansGoal{
         GROUND(()->0),
-        FOLDED(()->2*Math.PI/3); //change to loggabletunednumber
+        FOLDED(()->3*Math.PI/4); //change to loggabletunednumber
 
     private final DoubleSupplier positionSupplier;
     

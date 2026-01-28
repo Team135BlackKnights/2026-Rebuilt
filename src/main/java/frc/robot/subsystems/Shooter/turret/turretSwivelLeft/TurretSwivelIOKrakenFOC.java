@@ -1,4 +1,4 @@
-package frc.robot.subsystems.Shooter.turret.turretSwivel;
+package frc.robot.subsystems.Shooter.turret.turretSwivelLeft;
 
 import frc.robot.subsystems.Shooter.turret.TurretIOKrakenFOC;
 

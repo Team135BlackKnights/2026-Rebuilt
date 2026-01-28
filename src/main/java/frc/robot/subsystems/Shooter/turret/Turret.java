@@ -50,7 +50,7 @@ public class Turret extends SubsystemChecker {
         outputs.kD = kD.get();
 
         if (outputs.coast) {
-            slewRateLimiter.reset(inputs.velocityRadsPerSec);
+            slewRateLimiter.reset(inputs.velocityRadsPerSec); //TODO: implement FOV control if necessary to prevent failure
         }
         io.applyOutputs(outputs);
 
