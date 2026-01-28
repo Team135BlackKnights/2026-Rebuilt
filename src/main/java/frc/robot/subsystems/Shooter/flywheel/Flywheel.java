@@ -59,7 +59,6 @@ public class Flywheel extends SubsystemChecker {
 
     }
     public void runVelocity(double velocityRadsPerSec) {
-        outputs.coast = false;
         outputs.velocityRadsPerSec = slewRateLimiter.calculate(velocityRadsPerSec);
         outputs.feedForward = kS.get() * Math.signum(velocityRadsPerSec)
                 + kV.get() * Math.min(velocityRadsPerSec, kVMaxVelocity.get());
@@ -70,7 +69,7 @@ public class Flywheel extends SubsystemChecker {
 
     private void stop() {
         outputs.velocityRadsPerSec = 0.0;
-        outputs.coast = true;
+        outputs.coast = false;
     }
 
     /** Returns the current velocity in radians per second. */

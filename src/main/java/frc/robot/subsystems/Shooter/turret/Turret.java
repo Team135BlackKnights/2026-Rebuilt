@@ -1,85 +1,122 @@
 package frc.robot.subsystems.shooter.turret;
 
-import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.filter.SlewRateLimiter;
+import edu.wpi.first.wpilibj2.command.Command;
+import frc.robot.Constants.TuningConstants;
+import frc.robot.subsystems.SubsystemChecker;
+import frc.robot.subsystems.shooter.ShotCalculator;
+import frc.robot.subsystems.shooter.turret.TurretIO.TurretIOOutputs;
+import frc.robot.utils.LoggableTunedNumber;
+import frc.robot.utils.selfCheck.SelfChecking;
 
-public class Turret {
-    public final class TurretMath {
-        private static final int turretTeeth = 77;
-        private static final int idlerTeeth = 10;
-        private static final double enc1GearTeeth = 36;
-        private static final double enc2GearTeeth = 34;
-        private static final double enc1ToEnc2Ratio = enc1GearTeeth / enc2GearTeeth;
-        private static final double gearGreatestCommonDivisor = greatestCommonDivisor(enc1GearTeeth, enc2GearTeeth);
-        private static final int enc1CyclesForPeriod = (int) (enc2GearTeeth / gearGreatestCommonDivisor);
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.function.DoubleSupplier;
+import org.littletonrobotics.junction.Logger;
 
-        private static final double twoPi = 2.0 * Math.PI;
-        private static final double turretRatio = (double) turretTeeth / idlerTeeth;
-        private static final double combinedRatio = turretRatio * enc1ToEnc2Ratio;
-        private static final double turretPeriod = twoPi * (idlerTeeth / (double) turretTeeth) * enc1CyclesForPeriod;
-        private static final double enc1ModSpan = twoPi / turretRatio;
-        private static final int maxIterations = (int) Math.ceil(turretPeriod / enc1ModSpan) + 2;
+import com.ctre.phoenix6.hardware.ParentDevice;
+import com.ctre.phoenix6.hardware.TalonFX;
 
-        private TurretMath() {
+public class Turret extends SubsystemChecker {
+    private final TurretIO io;
+    private final TurretIOInputsAutoLogged inputs = new TurretIOInputsAutoLogged();
+    private final TurretIOOutputs outputs = new TurretIOOutputs();
+    public static final LoggableTunedNumber kVMaxVelocity = new LoggableTunedNumber("Turret/kVMaxVelocity", 113,
+            TuningConstants.isTuningShooter);
+    public static final LoggableTunedNumber kP = new LoggableTunedNumber("Turret/kP", 10,
+            TuningConstants.isTuningShooter);
+    public static final LoggableTunedNumber kD = new LoggableTunedNumber("Turret/kD", 0,
+            TuningConstants.isTuningShooter);
+    private static final LoggableTunedNumber rateLimiter = new LoggableTunedNumber("Turret/SlewRateLimiter", 800,
+            TuningConstants.isTuningShooter);
+    SlewRateLimiter slewRateLimiter = new SlewRateLimiter(rateLimiter.get());
 
+    public Turret(TurretIO io) {
+        this.io = io;
+
+        super.registerAllHardware(io.getSelfCheckingHardware());
+    }
+    @Override
+    public void periodic() {
+        io.updateInputs(inputs);
+        Logger.processInputs("Turret", inputs);
+
+        if (rateLimiter.hasChanged(hashCode())) {
+            slewRateLimiter = new SlewRateLimiter(rateLimiter.get());
         }
+        outputs.kP = kP.get();
+        outputs.kD = kD.get();
 
-        public static double turretAngleFromEncoders(Rotation2d enc1Angle, Rotation2d enc2Angle) {
-            return turretAngleFromEncoders(enc1Angle, enc2Angle, 1e-4);
+        if (outputs.coast) {
+            slewRateLimiter.reset(inputs.velocityRadsPerSec);
         }
+        io.applyOutputs(outputs);
 
-        public static double turretAngleFromEncoders(Rotation2d enc1Angle,
-                Rotation2d enc2Angle,
-                double tolerance) {
-            double baseSolution = mod(-enc1Angle.getRadians() / turretRatio, enc1ModSpan);
-            for (int k = 0; k < maxIterations; k++) {
-                double candidate = baseSolution + k * enc1ModSpan;
-                if (candidate > turretPeriod + tolerance) {
-                    break;
-                }
+    }
+    public void runVelocity(double velocityRadsPerSec) {
+        outputs.velocityRadsPerSec = slewRateLimiter.calculate(velocityRadsPerSec);
 
-                double predictedEnc2 = wrapToTwoPi(combinedRatio * candidate);
-                double error = Math.abs(wrapToPi(predictedEnc2 - enc2Angle.getRadians()));
-                if (error <= tolerance) {
-                    return candidate;
-                }
+
+        // Log Turret setpoint
+        Logger.recordOutput("Turret/Setpoint", outputs.velocityRadsPerSec);
+    }
+
+    private void stop() {
+        outputs.velocityRadsPerSec = 0.0;
+        outputs.coast = false;
+    }
+
+    /** Returns the current velocity in radians per second. */
+    public double getVelocity() {
+        return inputs.velocityRadsPerSec;
+    }
+
+    public Command runTrackTargetCommand() {
+        throw new UnsupportedOperationException("Unimplemented method 'systemCheckCommand'");
+        //TODO implement this
+    }
+
+    public Command runFixedCommand(DoubleSupplier velocity) {
+        return runEnd(() -> runVelocity(velocity.getAsDouble()), this::stop);
+    }
+
+    public Command stopCommand() {
+        return runOnce(this::stop);
+    }
+
+    public HashMap<String, Double> getTemps() {
+        HashMap<String, Double> tempMap = new HashMap<>();
+        tempMap.put("Turret", inputs.tempCelsius);
+        return tempMap;
+    }
+
+
+    @Override
+    public List<ParentDevice> getOrchestraDevices() {
+        List<ParentDevice> orchestra = new ArrayList<>();
+        List<SelfChecking> hardware = io.getSelfCheckingHardware();
+        for (SelfChecking motor : hardware) {
+            if (motor.getHardware() instanceof TalonFX) {
+                orchestra.add((TalonFX) motor.getHardware());
             }
-
-            throw new IllegalArgumentException(
-                    "No turret angle lol, crashing to prevent wire damage");
         }
+        return orchestra;
+    }
 
-        private static double wrapToTwoPi(double angleRad) {
-            double wrapped = angleRad % twoPi;
-            return wrapped < 0 ? wrapped + twoPi : wrapped;
-        }
+    @Override
+    public double getCurrent() {
+        return inputs.supplyCurrentAmps;
+    }
 
-        private static double wrapToPi(double angleRad) {
-            double wrapped = (angleRad + Math.PI) % twoPi;
-            if (wrapped < 0) {
-                wrapped += twoPi;
-            }
-            return wrapped - Math.PI;
-        }
+    @Override
+    public void setCurrentLimit(int amps) {
+        io.setCurrentLimit(amps);
+    }
 
-        private static double mod(double value, double modulus) {
-            double result = value % modulus;
-            return result < 0 ? result + modulus : result;
-        }
-
-        private static double greatestCommonDivisor(double a, double b) {
-            final double EPS = 1e-10;
-            a = Math.abs(a);
-            b = Math.abs(b);
-            if (a < EPS)
-                return b;
-            if (b < EPS)
-                return a;
-            while (b > EPS) {
-                double temp = b;
-                b = a % b;
-                a = temp;
-            }
-            return a;
-        }
+    @Override
+    protected Command systemCheckCommand() {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'systemCheckCommand'");
     }
 }
