@@ -19,8 +19,6 @@ import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
-import frc.robot.subsystems.Shooter.flywheel.Flywheel;
-import frc.robot.subsystems.Shooter.flywheel.FlywheelIO.FlywheelIOOutputs;
 import frc.robot.utils.selfCheck.SelfChecking;
 import frc.robot.utils.selfCheck.drive.SelfCheckingTalonFX;
 
@@ -33,9 +31,12 @@ public class TurretIOKrakenFOC implements TurretIO{
     private final StatusSignal<Current> supplyCurrent;
     private final StatusSignal<Current> torqueCurrent;
     private final StatusSignal<Temperature> tempCelsius;
+    private static final double minTurretAngle = Units.degreesToRadians(-90);
+    private static final double maxTurretAngle = Units.degreesToRadians(90);
 
     private final VoltageOut voltageOut = new VoltageOut(0.0).withEnableFOC(true).withUpdateFreqHz(0);
     private final NeutralOut neutralOut = new NeutralOut();
+
     private final double reduction;
     private final String name;
 
@@ -45,11 +46,22 @@ public class TurretIOKrakenFOC implements TurretIO{
         this.reduction = reduction;
 
         TalonFXConfiguration config = new TalonFXConfiguration();
-        config.MotorOutput.NeutralMode = brake ? NeutralModeValue.Brake : NeutralModeValue.Coast; 
+        config.MotorOutput.NeutralMode = brake ? NeutralModeValue.Brake : NeutralModeValue.Coast;
+
         config.CurrentLimits.SupplyCurrentLimit = currentLimitAmps;
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
-        talon.getConfigurator().apply(config);
 
+        double minRotations = Units.radiansToRotations(minTurretAngle) * reduction;
+        double maxRotations = Units.radiansToRotations(maxTurretAngle) * reduction;
+
+        config.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
+        config.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
+
+        config.SoftwareLimitSwitch.ReverseSoftLimitThreshold = minRotations;
+        config.SoftwareLimitSwitch.ForwardSoftLimitThreshold = maxRotations;
+
+        talon.getConfigurator().apply(config);
+        
         position = talon.getPosition();
         velocity = talon.getVelocity();
         appliedVoltage = talon.getMotorVoltage();
