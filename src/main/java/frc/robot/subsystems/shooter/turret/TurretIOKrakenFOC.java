@@ -90,7 +90,7 @@ public class TurretIOKrakenFOC implements TurretIO{
         @Override
         public void applyOutputs(TurretIOOutputs outputs){
             PIDController pid = new PIDController(outputs.kP, 0, outputs.kD); //kP and kD
-            talon.set(pid.calculate(outputs.velocityRadsPerSec/Turret.kVMaxVelocity.get())); //TODO: velocity NOT CORRECT!!! this logic doesn't make sense! Ensure it doesn't break FOV
+            talon.set(pid.calculate(outputs.velocityRadsPerSec/Turret.kVMaxVelocity.get()));
             pid.close();
             TalonFXConfiguration config = new TalonFXConfiguration();
             config.MotorOutput.NeutralMode = outputs.coast ? NeutralModeValue.Coast : NeutralModeValue.Brake; //neutral mode

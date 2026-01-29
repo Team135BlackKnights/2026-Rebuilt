@@ -18,7 +18,7 @@ public class Intake extends GenericRollerSystem<Intake.Goal> {
     @RequiredArgsConstructor
     @Getter
     public enum Goal implements GenericRollerSystem.RollGoalSupplier {
-        IDLING(() -> 0),
+        IDLING(() -> 0),//only really for use in testing
         INTAKING(
                 new LoggableTunedNumber("IntakingVoltage", 12.0, Constants.TuningConstants.isTuningIntake)),
         VOMITING(new LoggableTunedNumber("VomitingVoltage",-12.0,Constants.TuningConstants.isTuningIntake));
@@ -42,7 +42,7 @@ public class Intake extends GenericRollerSystem<Intake.Goal> {
         }
     }
 
-    private Goal goal = Goal.IDLING;
+    private Goal goal = Goal.INTAKING; //should always intake or vomit
 
     public Intake(IntakeIO io) {
         super("Intake", io);
