@@ -37,6 +37,11 @@ import frc.robot.utils.CompetitionFieldUtils.Simulation.drive.GyroSimulation;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.drive.Swerve.SwerveDriveSimulation;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.drive.Swerve.SwerveModuleSimulation;
 import frc.robot.utils.drive.DriveConstants;
+
+import frc.robot.subsystems.Shooter.turret.Turret;
+import frc.robot.subsystems.Shooter.turret.TurretIO;
+import frc.robot.subsystems.Shooter.turret.turretSwivelLeft.TurretSwivelIOKrakenFOC;
+
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOPhotonVisionSim;
@@ -146,6 +151,7 @@ public class RobotContainer {
 	public static LocalADStarAK pathFinder = new LocalADStarAK();
 	public static Climber climber;
 	public static Intake intake;
+	public static Turret turret; 
 	private final LoggedDashboardChooser<Command> autoChooser;
 	public static final LoggableTunedNumber humanPlayerWaitTime = new LoggableTunedNumber(
 			"AutoToggles/HumanPlayerWaitTime", .425, TuningConstants.isTuningMacros);
@@ -272,6 +278,7 @@ public class RobotContainer {
 			leaveMinimumSpeed = new LoggableTunedNumber("PathFollowing/LeaveMinimumSpeed", .5,
 					TuningConstants.isTuningMacros);
 	ModuleLimits normalSpeeds = DriveConstants.moduleLimitsLow;
+	
 
 	public static void precalculateAllStartAndEndChoreos() {
 		File choreoDirectory = new File(Filesystem.getDeployDirectory(),
@@ -519,7 +526,11 @@ public class RobotContainer {
 						throw new IllegalArgumentException(
 								"Unknown implementation type for intake, please check SimpleMechanismConstants.java!");
 				}
+
+				// Turret Setup 
+				turret = new Turret(new TurretSwivelIOKrakenFOC());
 				autoCommands.addAll(Arrays.asList(
+
 						// new Pair<String, Command>("AimAtAmp",new AimToPose(drivetrainS, new
 						// Pose2d(1.9,7.7, new Rotation2d(Units.degreesToRadians(0))))),
 						//new Pair<String, Command>("BranchGrabbingGamePiece",
@@ -644,6 +655,8 @@ public class RobotContainer {
 				System.out.println("SIM SETUP DONE!");
 				climber = new Climber(new ClimberIOSim());
 				intake = new Intake(new IntakeIOSim());
+				turret = new Turret(new TurretIO() {
+				});
 				/*autoCommands.addAll(Arrays.asList(
 						 new Pair<String, Command>("AimAtAmp",new AimToPose(drivetrainS, new
 						 Pose2d(1.9,7.7, new Rotation2d(Units.degreesToRadians(0))))),
@@ -689,6 +702,8 @@ public class RobotContainer {
 				});
 				climber = new Climber(new ClimberIO(){});
 				intake = new Intake(new IntakeIO(){});
+				turret = new Turret(new TurretIO() {});
+
 		}
 
 		drivetrainS.resetPose(GeomUtil.apply(startingPose, false));
@@ -951,7 +966,7 @@ public class RobotContainer {
 	 */
 	public static double[] getCurrentDraw() {
 
-		return new double[] { Math.min(drivetrainS.getCurrent(), 200), climber.getCurrent(),intake.getCurrent() };
+		return new double[] { Math.min(drivetrainS.getCurrent(), 200), climber.getCurrent(),intake.getCurrent(),turret.getCurrent() };
 		// superStructure.getCurrent() };
 	}
 
@@ -974,7 +989,8 @@ public class RobotContainer {
 				visionS.getSystemCheckCommand(),
 				leds.getSystemCheckCommand(),
 				climber.getSystemCheckCommand(),
-				intake.getSystemCheckCommand());
+				intake.getSystemCheckCommand(),
+				turret.getSystemCheckCommand());
 
 	}
 	//TODO: FIX FOR OUR SUBSYSTEMS
@@ -990,7 +1006,7 @@ public class RobotContainer {
 
 	public static HashMap<String, Double> getAllTemps() {
 		// List of HashMaps
-		List<HashMap<String, Double>> maps = List.of(drivetrainS.getTemps(), visionS.getTemps(), climber.getTemps(), intake.getTemps());
+		List<HashMap<String, Double>> maps = List.of(drivetrainS.getTemps(), visionS.getTemps(), climber.getTemps(), intake.getTemps(), turret.getTemps());
 		// Combine all maps
 		HashMap<String, Double> combinedMap = combineMaps(maps);
 		return combinedMap;
@@ -1006,7 +1022,9 @@ public class RobotContainer {
 				&& leds.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& visionS.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& climber.getSystemStatus() == SubsystemChecker.SystemStatus.OK
-				&& intake.getSystemStatus() == SubsystemChecker.SystemStatus.OK;
+				&& intake.getSystemStatus() == SubsystemChecker.SystemStatus.OK
+				&& turret.getSystemStatus() == SubsystemChecker.SystemStatus.OK;
+
 	}
 
 	public static Collection<ParentDevice> getOrchestraDevices() {
@@ -1015,6 +1033,7 @@ public class RobotContainer {
 		devices.addAll(drivetrainS.getDriveOrchestraDevices());
 		devices.addAll(climber.getOrchestraDevices());
 		devices.addAll(intake.getOrchestraDevices());
+		devices.addAll(turret.getOrchestraDevices());
 		return devices;
 	}
 
@@ -1035,6 +1054,7 @@ public class RobotContainer {
 		subsystems[1] = visionS;
 		subsystems[2] = climber;
 		subsystems[3] = intake;
+		subsystems[4] = turret;
 		return subsystems;
 	}
 

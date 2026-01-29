@@ -31,8 +31,8 @@ public class TurretIOKrakenFOC implements TurretIO{
     private final StatusSignal<Current> supplyCurrent;
     private final StatusSignal<Current> torqueCurrent;
     private final StatusSignal<Temperature> tempCelsius;
-    private static final double minTurretAngle = Units.degreesToRadians(-90);
-    private static final double maxTurretAngle = Units.degreesToRadians(90);
+    private static final double minTurretAngle = Units.degreesToRadians(-180);
+    private static final double maxTurretAngle = Units.degreesToRadians(180);
 
     private final VoltageOut voltageOut = new VoltageOut(0.0).withEnableFOC(true).withUpdateFreqHz(0);
     private final NeutralOut neutralOut = new NeutralOut();
