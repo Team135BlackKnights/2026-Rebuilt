@@ -1,36 +1,26 @@
-package frc.robot.subsystems.Shooter.azimuth;
+package frc.robot.subsystems.Turret.azimuth;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.system.plant.LinearSystemId;
 import edu.wpi.first.wpilibj.simulation.DCMotorSim;
+import frc.robot.utils.advancedMechs.AdvancedMechanismConstants;
 import frc.robot.utils.selfCheck.SelfChecking;
 
 public class AzimuthIOSim implements AzimuthIO {
 
-    // --- Mechanism / gearing constants (match TurretMathematics constants) ---
-    private static final int TURRET_TEETH = 77;
-    private static final int IDLER_TEETH = 10;
-    private static final double ENC1_GEAR_TEETH = 36.0;
-    private static final double ENC2_GEAR_TEETH = 34.0;
 
     // Turret ratio between turret and the 10T idler (turret -> idler magnitude).
-    // (Matches TurretMathematics.TurretMath.turretRatio)
-    private static final double TURRET_RATIO = (double) TURRET_TEETH / (double) IDLER_TEETH;
+    private static final double TURRET_RATIO = (double) AdvancedMechanismConstants.Turret.turretTeeth / (double) AdvancedMechanismConstants.Turret.idlerTeeth;
 
-    // Enc2 combined ratio used in your solver.
-    private static final double ENC1_TO_ENC2_RATIO = ENC1_GEAR_TEETH / ENC2_GEAR_TEETH;
+    private static final double ENC1_TO_ENC2_RATIO = AdvancedMechanismConstants.Turret.enc1GearTeeth / AdvancedMechanismConstants.Turret.enc2GearTeeth;
     private static final double COMBINED_RATIO = TURRET_RATIO * ENC1_TO_ENC2_RATIO;
 
     private static final double TWO_PI = 2.0 * Math.PI;
-
-    /**
-     * Motor radians per turret radian.
-     */
-    public static final double MOTOR_RAD_PER_TURRET_RAD = (36.0 / 11.0) * (77.0 / 10.0); // 25.2
 
     private final DCMotorSim sim;
 
@@ -70,7 +60,7 @@ public class AzimuthIOSim implements AzimuthIO {
                 LinearSystemId.createDCMotorSystem(
                         DCMotor.getKrakenX44Foc(1),
                         moi,
-                        MOTOR_RAD_PER_TURRET_RAD
+                        AdvancedMechanismConstants.Turret.motorRadPerTurretRad
                 ),
                 DCMotor.getKrakenX44Foc(1)
         );
@@ -79,10 +69,10 @@ public class AzimuthIOSim implements AzimuthIO {
     @Override
     public void updateInputs(AzimuthIOInputs inputs) {
         if (mode == Mode.OPEN_VOLTAGE) {
-            appliedVolts = clamp(openLoopVolts, -12.0, 12.0);
+            appliedVolts = MathUtil.clamp(openLoopVolts, -12.0, 12.0);
         } else {
             // If we have a turret target, compute a motor target from current "absolute encoders" + motor position.
-            desiredTurretRad = clamp(desiredTurretRad, minAngleRad, maxAngleRad);
+            desiredTurretRad = MathUtil.clamp(desiredTurretRad, minAngleRad, maxAngleRad);
 
             desiredMotorRad = TurretMathematics.TurretMath.motorSetpointForTurretAngle(
                     bigAbs,
@@ -97,7 +87,7 @@ public class AzimuthIOSim implements AzimuthIO {
             double motorVelError = 0.0 - motorVelRadPerSec;
 
             double volts = kP * motorError + kD * motorVelError;
-            appliedVolts = clamp(volts, -12.0, 12.0);
+            appliedVolts = MathUtil.clamp(volts, -12.0, 12.0);
         }
 
         sim.setInputVoltage(appliedVolts);
@@ -106,8 +96,8 @@ public class AzimuthIOSim implements AzimuthIO {
         turretAngleRad = sim.getAngularPositionRad();
         turretVelRadPerSec = sim.getAngularVelocityRadPerSec();
 
-        motorPosRad = turretAngleRad * MOTOR_RAD_PER_TURRET_RAD;
-        motorVelRadPerSec = turretVelRadPerSec * MOTOR_RAD_PER_TURRET_RAD;
+        motorPosRad = turretAngleRad * AdvancedMechanismConstants.Turret.motorRadPerTurretRad;
+        motorVelRadPerSec = turretVelRadPerSec * AdvancedMechanismConstants.Turret.motorRadPerTurretRad;
 
         // enc1 (big) consistent with baseSolution = mod(-enc1/turretRatio, 2pi/turretRatio)
         double bigRad = wrapToTwoPi(-turretAngleRad * TURRET_RATIO);
@@ -141,7 +131,7 @@ public class AzimuthIOSim implements AzimuthIO {
     @Override
     public void setDesiredPosition(double turretRads) {
         // turretRads is already unwrapped/good since there ain't no wires to break in sim
-        desiredTurretRad = clamp(turretRads, minAngleRad, maxAngleRad);
+        desiredTurretRad = MathUtil.clamp(turretRads, minAngleRad, maxAngleRad);
         mode = Mode.POSITION;
     }
 
@@ -170,11 +160,6 @@ public class AzimuthIOSim implements AzimuthIO {
     @Override
     public List<SelfChecking> getSelfCheckingHardware() {
         return new ArrayList<>();
-    }
-
-    // --- helpers ---
-    private static double clamp(double x, double min, double max) {
-        return Math.max(min, Math.min(max, x));
     }
 
     private static double wrapToTwoPi(double angleRad) {

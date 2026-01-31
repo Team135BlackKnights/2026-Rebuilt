@@ -8,17 +8,17 @@ import frc.robot.commands.FeedForwardCharacterization;
 import frc.robot.commands.StaticCharacterization;
 import frc.robot.commands.drive.DrivetrainC;
 import frc.robot.commands.drive.WheelRadiusCharacterization;
-import frc.robot.commands.drive.vision.AimToAprilTag;
-import frc.robot.commands.drive.vision.AimToObject;
 import frc.robot.subsystems.SubsystemChecker;
-import frc.robot.subsystems.Shooter.Turret;
-import frc.robot.subsystems.Shooter.azimuth.AzimuthIO;
-import frc.robot.subsystems.Shooter.azimuth.AzimuthIOKrakenFOC;
-import frc.robot.subsystems.Shooter.azimuth.AzimuthIOSim;
-import frc.robot.subsystems.Shooter.flywheel.FlywheelIO;
-import frc.robot.subsystems.Shooter.flywheel.FlywheelIOSim;
-import frc.robot.subsystems.Shooter.hood.HoodIO;
-import frc.robot.subsystems.Shooter.hood.HoodIOSim;
+import frc.robot.subsystems.Turret.Turret;
+import frc.robot.subsystems.Turret.azimuth.AzimuthIO;
+import frc.robot.subsystems.Turret.azimuth.AzimuthIOKrakenFOC;
+import frc.robot.subsystems.Turret.azimuth.AzimuthIOSim;
+import frc.robot.subsystems.Turret.flywheel.FlywheelIO;
+import frc.robot.subsystems.Turret.flywheel.FlywheelIOKrakenFOC;
+import frc.robot.subsystems.Turret.flywheel.FlywheelIOSim;
+import frc.robot.subsystems.Turret.hood.HoodIO;
+import frc.robot.subsystems.Turret.hood.HoodIOKrakenFOC;
+import frc.robot.subsystems.Turret.hood.HoodIOSim;
 import frc.robot.subsystems.drive.DrivetrainS;
 import frc.robot.subsystems.drive.FastSwerve.Swerve;
 import frc.robot.subsystems.drive.Mecanum.Mecanum;
@@ -63,7 +63,6 @@ import com.pathplanner.lib.commands.PathfindingCommand;
 import com.pathplanner.lib.pathfinding.Pathfinding;
 import com.pathplanner.lib.util.PPLibTelemetry;
 
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -102,11 +101,9 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
-
-import edu.wpi.first.wpilibj2.command.button.JoystickButton;
+import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.TuningConstants;
-
 
 import frc.robot.subsystems.drive.FastSwerve.Swerve.ModuleLimits;
 import frc.robot.subsystems.leds.LEDs;
@@ -134,6 +131,7 @@ import frc.robot.utils.simpleMechanisms.SimpleMechanismConstants;
 import frc.robot.utils.Touchboard.PosePlotterUtil;
 import frc.robot.utils.Touchboard.JukeboxUtil;
 import frc.robot.utils.Touchboard.PosePlotterUtil.CommandPair;
+import frc.robot.utils.advancedMechs.AdvancedMechanismConstants;
 
 /**
  * This code depends on WPILib 2025, Choreo 2025, PhotonLib 2025, Studica,
@@ -150,12 +148,13 @@ public class RobotContainer {
 	public static LocalADStarAK pathFinder = new LocalADStarAK();
 	public static Climber climber;
 	public static Intake intake;
-	public static Turret turret; 
+	public static Turret leftTurret;
+	public static Turret rightTurret;
 	private final LoggedDashboardChooser<Command> autoChooser;
 	public static final LoggableTunedNumber humanPlayerWaitTime = new LoggableTunedNumber(
 			"AutoToggles/HumanPlayerWaitTime", .425, TuningConstants.isTuningMacros);
 	// [Map<String,>,]
-	public static XboxController driveController = new XboxController(0);
+	public static CommandXboxController driveController = new CommandXboxController(0);
 	public static XboxController manipController = new XboxController(1);
 	public static DriverStationHID dsHIDHandler = new DriverStationHID(2);
 	public static XboxController testingController = new XboxController(5);
@@ -164,81 +163,21 @@ public class RobotContainer {
 	public static double xSpeed = 0;
 	public static double ySpeed = 0;
 	@AutoLogOutput(key = "SuperStructure/ScorePosition")
-	static JoystickButton xButtonDrive = new JoystickButton(driveController, 3),
-			yButtonDrive = new JoystickButton(driveController, 4), // used for Aim/Drive to pose
-			bButtonDrive = new JoystickButton(driveController, 2),
-			bButtonManip = new JoystickButton(manipController, 2),
-			aButtonDrive = new JoystickButton(driveController, 1),
-			aButtonManip = new JoystickButton(manipController, 1),
-			xButtonManip = new JoystickButton(manipController, 3),
-			yButtonManip = new JoystickButton(manipController, 4),
-			aButtonTest = new JoystickButton(testingController, 1),
-			bButtonTest = new JoystickButton(testingController, 2),
-			xButtonTest = new JoystickButton(testingController, 3),
-			yButtonTest = new JoystickButton(testingController, 4),
-			leftBumperTest = new JoystickButton(driveController, 5),
-			rightBumperTest = new JoystickButton(testingController, 6),
-			selectButtonTest = new JoystickButton(testingController, 7),
-			selectButtonDrive = new JoystickButton(driveController,7),
-			selectButtonManip = new JoystickButton(manipController, 7),
-			startButtonTest = new JoystickButton(testingController, 8),
-			startButtonDrive = new JoystickButton(driveController, 8),
-			startButtonManip = new JoystickButton(manipController, 8),
-			leftBumperManip = new JoystickButton(manipController, 5),
-			leftBumperDrive = new JoystickButton(driveController, 5),
-			rightBumperManip = new JoystickButton(manipController, 6),
-			rightBumperDrive = new JoystickButton(driveController, 6),
-			leftStickDrive = new JoystickButton(driveController, 9),
-			rightStickDrive = new JoystickButton(driveController, 10);
-	static Trigger driverPOVRight = new Trigger(() -> (driveController.getPOV() == 270));
-	static Trigger testDPadUp = new Trigger(() -> (driveController.getPOV() == 0));
-	static Trigger testDPadDown = new Trigger(() -> (driveController.getPOV() == 180));
-	static Trigger manipRightTrigger = new Trigger(
-			() -> (manipController.getRightTriggerAxis() > .25 && manipController.getRightTriggerAxis() < .75));
-	static Trigger manipRightTriggerFull = new Trigger(() -> (manipController.getRightTriggerAxis() > .75));
-	static Trigger driveRightTrigger = new Trigger(
-			() -> (driveController.getRightTriggerAxis() > .25 && driveController.getRightTriggerAxis() < .75));
-	static Trigger driveRightTriggerFull = new Trigger(() -> (driveController.getRightTriggerAxis() > .75));
-	static Trigger manipLeftTrigger = new Trigger(
-			() -> (manipController.getLeftTriggerAxis() > .25 && manipController.getLeftTriggerAxis() < .75));
-	static Trigger manipLeftTriggerFull = new Trigger(() -> (manipController.getLeftTriggerAxis() > .75));
-	static Trigger manipPOVUp = new Trigger(() -> (manipController.getPOV() == 0));
-	static Trigger driverPOVUp = new Trigger(() -> (driveController.getPOV() == 0));
-	static Trigger driverPOVDown = new Trigger(() -> (driveController.getPOV() == 180));
-	static Trigger driverPOVLeft = new Trigger(() -> (driveController.getPOV() == 270));
-	static Trigger manipPOVRight = new Trigger(() -> (manipController.getPOV() == 90));
-	static Trigger manipPOVDown = new Trigger(() -> (manipController.getPOV() == 180));
-	static Trigger manipPOVLeft = new Trigger(() -> (manipController.getPOV() == 270));
-	static Trigger BranchOneScoreTrigger = new Trigger(() -> dsHIDHandler.getBranch1Button());
-	static Trigger BranchTwoScoreTrigger = new Trigger(() -> dsHIDHandler.getBranch2Button());
-	static Trigger BranchThreeScoreTrigger = new Trigger(() -> dsHIDHandler.getBranch3Button());
-	static Trigger BranchFourScoreTrigger = new Trigger(() -> dsHIDHandler.getBranch4Button());
-	static Trigger BranchFiveScoreTrigger = new Trigger(() -> dsHIDHandler.getBranch5Button());
-	static Trigger BranchSixScoreTrigger = new Trigger(() -> dsHIDHandler.getBranch6Button());
-	static Trigger BranchSevenScoreTrigger = new Trigger(() -> dsHIDHandler.getBranch7Button());
-	static Trigger BranchEightScoreTrigger = new Trigger(() -> dsHIDHandler.getBranch8Button());
-	static Trigger BranchNineScoreTrigger = new Trigger(() -> dsHIDHandler.getBranch9Button());
-	static Trigger BranchTenScoreTrigger = new Trigger(() -> dsHIDHandler.getBranch10Button());
-	static Trigger BranchElevenScoreTrigger = new Trigger(() -> dsHIDHandler.getBranch11Button());
-	static Trigger BranchTwelveScoreTrigger = new Trigger(() -> dsHIDHandler.getBranch12Button());
-	static Trigger L2Trigger = new Trigger(() -> dsHIDHandler.getLevel1and2ButtonPressed());
-	static Trigger L3Trigger = new Trigger(() -> dsHIDHandler.getLevel3ButtonPressed());
-	static Trigger L4Trigger = new Trigger(() -> dsHIDHandler.getLevel4ButtonPressed());
-	public static Trigger RunCoralTrigger = new Trigger(() -> dsHIDHandler.getRunButton());
-	public static Trigger IntakeAlgaeTrigger = new Trigger(() -> dsHIDHandler.getIntakeAlgaeButton());
-	public static Trigger ScoreAlgaeReef = new Trigger(() -> dsHIDHandler.getScoreProcessorButton());
-	public static Trigger manualElevatorUp = new Trigger(() -> dsHIDHandler.getManualElevatorUp()); // ded
-	public static Trigger manualElevatorDown = new Trigger(() -> dsHIDHandler.getManualElevatorDown()); // ded
-	public static Trigger manualArmUp = new Trigger(() -> dsHIDHandler.getManualArmUp()); // ded
-	public static Trigger manualArmDown = new Trigger(() -> dsHIDHandler.getManualArmDown()); // ded
-	static Trigger holdReefAlgae = new Trigger(() -> dsHIDHandler.getActivateManualArmSwitch());
-	static Trigger reefAlgaePressed = new Trigger(() -> dsHIDHandler.getReefAlgaeSwitchPressed());
-	static Trigger rezeroButton = new Trigger(() -> dsHIDHandler.getGoToProcessorButton());
-	static Trigger reefAlgaeReleased = new Trigger(() -> dsHIDHandler.getReefAlgaeSwitchReleased());
-	static Trigger manualReefPressed = new Trigger(() -> dsHIDHandler.getUnusedRightSwitchPressed());
-	static Trigger manualReefReleased = new Trigger(() -> dsHIDHandler.getUnusedRightSwitchPressed());
-	static Trigger forceResetReef = new Trigger(() -> dsHIDHandler.getResetReef());
-	static Trigger robotRed = new Trigger(() -> Robot.isRed);
+
+	Trigger aButtonDrive = driveController.a();
+	Trigger bButtonDrive = driveController.b();
+	Trigger xButtonDrive = driveController.x();
+	Trigger yButtonDrive = driveController.y();
+	Trigger leftBumperDrive = driveController.leftBumper();
+	Trigger rightBumperDrive = driveController.rightBumper();
+	Trigger leftTriggerDrive = driveController.leftTrigger(.125); // partial
+	Trigger leftTriggerDriveFull = driveController.leftTrigger(.875); // full if needed
+	Trigger rightTriggerDrive = driveController.rightTrigger(.125);
+	Trigger rightTriggerDriveFull = driveController.rightTrigger(.875);
+	Trigger leftStickButtonDrive = driveController.leftStick();
+	Trigger rightStickButtonDrive = driveController.rightStick();
+	Trigger selectButtonDrive = driveController.back(); // select
+	Trigger startButtonDrive = driveController.start();
 	public static int currentTest = 0;
 	public static String piConnection = "DISCONNECTED";
 	@AutoLogOutput(key = "RobotState/currentPath")
@@ -277,7 +216,6 @@ public class RobotContainer {
 			leaveMinimumSpeed = new LoggableTunedNumber("PathFollowing/LeaveMinimumSpeed", .5,
 					TuningConstants.isTuningMacros);
 	ModuleLimits normalSpeeds = DriveConstants.moduleLimitsLow;
-	
 
 	public static void precalculateAllStartAndEndChoreos() {
 		File choreoDirectory = new File(Filesystem.getDeployDirectory(),
@@ -481,26 +419,30 @@ public class RobotContainer {
 								"Unknown drivetrain implementation type, please check DriveConstants.java!");
 				}
 				visionS = new Vision(() -> getSelectedAprilTagLayout(),
-						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "FrontRightCam",0,
+						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "FrontRightCam", 0,
 								VisionConstants.cameras[0]),
-						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "FrontLeftCam",1,
+						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "FrontLeftCam", 1,
 								VisionConstants.cameras[1]),
-						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackRightCam",2,
+						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackRightCam", 2,
 								VisionConstants.cameras[2]),
-						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackLeftCam",3,
+						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackLeftCam", 3,
 								VisionConstants.cameras[3]));
 				/**
 				 * visionS = new Vision(() -> getSelectedAprilTagLayout(),
-								new VisionIOPhotonVision(() -> getSelectedAprilTagLayout(), VisionConstants.cameras[0].getId(),
-										GeomUtil.poseToTransform3d(VisionConstants.cameras[0].getPose().get())),
-								new VisionIOPhotonVision(() -> getSelectedAprilTagLayout(), VisionConstants.cameras[1].getId(),
-										GeomUtil.poseToTransform3d(VisionConstants.cameras[1].getPose().get())),
-								new VisionIOPhotonVision(() -> getSelectedAprilTagLayout(), VisionConstants.cameras[2].getId(),
-										GeomUtil.poseToTransform3d(VisionConstants.cameras[2].getPose().get())),
-								new VisionIOPhotonVision(() -> getSelectedAprilTagLayout(), VisionConstants.cameras[3].getId(),
-										GeomUtil.poseToTransform3d(VisionConstants.cameras[3].getPose().get())));
+				 * new VisionIOPhotonVision(() -> getSelectedAprilTagLayout(),
+				 * VisionConstants.cameras[0].getId(),
+				 * GeomUtil.poseToTransform3d(VisionConstants.cameras[0].getPose().get())),
+				 * new VisionIOPhotonVision(() -> getSelectedAprilTagLayout(),
+				 * VisionConstants.cameras[1].getId(),
+				 * GeomUtil.poseToTransform3d(VisionConstants.cameras[1].getPose().get())),
+				 * new VisionIOPhotonVision(() -> getSelectedAprilTagLayout(),
+				 * VisionConstants.cameras[2].getId(),
+				 * GeomUtil.poseToTransform3d(VisionConstants.cameras[2].getPose().get())),
+				 * new VisionIOPhotonVision(() -> getSelectedAprilTagLayout(),
+				 * VisionConstants.cameras[3].getId(),
+				 * GeomUtil.poseToTransform3d(VisionConstants.cameras[3].getPose().get())));
 				 */
-				//Advanced Mechs Require Toggles
+				// Advanced Mechs Require Toggles
 				toggles = new Toggles(new TogglesIOHardware());
 				System.out.println("REAL SETUP DONE!");
 				switch (SimpleMechanismConstants.Climber.motorType) {
@@ -526,16 +468,67 @@ public class RobotContainer {
 								"Unknown implementation type for intake, please check SimpleMechanismConstants.java!");
 				}
 
-				// Turret Setup TODO
-				//turret = new Turret(new TurretSwivelIOKrakenFOC());
-				//turret = new Turret(new AzimuthIOKrakenFOC(Robot.rioCanBus, currentTest, currentTest, currentUpdate, closestChoreoPath, currentTest, theta, theta))
+				AzimuthIO azimuthIOLeftTurret = new AzimuthIOKrakenFOC(Robot.rioCanBus,
+						AdvancedMechanismConstants.Turret.leftAzimuthID,
+						AdvancedMechanismConstants.Turret.leftAzimuthBigEncoderID,
+						AdvancedMechanismConstants.Turret.leftAzimuthSmallEncoderID,
+						AdvancedMechanismConstants.Turret.leftName,
+						AdvancedMechanismConstants.Turret.currentLimitAzimuth,
+						AdvancedMechanismConstants.Turret.minTurretAngle,
+						AdvancedMechanismConstants.Turret.maxTurretAngle);
+				FlywheelIO flywheelIOLeftTurret = new FlywheelIOKrakenFOC(
+						Robot.rioCanBus,
+						AdvancedMechanismConstants.Turret.leftFlywheelID,
+						AdvancedMechanismConstants.Turret.leftName,
+						AdvancedMechanismConstants.Turret.currentLimitFlywheel,
+						AdvancedMechanismConstants.Turret.flywheelRatio);
+				HoodIO hoodIOLeftTurret = new HoodIOKrakenFOC(
+						Robot.rioCanBus,
+						AdvancedMechanismConstants.Turret.leftHoodID,
+						AdvancedMechanismConstants.Turret.leftHoodEncoderID,
+						AdvancedMechanismConstants.Turret.leftName,
+						AdvancedMechanismConstants.Turret.currentLimitHood,
+						AdvancedMechanismConstants.Turret.hoodMotorToHoodEncoderRatio,
+						AdvancedMechanismConstants.Turret.hoodEncoderToHoodArmRatio,
+						AdvancedMechanismConstants.Turret.minHoodAngle,
+						AdvancedMechanismConstants.Turret.maxHoodAngle);
+				leftTurret = new Turret(azimuthIOLeftTurret, flywheelIOLeftTurret, hoodIOLeftTurret,
+						AdvancedMechanismConstants.Turret.robotToLeftTurretHoleCenter, "LeftTurret");
+				// Right Turret
+				AzimuthIO azimuthIORightTurret = new AzimuthIOKrakenFOC(Robot.rioCanBus,
+						AdvancedMechanismConstants.Turret.rightAzimuthID,
+						AdvancedMechanismConstants.Turret.rightAzimuthBigEncoderID,
+						AdvancedMechanismConstants.Turret.rightAzimuthSmallEncoderID,
+						AdvancedMechanismConstants.Turret.rightName,
+						AdvancedMechanismConstants.Turret.currentLimitAzimuth,
+						AdvancedMechanismConstants.Turret.minTurretAngle,
+						AdvancedMechanismConstants.Turret.maxTurretAngle);
+				FlywheelIO flywheelIORightTurret = new FlywheelIOKrakenFOC(
+						Robot.rioCanBus,
+						AdvancedMechanismConstants.Turret.rightFlywheelID,
+						AdvancedMechanismConstants.Turret.rightName,
+						AdvancedMechanismConstants.Turret.currentLimitFlywheel,
+						AdvancedMechanismConstants.Turret.flywheelRatio);
+				HoodIO hoodIORightTurret = new HoodIOKrakenFOC(
+						Robot.rioCanBus,
+						AdvancedMechanismConstants.Turret.rightHoodID,
+						AdvancedMechanismConstants.Turret.rightHoodEncoderID,
+						AdvancedMechanismConstants.Turret.rightName,
+						AdvancedMechanismConstants.Turret.currentLimitHood,
+						AdvancedMechanismConstants.Turret.hoodMotorToHoodEncoderRatio,
+						AdvancedMechanismConstants.Turret.hoodEncoderToHoodArmRatio,
+						AdvancedMechanismConstants.Turret.minHoodAngle,
+						AdvancedMechanismConstants.Turret.maxHoodAngle);
+				rightTurret = new Turret(azimuthIORightTurret, flywheelIORightTurret, hoodIORightTurret,
+						AdvancedMechanismConstants.Turret.robotToRightTurretHoleCenter, "RightTurret");
+
 				autoCommands.addAll(Arrays.asList(
 
-						// new Pair<String, Command>("AimAtAmp",new AimToPose(drivetrainS, new
-						// Pose2d(1.9,7.7, new Rotation2d(Units.degreesToRadians(0))))),
-						//new Pair<String, Command>("BranchGrabbingGamePiece",
-						//		new BranchAuto("Shoot",
-						//				new Pose2d(7.4, 5.8, new Rotation2d()), 4))
+				// new Pair<String, Command>("AimAtAmp",new AimToPose(drivetrainS, new
+				// Pose2d(1.9,7.7, new Rotation2d(Units.degreesToRadians(0))))),
+				// new Pair<String, Command>("BranchGrabbingGamePiece",
+				// new BranchAuto("Shoot",
+				// new Pose2d(7.4, 5.8, new Rotation2d()), 4))
 				// new Pair<String, Command>("BotAborter", new BotAborter(drivetrainS)), //NEEDS
 				// A WAY TO KNOW WHEN TO ABORT FOR THE EXAMPLE AUTO!!!
 				// new Pair<String, Command>("DriveToAmp",new DriveToPose(drivetrainS, false,new
@@ -633,43 +626,56 @@ public class RobotContainer {
 						AIRobotInSimulation.startOpponentRobotSimulations(); // Start your engines...
 						break;
 				}
-				/*visionS = new Vision(() -> getSelectedAprilTagLayout(),
-						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "FrontRightCam",0,
-								VisionConstants.cameras[0]),
-						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "FrontLeftCam",1,
-								VisionConstants.cameras[1]),
-						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackRightCam",2,
-								VisionConstants.cameras[2]),
-						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackLeftCam",3,
-								VisionConstants.cameras[3]));*/
+				/*
+				 * visionS = new Vision(() -> getSelectedAprilTagLayout(),
+				 * new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "FrontRightCam",0,
+				 * VisionConstants.cameras[0]),
+				 * new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "FrontLeftCam",1,
+				 * VisionConstants.cameras[1]),
+				 * new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackRightCam",2,
+				 * VisionConstants.cameras[2]),
+				 * new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackLeftCam",3,
+				 * VisionConstants.cameras[3]));
+				 */
 				visionS = new Vision(() -> getSelectedAprilTagLayout(),
-						new VisionIOPhotonVisionSim(() -> getSelectedAprilTagLayout(),"FrontRightCam",
-								GeomUtil.poseToTransform3d(VisionConstants.cameras[0].getPose().get()),() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()),
+						new VisionIOPhotonVisionSim(() -> getSelectedAprilTagLayout(), "FrontRightCam",
+								GeomUtil.poseToTransform3d(VisionConstants.cameras[0].getPose().get()),
+								() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()),
 						new VisionIOPhotonVisionSim(() -> getSelectedAprilTagLayout(), "FrontLeftCam",
-								GeomUtil.poseToTransform3d(VisionConstants.cameras[1].getPose().get()),() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()),
+								GeomUtil.poseToTransform3d(VisionConstants.cameras[1].getPose().get()),
+								() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()),
 						new VisionIOPhotonVisionSim(() -> getSelectedAprilTagLayout(), "BackRightCam",
-								GeomUtil.poseToTransform3d(VisionConstants.cameras[2].getPose().get()),() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()),
+								GeomUtil.poseToTransform3d(VisionConstants.cameras[2].getPose().get()),
+								() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()),
 						new VisionIOPhotonVisionSim(() -> getSelectedAprilTagLayout(), "BackLeftCam",
-								GeomUtil.poseToTransform3d(VisionConstants.cameras[3].getPose().get()), () -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()));
+								GeomUtil.poseToTransform3d(VisionConstants.cameras[3].getPose().get()),
+								() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()));
 				toggles = new Toggles(new TogglesIONetworkTables());
 				System.out.println("SIM SETUP DONE!");
 				climber = new Climber(new ClimberIOSim());
 				intake = new Intake(new IntakeIOSim());
-				turret = new Turret(new AzimuthIOSim(-Math.PI,Math.PI), new FlywheelIOSim(), new HoodIOSim());
-				/*autoCommands.addAll(Arrays.asList(
-						 new Pair<String, Command>("AimAtAmp",new AimToPose(drivetrainS, new
-						 Pose2d(1.9,7.7, new Rotation2d(Units.degreesToRadians(0))))),
-						new Pair<String, Command>("SmartShoot", Commands.none()),
-						new Pair<String, Command>("SmartIntake", Commands.none())
-						new Pair<String, Command>("BranchGrabbingGamePiece",
-								new BranchAuto("Shoot",
-										new Pose2d(7.4, 5.8, new Rotation2d()), 4))
-				// new Pair<String, Command>("BotAborter", new BotAborter(drivetrainS)), //NEEDS
-				// A WAY TO KNOW WHEN TO ABORT FOR THE EXAMPLE AUTO!!!
-				// new Pair<String, Command>("DriveToAmp",new DriveToPose(drivetrainS, false,new
-				// Pose2d(1.9,7.7,new Rotation2d(Units.degreesToRadians(90))))),
-				// new Pair<String, Command>("PlayMiiSong", new OrchestraC("mii")),
-				));*/
+				leftTurret = new Turret(new AzimuthIOSim(-Math.PI, Math.PI), new FlywheelIOSim(), new HoodIOSim(),
+						AdvancedMechanismConstants.Turret.robotToLeftTurretHoleCenter, "LeftTurret");
+				rightTurret = new Turret(new AzimuthIOSim(-Math.PI, Math.PI), new FlywheelIOSim(), new HoodIOSim(),
+						AdvancedMechanismConstants.Turret.robotToRightTurretHoleCenter, "RightTurret");
+				/*
+				 * autoCommands.addAll(Arrays.asList(
+				 * new Pair<String, Command>("AimAtAmp",new AimToPose(drivetrainS, new
+				 * Pose2d(1.9,7.7, new Rotation2d(Units.degreesToRadians(0))))),
+				 * new Pair<String, Command>("SmartShoot", Commands.none()),
+				 * new Pair<String, Command>("SmartIntake", Commands.none())
+				 * new Pair<String, Command>("BranchGrabbingGamePiece",
+				 * new BranchAuto("Shoot",
+				 * new Pose2d(7.4, 5.8, new Rotation2d()), 4))
+				 * // new Pair<String, Command>("BotAborter", new BotAborter(drivetrainS)),
+				 * //NEEDS
+				 * // A WAY TO KNOW WHEN TO ABORT FOR THE EXAMPLE AUTO!!!
+				 * // new Pair<String, Command>("DriveToAmp",new DriveToPose(drivetrainS,
+				 * false,new
+				 * // Pose2d(1.9,7.7,new Rotation2d(Units.degreesToRadians(90))))),
+				 * // new Pair<String, Command>("PlayMiiSong", new OrchestraC("mii")),
+				 * ));
+				 */
 				break;
 			default:
 				switch (DriveConstants.driveType) {
@@ -699,9 +705,18 @@ public class RobotContainer {
 						}); // MUST be same number of cameras as in real robot
 				toggles = new Toggles(new TogglesIO() {
 				});
-				climber = new Climber(new ClimberIO(){});
-				intake = new Intake(new IntakeIO(){});
-				turret = new Turret(new AzimuthIO() {}, new FlywheelIO() {}, new HoodIO() {});
+				climber = new Climber(new ClimberIO() {
+				});
+				intake = new Intake(new IntakeIO() {
+				});
+				leftTurret = new Turret(new AzimuthIO() {
+				}, new FlywheelIO() {
+				}, new HoodIO() {
+				}, AdvancedMechanismConstants.Turret.robotToLeftTurretHoleCenter, "LeftTurret");
+				rightTurret = new Turret(new AzimuthIO() {
+				}, new FlywheelIO() {
+				}, new HoodIO() {
+				}, AdvancedMechanismConstants.Turret.robotToRightTurretHoleCenter, "RightTurret");
 
 		}
 
@@ -716,43 +731,50 @@ public class RobotContainer {
 		// Make sure to watch your flipped poses. Our custom DriveToPose and all of
 		// those do NOT auto flip for red.
 		autoCommands.addAll(Arrays.asList(
-				/*new Pair<String, CommandPair>("RT", // Example Drive to the right top face of the coral station
-						new CommandPair(
-								(Supplier<Command>) () -> PathFinder.goToPose(
-										GeomUtil.apply(FieldConstants.CoralStation.blueRightTopFace, false),
-										() -> DriveConstants.pathConstraints, drivetrainS, false, 0, .5,.1),
-								Set.of(drivetrainS))),
-				new Pair<String, CommandPair>("RM", // Example Drive to the right top face of the coral station
-						new CommandPair(
-								(Supplier<Command>) () -> PathFinder.goToPose(
-										GeomUtil.apply(FieldConstants.CoralStation.blueRightCenterFace, false),
-										() -> DriveConstants.pathConstraints, drivetrainS, false, 0, .5,.1),
-								Set.of(drivetrainS))),
-				new Pair<String, CommandPair>("RB", // Example Drive to the right top face of the coral station
-						new CommandPair(
-								(Supplier<Command>) () -> PathFinder.goToPose(
-										GeomUtil.apply(FieldConstants.CoralStation.blueRightBottomFace, false),
-										() -> DriveConstants.pathConstraints, drivetrainS, false, 0, .5,.1),
-								Set.of(drivetrainS))),
-				new Pair<String, CommandPair>("10", // Example Drive to the right top face of the coral station
-					new CommandPair(
-							(Supplier<Command>) () -> PathFinder.goToPose(
-									GeomUtil.apply(new Pose2d(4,2.82,new Rotation2d(Math.PI/3)), false),
-									() -> DriveConstants.pathConstraints, drivetrainS, false, 1, .5,.05),
-							Set.of(drivetrainS))),
-				new Pair<String, CommandPair>("11", // Example Drive to the right top face of the coral station
-					new CommandPair(
-							(Supplier<Command>) () -> PathFinder.goToPose(
-									GeomUtil.apply(new Pose2d(3.693,3.01,new Rotation2d(Math.PI/3)), false),
-									() -> DriveConstants.pathConstraints, drivetrainS, false, 1, .5,.05),
-							Set.of(drivetrainS))),
-				new Pair<String, CommandPair>("12", // Example Drive to the right top face of the coral station
-					new CommandPair(
-							(Supplier<Command>) () -> PathFinder.goToPose(
-									GeomUtil.apply(new Pose2d(3.211,3.883,new Rotation2d(0)), false),
-									() -> DriveConstants.pathConstraints, drivetrainS, false, 1, .5,.05),
-							Set.of(drivetrainS)))
-								*/));
+		/*
+		 * new Pair<String, CommandPair>("RT", // Example Drive to the right top face of
+		 * the coral station
+		 * new CommandPair(
+		 * (Supplier<Command>) () -> PathFinder.goToPose(
+		 * GeomUtil.apply(FieldConstants.CoralStation.blueRightTopFace, false),
+		 * () -> DriveConstants.pathConstraints, drivetrainS, false, 0, .5,.1),
+		 * Set.of(drivetrainS))),
+		 * new Pair<String, CommandPair>("RM", // Example Drive to the right top face of
+		 * the coral station
+		 * new CommandPair(
+		 * (Supplier<Command>) () -> PathFinder.goToPose(
+		 * GeomUtil.apply(FieldConstants.CoralStation.blueRightCenterFace, false),
+		 * () -> DriveConstants.pathConstraints, drivetrainS, false, 0, .5,.1),
+		 * Set.of(drivetrainS))),
+		 * new Pair<String, CommandPair>("RB", // Example Drive to the right top face of
+		 * the coral station
+		 * new CommandPair(
+		 * (Supplier<Command>) () -> PathFinder.goToPose(
+		 * GeomUtil.apply(FieldConstants.CoralStation.blueRightBottomFace, false),
+		 * () -> DriveConstants.pathConstraints, drivetrainS, false, 0, .5,.1),
+		 * Set.of(drivetrainS))),
+		 * new Pair<String, CommandPair>("10", // Example Drive to the right top face of
+		 * the coral station
+		 * new CommandPair(
+		 * (Supplier<Command>) () -> PathFinder.goToPose(
+		 * GeomUtil.apply(new Pose2d(4,2.82,new Rotation2d(Math.PI/3)), false),
+		 * () -> DriveConstants.pathConstraints, drivetrainS, false, 1, .5,.05),
+		 * Set.of(drivetrainS))),
+		 * new Pair<String, CommandPair>("11", // Example Drive to the right top face of
+		 * the coral station
+		 * new CommandPair(
+		 * (Supplier<Command>) () -> PathFinder.goToPose(
+		 * GeomUtil.apply(new Pose2d(3.693,3.01,new Rotation2d(Math.PI/3)), false),
+		 * () -> DriveConstants.pathConstraints, drivetrainS, false, 1, .5,.05),
+		 * Set.of(drivetrainS))),
+		 * new Pair<String, CommandPair>("12", // Example Drive to the right top face of
+		 * the coral station
+		 * new CommandPair(
+		 * (Supplier<Command>) () -> PathFinder.goToPose(
+		 * GeomUtil.apply(new Pose2d(3.211,3.883,new Rotation2d(0)), false),
+		 * () -> DriveConstants.pathConstraints, drivetrainS, false, 1, .5,.05),
+		 * Set.of(drivetrainS)))
+		 */));
 		precalculateAllStartAndEndChoreos();
 
 		for (Pair<String, CommandPair> autoCommand : autoCommands) {
@@ -786,7 +808,7 @@ public class RobotContainer {
 					"AutoBuilder was not configured before attempting to build an auto chooser");
 		}
 		JukeboxUtil jukebox = new JukeboxUtil();
-		for (ParentDevice device : getOrchestraDevices()){
+		for (ParentDevice device : getOrchestraDevices()) {
 			jukebox.addTalon(device);
 		}
 		autoChooser = new LoggedDashboardChooser<>("Auto Routine", AutoBuilder.buildAutoChooser());
@@ -870,71 +892,118 @@ public class RobotContainer {
 
 	private void configureBindings() {
 		xButtonDrive
-				.and(aButtonTest.or(bButtonTest).or(xButtonTest).or(yButtonTest)
-						.negate())
 				.onTrue(new InstantCommand(() -> {
 					System.out.println("Zeroing Gyro");
 					drivetrainS.zeroHeading();
 					// drivetrainS.resetPose(GeomUtil.apply(startingPose.get(), false));
 				}));
-		selectButtonDrive.toggleOnTrue(new AimToObject(drivetrainS,"A42",1.25));
-		driverPOVUp.onChange(new InstantCommand(() -> {
-			DriveConstants.autoIntake = !DriveConstants.autoIntake;
+		leftBumperDrive.onChange(Commands.none()); // Deploy intake.
+		rightBumperDrive.onChange(new InstantCommand(() -> {
+			DriveConstants.autoIntake = !DriveConstants.autoIntake; // Assist with intake driving.
 		}));
-		//AITargets.values()[classId].name()
-		startButtonDrive
-				.onTrue(new InstantCommand(() -> DriveConstants.autoAvoidance = !DriveConstants.autoAvoidance));
-		// aButtonDrive.whileTrue(superStructure.setGoalCommand(Goal.ONE_METER));
-		yButtonDrive.whileTrue(Commands.defer(() -> new AimToAprilTag(() -> getSelectedAprilTagLayout(), drivetrainS,visionS,2,true),
-		Set.of()));
-		//bButtonDrive.whileTrue(Commands.defer(() -> new AimToRotation((Supplier<Rotation2d>) () -> startingPoseCache.getRotation(), drivetrainS, DriveConstants.pathConstraints),Set.of(drivetrainS)));
-		aButtonDrive.whileTrue(
-				Commands.defer(() -> PathFinder.goToPose(GeomUtil.apply(new Pose2d(8,3.5,Rotation2d.fromDegrees(-45)),false),() -> DriveConstants.pathConstraints, drivetrainS, false, 2, .5, .05),
-						Set.of(drivetrainS))); //3.5,4
-		bButtonDrive.whileTrue(PathFinder.goToAutoPilotPose(pathFinder,new APTarget(GeomUtil.apply(new Pose2d(8,3.5,Rotation2d.fromDegrees(-45)),false)), drivetrainS,() -> DriveConstants.pathConstraints, 1, .02)
-		);
-		/*
-		 * yButtonDrive.whileTrue(superStructure.updateMacroAlgaeGrab(()
-		 * ->false).andThen(Commands.defer(superStructure.scoreAt(xboxPosition, true,
-		 * new PathConstraints(pathFollowingMaxLinearSpeed.get(),
-		 * pathFollowingMaxAcceleration.get(), pathFollowingMaxAngularSpeed.get(),
-		 * pathFollowingMaxAngularAcceleration.get()),
-		 * pathFollowingToleranceBeforeCustom.get(),
-		 * pathFollowingToleranceDuringExactLineUp.get(),scoreMinimumSpeed.get()),
-		 * Set.of(drivetrainS) )));
-		 */
-		// These are examples of the go to line command
-		
-		leftStickDrive.onTrue(drivetrainS.orientModules(Swerve.getXOrientations()));
-		// rightStickDrive.whileTrue(new OrchestraC("rocky"));
-		// VisionConstants.Controls.autoIntake
-		// .whileTrue(new AimToAprilTag(drivetrainS, visionS, 18,
-		// ApproachDirection.FRONT, true));
+		aButtonDrive.toggleOnTrue(Commands.none()); // Prepare Climb
+		bButtonDrive.toggleOnTrue(Commands.none()); // Climb Sequence
+		leftStickButtonDrive.onTrue(drivetrainS.orientModules(Swerve.getXOrientations()));
+		leftStickButtonDrive.onFalse(Commands.runOnce(() -> drivetrainS.stopModules(), drivetrainS));
+		// Examples
+		// Example drive to pose: (avoids obstacles, can "use" driver starting speed
+		// vector)
+		yButtonDrive.whileTrue(PathFinder.goToAutoPilotPose(pathFinder,
+				new APTarget(GeomUtil.apply(new Pose2d(8, 3.5, Rotation2d.fromDegrees(-45)), false)), drivetrainS,
+				() -> DriveConstants.pathConstraints, 1, .02));
+	
+		// Turret Controls
+		Trigger povUp = driveController.pov(0);
+		Trigger povRight = driveController.pov(90);
+		Trigger povDown = driveController.pov(180);
+		Trigger povLeft = driveController.pov(270);
 
-		// Button Board Controls
+		Trigger manualTurretControl = povUp.or(povRight).or(povDown).or(povLeft);
+		Trigger inScoreArea = new Trigger(() -> drivetrainS.getPose().getX() < 5.0);
+
+		var aimHubBoth = Commands.run(() -> {
+			leftTurret.setGoal(Turret.Goal.AIMING);
+			rightTurret.setGoal(Turret.Goal.AIMING);
+		}, leftTurret, rightTurret);
+
+		var shootHubBoth = Commands.run(() -> {
+			leftTurret.setGoal(Turret.Goal.SHOOTING);
+			rightTurret.setGoal(Turret.Goal.SHOOTING);
+		}, leftTurret, rightTurret);
+
+		// “Opposing trenches (left to left)” = each turret shoots its own side
+		var shootSplitTrenches = Commands.run(() -> {
+			leftTurret.setPresetTarget(Turret.PresetTarget.LEFT_TRENCH_CENTER);
+			leftTurret.setGoal(Turret.Goal.SHOOTING_OTHER);
+
+			rightTurret.setPresetTarget(Turret.PresetTarget.RIGHT_TRENCH_CENTER);
+			rightTurret.setGoal(Turret.Goal.SHOOTING_OTHER);
+		}, leftTurret, rightTurret);
+
+		var shootBothLeftTrench = Commands.run(() -> {
+			leftTurret.setPresetTarget(Turret.PresetTarget.LEFT_TRENCH_CENTER);
+			leftTurret.setGoal(Turret.Goal.SHOOTING_OTHER);
+
+			rightTurret.setPresetTarget(Turret.PresetTarget.LEFT_TRENCH_CENTER);
+			rightTurret.setGoal(Turret.Goal.SHOOTING_OTHER);
+		}, leftTurret, rightTurret);
+
+		var shootBothRightTrench = Commands.run(() -> {
+			leftTurret.setPresetTarget(Turret.PresetTarget.RIGHT_TRENCH_CENTER);
+			leftTurret.setGoal(Turret.Goal.SHOOTING_OTHER);
+
+			rightTurret.setPresetTarget(Turret.PresetTarget.RIGHT_TRENCH_CENTER);
+			rightTurret.setGoal(Turret.Goal.SHOOTING_OTHER);
+		}, leftTurret, rightTurret);
+
+		var idleBoth = Commands.runOnce(() -> {
+			leftTurret.setGoal(Turret.Goal.IDLE);
+			rightTurret.setGoal(Turret.Goal.IDLE);
+		}, leftTurret, rightTurret);
+		// Up = BOTH shoot HUB
+		// Down = SPLIT trenches (left->left, right->right)
+		// Left = BOTH to LEFT trench
+		// Right = BOTH to RIGHT trench
+		povUp.whileTrue(shootHubBoth);
+		povDown.whileTrue(shootSplitTrenches);
+		povLeft.whileTrue(shootBothLeftTrench);
+		povRight.whileTrue(shootBothRightTrench);
+
+		// - If in score area AND not manually holding POV: aim both turrets at hub
+		inScoreArea.and(manualTurretControl.negate())
+				.whileTrue(aimHubBoth);
+
+		// - If NOT in score area AND not holding POV: idle both turrets
+		inScoreArea.negate().and(manualTurretControl.negate())
+				.onTrue(idleBoth);
 
 		if (Constants.currentMode == Mode.SIM) {
-			/*testDPadUp.onTrue(new InstantCommand(() -> {
-				try {
-					System.out.println("Creating Algae");
-					fieldSimulation.addGamePiece(new Reefscape2025FieldObjects.AlgaeBallOnManipulator(
-							Logger.getTimestamp(), 999,
-							fieldSimulation.getMainDriveSimulation().getPose3d()));
-				} catch (Exception e) {
-					System.out.println("Failed to Create Algae");
-				}
-			}));
-			testDPadDown.onTrue(new InstantCommand(() -> {
-				try {
-					System.out.println("Creating Coral");
-					fieldSimulation.addGamePiece(new Reefscape2025FieldObjects.ReefscapeCoralOnManipulator());
-					// superStructure.setCoralGamepieceState(CoralGamepieceState.HOPPER_STAGED);
-				} catch (Exception e) {
-					System.out.println("Failed to Create Algae");
-				}
-			}));*/
+			/*
+			 * testDPadUp.onTrue(new InstantCommand(() -> {
+			 * try {
+			 * System.out.println("Creating Algae");
+			 * fieldSimulation.addGamePiece(new
+			 * Reefscape2025FieldObjects.AlgaeBallOnManipulator(
+			 * Logger.getTimestamp(), 999,
+			 * fieldSimulation.getMainDriveSimulation().getPose3d()));
+			 * } catch (Exception e) {
+			 * System.out.println("Failed to Create Algae");
+			 * }
+			 * }));
+			 * testDPadDown.onTrue(new InstantCommand(() -> {
+			 * try {
+			 * System.out.println("Creating Coral");
+			 * fieldSimulation.addGamePiece(new
+			 * Reefscape2025FieldObjects.ReefscapeCoralOnManipulator());
+			 * // superStructure.setCoralGamepieceState(CoralGamepieceState.HOPPER_STAGED);
+			 * } catch (Exception e) {
+			 * System.out.println("Failed to Create Algae");
+			 * }
+			 * }));
+			 */
 		}
 	}
+
 	// Interface for command factories
 	public interface CommandFactory {
 		Command generate();
@@ -965,7 +1034,8 @@ public class RobotContainer {
 	 */
 	public static double[] getCurrentDraw() {
 
-		return new double[] { Math.min(drivetrainS.getCurrent(), 200), climber.getCurrent(),intake.getCurrent(),turret.getCurrent() };
+		return new double[] { Math.min(drivetrainS.getCurrent(), 200), climber.getCurrent(), intake.getCurrent(),
+				leftTurret.getCurrent(), rightTurret.getCurrent() };
 		// superStructure.getCurrent() };
 	}
 
@@ -989,9 +1059,11 @@ public class RobotContainer {
 				leds.getSystemCheckCommand(),
 				climber.getSystemCheckCommand(),
 				intake.getSystemCheckCommand(),
-				turret.getSystemCheckCommand());
+				leftTurret.getSystemCheckCommand(),
+				rightTurret.getSystemCheckCommand());
 
 	}
+
 	public static HashMap<String, Double> combineMaps(
 			List<HashMap<String, Double>> maps) {
 		HashMap<String, Double> combinedMap = new HashMap<>();
@@ -1004,7 +1076,8 @@ public class RobotContainer {
 
 	public static HashMap<String, Double> getAllTemps() {
 		// List of HashMaps
-		List<HashMap<String, Double>> maps = List.of(drivetrainS.getTemps(), visionS.getTemps(), climber.getTemps(), intake.getTemps(), turret.getTemps());
+		List<HashMap<String, Double>> maps = List.of(drivetrainS.getTemps(), visionS.getTemps(), climber.getTemps(),
+				intake.getTemps(), leftTurret.getTemps(), rightTurret.getTemps());
 		// Combine all maps
 		HashMap<String, Double> combinedMap = combineMaps(maps);
 		return combinedMap;
@@ -1021,7 +1094,8 @@ public class RobotContainer {
 				&& visionS.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& climber.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& intake.getSystemStatus() == SubsystemChecker.SystemStatus.OK
-				&& turret.getSystemStatus() == SubsystemChecker.SystemStatus.OK;
+				&& leftTurret.getSystemStatus() == SubsystemChecker.SystemStatus.OK
+				&& rightTurret.getSystemStatus() == SubsystemChecker.SystemStatus.OK;
 
 	}
 
@@ -1031,13 +1105,14 @@ public class RobotContainer {
 		devices.addAll(drivetrainS.getDriveOrchestraDevices());
 		devices.addAll(climber.getOrchestraDevices());
 		devices.addAll(intake.getOrchestraDevices());
-		devices.addAll(turret.getOrchestraDevices());
+		devices.addAll(leftTurret.getOrchestraDevices());
+		devices.addAll(rightTurret.getOrchestraDevices());
 		return devices;
 	}
 
 	public static SubsystemChecker[] getAllSubsystems() {
 
-		SubsystemChecker[] subsystems = new SubsystemChecker[5];
+		SubsystemChecker[] subsystems = new SubsystemChecker[6];
 		switch (DriveConstants.driveType) {
 			case SWERVE:
 				subsystems[0] = (Swerve) drivetrainS;
@@ -1052,7 +1127,8 @@ public class RobotContainer {
 		subsystems[1] = visionS;
 		subsystems[2] = climber;
 		subsystems[3] = intake;
-		subsystems[4] = turret;
+		subsystems[4] = leftTurret;
+		subsystems[5] = rightTurret;
 		return subsystems;
 	}
 

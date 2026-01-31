@@ -1,4 +1,4 @@
-package frc.robot.subsystems.Shooter.flywheel;
+package frc.robot.subsystems.Turret.flywheel;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,12 +37,12 @@ public class FlywheelIOKrakenFOC implements FlywheelIO {
     private final String name;
 
     public FlywheelIOKrakenFOC(
-            int ID, CANBus bus, String name, int currentLimitAmps, boolean brake, double reduction) {
+            CANBus bus, int ID, String name, int currentLimitAmps,double reduction) {
         this.reduction = reduction;
         this.name = name;
         this.talon = new TalonFX(ID, bus);
         TalonFXConfiguration config = new TalonFXConfiguration();
-        config.MotorOutput.NeutralMode = brake ? NeutralModeValue.Brake : NeutralModeValue.Coast;
+        config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
         config.CurrentLimits.SupplyCurrentLimit = currentLimitAmps;
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
         talon.getConfigurator().apply(config);
@@ -83,6 +83,13 @@ public class FlywheelIOKrakenFOC implements FlywheelIO {
     public void setCurrentLimit(double amps) {
         TalonFXConfiguration config = new TalonFXConfiguration();
         config.CurrentLimits.SupplyCurrentLimit = amps;
+        talon.getConfigurator().apply(config);
+    }
+    
+    @Override
+    public void setBrakeMode(boolean brake) {
+        TalonFXConfiguration config = new TalonFXConfiguration();
+        config.MotorOutput.NeutralMode = brake ? NeutralModeValue.Brake : NeutralModeValue.Coast;
         talon.getConfigurator().apply(config);
     }
 

@@ -1,27 +1,23 @@
-package frc.robot.subsystems.Shooter.azimuth;
+package frc.robot.subsystems.Turret.azimuth;
 
 import edu.wpi.first.math.geometry.Rotation2d;
+import frc.robot.utils.advancedMechs.AdvancedMechanismConstants;
 
 public class TurretMathematics {
     public final class TurretMath {
-        private static final int turretTeeth = 77;
-        private static final int idlerTeeth = 10;
-        public static final double motorRadPerTurretRad = 36.0/11.0 * 77.0/10.0; // motor rads to turret rads
-        private static final double enc1GearTeeth = 36;
-        private static final double enc2GearTeeth = 34;
 
-        private static final double enc1ToEnc2Ratio = enc1GearTeeth / enc2GearTeeth;
-        private static final double gearGreatestCommonDivisor = greatestCommonDivisor(enc1GearTeeth, enc2GearTeeth);
-        private static final int enc1CyclesForPeriod = (int) (enc2GearTeeth / gearGreatestCommonDivisor);
+        private static final double enc1ToEnc2Ratio = AdvancedMechanismConstants.Turret.enc1GearTeeth / AdvancedMechanismConstants.Turret.enc2GearTeeth;
+        private static final double gearGreatestCommonDivisor = greatestCommonDivisor(AdvancedMechanismConstants.Turret.enc1GearTeeth, AdvancedMechanismConstants.Turret.enc2GearTeeth);
+        private static final int enc1CyclesForPeriod = (int) (AdvancedMechanismConstants.Turret.enc2GearTeeth / gearGreatestCommonDivisor);
 
         private static final double twoPi = 2.0 * Math.PI;
-        private static final double turretRatio = (double) turretTeeth / idlerTeeth;
+        private static final double turretRatio = (double) AdvancedMechanismConstants.Turret.turretTeeth / AdvancedMechanismConstants.Turret.idlerTeeth;
 
         private static final double combinedRatio = turretRatio * enc1ToEnc2Ratio;
 
         // Repeat period of the encoder-pair solution (in turret radians)
         private static final double turretPeriod =
-                twoPi * (idlerTeeth / (double) turretTeeth) * enc1CyclesForPeriod;
+                twoPi * (AdvancedMechanismConstants.Turret.idlerTeeth / (double) AdvancedMechanismConstants.Turret.turretTeeth) * enc1CyclesForPeriod;
 
         private static final double enc1ModSpan = twoPi / turretRatio;
 
@@ -101,7 +97,7 @@ public class TurretMathematics {
             double desired = clamp(desiredTurretAngleRad, minTurretAngleRad, maxTurretAngleRad);
 
             // Continuous turret estimate from motor (requires motor was zeroed consistently)
-            double turretFromMotor = motorPositionRad / motorRadPerTurretRad;
+            double turretFromMotor = motorPositionRad / AdvancedMechanismConstants.Turret.motorRadPerTurretRad;
 
             // Pick the correct equivalent of turretRep that:
             //  - is closest to turretFromMotor
@@ -116,7 +112,7 @@ public class TurretMathematics {
 
             // Compute motor setpoint to move turretAbs -> desired
             double turretDelta = desired - turretAbs;
-            return motorPositionRad + turretDelta * motorRadPerTurretRad;
+            return motorPositionRad + turretDelta * AdvancedMechanismConstants.Turret.motorRadPerTurretRad;
         }
 
         /** Choose (angleRep + k*period) closest to reference, preferring values inside [min,max]. */

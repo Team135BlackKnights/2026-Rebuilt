@@ -1,4 +1,4 @@
-package frc.robot.subsystems.Shooter.azimuth;
+package frc.robot.subsystems.Turret.azimuth;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +32,7 @@ public interface AzimuthIO {
     default void stop() {}
     default void runVolts(double volts) {}
     default void setPID(double p, double i, double d, double ks, double kv, double ka, double velocityMax, double accelerationMax) {}
+    default void setBrakeMode(boolean brake) {}
     default void setCurrentLimit(double amps) {}
     default List<SelfChecking> getSelfCheckingHardware() {
         return new ArrayList<SelfChecking>();

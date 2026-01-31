@@ -1,14 +1,15 @@
-package frc.robot.subsystems.Shooter.flywheel;
+package frc.robot.subsystems.Turret.flywheel;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.system.plant.LinearSystemId;
 import edu.wpi.first.wpilibj.simulation.FlywheelSim;
+import frc.robot.utils.advancedMechs.AdvancedMechanismConstants;
 
 public class FlywheelIOSim implements FlywheelIO {
   private static final DCMotor motorModel = DCMotor.getKrakenX60(1);
   private static final FlywheelSim sim =
-      new FlywheelSim(LinearSystemId.createFlywheelSystem(motorModel, .025, 1), motorModel);
+      new FlywheelSim(LinearSystemId.createFlywheelSystem(motorModel, .025, AdvancedMechanismConstants.Turret.flywheelRatio), motorModel);
 
   private PIDController controller = new PIDController(0, 0, 0, 0.02);
   private double currentOutput = 0.0;

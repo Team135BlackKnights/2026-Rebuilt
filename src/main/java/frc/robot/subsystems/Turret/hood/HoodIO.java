@@ -1,4 +1,4 @@
-package frc.robot.subsystems.Shooter.hood;
+package frc.robot.subsystems.Turret.hood;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,6 +28,7 @@ public interface HoodIO {
         double ks,
         double kv) {}
     default void setCurrentLimit(double amps) {}
+    default void setBrakeMode(boolean brake) {}
 
     default List<SelfChecking> getSelfCheckingHardware() {
         return new ArrayList<SelfChecking>();

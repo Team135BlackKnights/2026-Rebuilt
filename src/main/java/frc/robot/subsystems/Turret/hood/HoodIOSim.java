@@ -1,14 +1,15 @@
-package frc.robot.subsystems.Shooter.hood;
+package frc.robot.subsystems.Turret.hood;
 
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.simulation.SingleJointedArmSim;
+import frc.robot.utils.advancedMechs.AdvancedMechanismConstants;
 
 public class HoodIOSim implements HoodIO {
     // Single jointed arm siom
-    private final SingleJointedArmSim sim = new SingleJointedArmSim(DCMotor.getMinion(1), 50.0 / 12.0 * 14 / 12.0, 0.05,
-            Units.inchesToMeters(7), Units.degreesToRadians(12), Units.degreesToRadians(50), false, Units.degreesToRadians(12));
+    private final SingleJointedArmSim sim = new SingleJointedArmSim(DCMotor.getMinion(1), AdvancedMechanismConstants.Turret.hoodEncoderToHoodArmRatio * AdvancedMechanismConstants.Turret.hoodMotorToHoodEncoderRatio, 0.05,
+            Units.inchesToMeters(7), AdvancedMechanismConstants.Turret.minHoodAngle, AdvancedMechanismConstants.Turret.maxHoodAngle, false, AdvancedMechanismConstants.Turret.minHoodAngle);
     private double appliedVoltage = 0.0;
     private final String name = "HoodIOSim";
     private PIDController controller = new PIDController(0, 0, 0, 0.02);

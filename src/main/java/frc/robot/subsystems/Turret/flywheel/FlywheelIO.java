@@ -1,4 +1,4 @@
-package frc.robot.subsystems.Shooter.flywheel;
+package frc.robot.subsystems.Turret.flywheel;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +28,7 @@ public interface FlywheelIO {
       double ks,
       double kv) {}
   default void updateInputs(FlywheelIOInputs inputs) {}
+  default void setBrakeMode(boolean brake) {}
   default void setCurrentLimit(double amps) {}
   default List<SelfChecking> getSelfCheckingHardware() {
     return new ArrayList<SelfChecking>();

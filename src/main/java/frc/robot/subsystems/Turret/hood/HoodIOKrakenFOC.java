@@ -1,4 +1,4 @@
-package frc.robot.subsystems.Shooter.hood;
+package frc.robot.subsystems.Turret.hood;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -9,9 +9,12 @@ import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.PositionTorqueCurrentFOC;
 import com.ctre.phoenix6.controls.VoltageOut;
+import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.FeedbackSensorSourceValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
@@ -22,9 +25,9 @@ import frc.robot.utils.selfCheck.drive.SelfCheckingTalonFX;
 
 public class HoodIOKrakenFOC implements HoodIO {
     private final TalonFX talon;
+    private final CANcoder encoder;
     private final TalonFXConfiguration config;
     private final String name;
-    private final double reduction;
     private final StatusSignal<Angle> position;
     private final StatusSignal<AngularVelocity> velocity;
     private final StatusSignal<Voltage> appliedVoltage;
@@ -34,14 +37,22 @@ public class HoodIOKrakenFOC implements HoodIO {
     private final VoltageOut voltageOut = new VoltageOut(0.0).withEnableFOC(true);
     private final PositionTorqueCurrentFOC positionControl = new PositionTorqueCurrentFOC(0.0);
 
-    public HoodIOKrakenFOC(int ID, CANBus bus, String name, int currentLimitAmps, boolean brake, double reduction) {
+    public HoodIOKrakenFOC(CANBus bus, int ID, int encoderID, String name, int currentLimitAmps, double rotorToEncoder, double encoderToArm, double minAngleRads, double maxAngleRads) {
         this.talon = new TalonFX(ID, bus);
+        this.encoder = new CANcoder(encoderID,bus);
         this.name = name;
-        this.reduction = reduction;
         config = new TalonFXConfiguration();
-        config.MotorOutput.NeutralMode = brake ? NeutralModeValue.Brake : NeutralModeValue.Coast;
+        config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+        config.Feedback.FeedbackRemoteSensorID = encoder.getDeviceID();
+        config.Feedback.FeedbackSensorSource = FeedbackSensorSourceValue.FusedCANcoder;
+        config.Feedback.RotorToSensorRatio = rotorToEncoder;    
+        config.Feedback.SensorToMechanismRatio = encoderToArm;
         config.CurrentLimits.SupplyCurrentLimit = currentLimitAmps;
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
+        config.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
+        config.SoftwareLimitSwitch.ReverseSoftLimitThreshold = Units.radiansToRotations(minAngleRads - Units.degreesToRadians(1.0)); //trying to go to 11 deg
+        config.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
+        config.SoftwareLimitSwitch.ForwardSoftLimitThreshold = Units.radiansToRotations(maxAngleRads + Units.degreesToRadians(1.0)); //trying to go to 39 deg 
         talon.getConfigurator().apply(config);
         position = talon.getPosition();
         velocity = talon.getVelocity();
@@ -59,8 +70,8 @@ public class HoodIOKrakenFOC implements HoodIO {
     public void updateInputs(HoodIOInputs inputs) {
         inputs.name = this.name;
         inputs.connected = talon.isConnected();
-        inputs.positionRads = position.getValueAsDouble() / reduction;
-        inputs.velocityRadsPerSec = velocity.getValueAsDouble() / reduction;
+        inputs.positionRads = Units.rotationsToRadians(position.getValueAsDouble());
+        inputs.velocityRadsPerSec = Units.rotationsToRadians(velocity.getValueAsDouble());
         inputs.appliedVoltage = appliedVoltage.getValueAsDouble();
         inputs.supplyCurrentAmps = supplyCurrent.getValueAsDouble();
         inputs.torqueCurrentAmps = torqueCurrent.getValueAsDouble();
@@ -68,7 +79,7 @@ public class HoodIOKrakenFOC implements HoodIO {
     }
     @Override
     public void setPosition(double positionRads) {
-        positionControl.withPosition(positionRads * reduction);
+        positionControl.withPosition(Units.radiansToRotations(positionRads));
         talon.setControl(positionControl);
     }
     @Override
@@ -84,6 +95,15 @@ public class HoodIOKrakenFOC implements HoodIO {
     public void setCurrentLimit(double amps) {
         TalonFXConfiguration config = new TalonFXConfiguration();
         config.CurrentLimits.SupplyCurrentLimit = amps;
+        talon.getConfigurator().apply(config);
+    }
+    @Override
+    public void setBrakeMode(boolean brake) {
+        if (brake) {
+            config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        } else {
+            config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+        }
         talon.getConfigurator().apply(config);
     }
     @Override

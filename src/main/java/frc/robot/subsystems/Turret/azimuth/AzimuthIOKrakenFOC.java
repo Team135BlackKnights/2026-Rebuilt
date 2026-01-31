@@ -1,4 +1,4 @@
-package frc.robot.subsystems.Shooter.azimuth;
+package frc.robot.subsystems.Turret.azimuth;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,7 +54,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         this.canCoderBig = new CANcoder(canCoderBigID, bus);
         this.canCoderSmall = new CANcoder(canCoderSmallID, bus);
         config = new TalonFXConfiguration();
-        config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
 
         config.CurrentLimits.SupplyCurrentLimit = currentLimitAmps;
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
@@ -142,7 +142,15 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
     public void runVolts(double volts) {
         talon.setControl(voltageOut.withOutput(volts));
     }
-
+    @Override
+    public void setBrakeMode(boolean brake) {
+        if (brake) {
+            config.MotorOutput.NeutralMode = NeutralModeValue.Brake;
+        } else {
+            config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+        }
+        talon.getConfigurator().apply(config);
+    }
     @Override
     public void setCurrentLimit(double amps) {
         config.CurrentLimits.SupplyCurrentLimit = amps;
