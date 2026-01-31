@@ -60,7 +60,7 @@ public class DrivetrainC extends Command {
 
 	public DrivetrainC(DrivetrainS drivetrainS) {
 		this.drivetrainS = drivetrainS;
-		controller = new TunedJoystick(RobotContainer.driveController);
+		controller = new TunedJoystick(RobotContainer.driveController.getHID());
 		controller.setDeadzone(deadzone.get());
 		addRequirements(drivetrainS);
 

@@ -245,6 +245,7 @@ public abstract class GamePieceInSimulation extends Body
 		return new Translation3d(current2dPosition.getX(), current2dPosition.getY(), height);
 	}
 
+	@SuppressWarnings("unused")
 	private Translation3d getVelocityMPSAtTime(double t) {
 		final double verticalVelocityMPS = initialVerticalSpeedMPS - GRAVITY * t;
 

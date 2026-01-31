@@ -931,7 +931,7 @@ public class RobotContainer {
 			rightTurret.setGoal(Turret.Goal.SHOOTING);
 		}, leftTurret, rightTurret);
 
-		// “Opposing trenches (left to left)” = each turret shoots its own side
+		// Opposing trenches (left to left) = each turret shoots its own side
 		var shootSplitTrenches = Commands.run(() -> {
 			leftTurret.setPresetTarget(Turret.PresetTarget.LEFT_TRENCH_CENTER);
 			leftTurret.setGoal(Turret.Goal.SHOOTING_OTHER);

@@ -14,7 +14,7 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import frc.robot.subsystems.SubsystemChecker;
 import frc.robot.utils.selfCheck.SelfChecking;
 
-
+//TODO! Make intake subsystem which uses an arm *without* an encoder.
 public abstract class Arm<G extends Arm.positionRadiansGoal> extends SubsystemChecker {
    
     public interface positionRadiansGoal {
