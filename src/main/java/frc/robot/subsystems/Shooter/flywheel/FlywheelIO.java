@@ -11,26 +11,25 @@ public interface FlywheelIO {
   @AutoLog
   public class FlywheelIOInputs {
     public boolean connected;
-    public double positionRads;
+    public String name;
+    public double accelRadsPerSec2;
     public double velocityRadsPerSec;
     public double appliedVoltage;
     public double supplyCurrentAmps;
     public double torqueCurrentAmps;
     public double tempCelsius;
   }
-
-  public class FlywheelIOOutputs {
-    public double velocityRadsPerSec = 0.0;
-    public double feedForward = 0.0;
-    public boolean coast = true;
-    public double kP = 0.0;
-    public double kD = 0.0;
-  }
-
+  default void setVelocity(double velocityRadsPerSec) {}
+  default void runVolts(double volts) {}
+  default void stop() {}
+  default void setPID(
+      double p,
+      double d,
+      double ks,
+      double kv) {}
   default void updateInputs(FlywheelIOInputs inputs) {}
   default void setCurrentLimit(double amps) {}
   default List<SelfChecking> getSelfCheckingHardware() {
     return new ArrayList<SelfChecking>();
   }
-  default void applyOutputs(FlywheelIOOutputs outputs) {}
 }

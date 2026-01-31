@@ -11,6 +11,14 @@ import frc.robot.commands.drive.WheelRadiusCharacterization;
 import frc.robot.commands.drive.vision.AimToAprilTag;
 import frc.robot.commands.drive.vision.AimToObject;
 import frc.robot.subsystems.SubsystemChecker;
+import frc.robot.subsystems.Shooter.Turret;
+import frc.robot.subsystems.Shooter.azimuth.AzimuthIO;
+import frc.robot.subsystems.Shooter.azimuth.AzimuthIOKrakenFOC;
+import frc.robot.subsystems.Shooter.azimuth.AzimuthIOSim;
+import frc.robot.subsystems.Shooter.flywheel.FlywheelIO;
+import frc.robot.subsystems.Shooter.flywheel.FlywheelIOSim;
+import frc.robot.subsystems.Shooter.hood.HoodIO;
+import frc.robot.subsystems.Shooter.hood.HoodIOSim;
 import frc.robot.subsystems.drive.DrivetrainS;
 import frc.robot.subsystems.drive.FastSwerve.Swerve;
 import frc.robot.subsystems.drive.Mecanum.Mecanum;
@@ -29,7 +37,6 @@ import frc.robot.subsystems.drive.Tank.TankIOSim;
 import frc.robot.subsystems.drive.Tank.TankIOSparkBase;
 import frc.robot.subsystems.drive.Tank.TankIOTalonFX;
 import frc.robot.subsystems.drive.Tank.Tank;
-import frc.robot.utils.CompetitionFieldUtils.FieldConstants;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.AIRobotInSimulation;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.MecanumDriveSimulation;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.TankDriveSimulation;
@@ -37,11 +44,6 @@ import frc.robot.utils.CompetitionFieldUtils.Simulation.drive.GyroSimulation;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.drive.Swerve.SwerveDriveSimulation;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.drive.Swerve.SwerveModuleSimulation;
 import frc.robot.utils.drive.DriveConstants;
-
-import frc.robot.subsystems.Shooter.turret.Turret;
-import frc.robot.subsystems.Shooter.turret.TurretIO;
-import frc.robot.subsystems.Shooter.turret.turretSwivelLeft.TurretSwivelIOKrakenFOC;
-
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionIO;
 import frc.robot.subsystems.vision.VisionIOPhotonVisionSim;
@@ -72,7 +74,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Supplier;
 
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
@@ -88,7 +89,6 @@ import com.therekrab.autopilot.APTarget;
 import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
 import edu.wpi.first.math.kinematics.MecanumDriveKinematics;
@@ -106,7 +106,6 @@ import edu.wpi.first.wpilibj2.command.InstantCommand;
 import edu.wpi.first.wpilibj2.command.button.JoystickButton;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.TuningConstants;
-import frc.robot.commands.drive.AimToRotation;
 
 
 import frc.robot.subsystems.drive.FastSwerve.Swerve.ModuleLimits;
@@ -527,8 +526,9 @@ public class RobotContainer {
 								"Unknown implementation type for intake, please check SimpleMechanismConstants.java!");
 				}
 
-				// Turret Setup 
-				turret = new Turret(new TurretSwivelIOKrakenFOC());
+				// Turret Setup TODO
+				//turret = new Turret(new TurretSwivelIOKrakenFOC());
+				//turret = new Turret(new AzimuthIOKrakenFOC(Robot.rioCanBus, currentTest, currentTest, currentUpdate, closestChoreoPath, currentTest, theta, theta))
 				autoCommands.addAll(Arrays.asList(
 
 						// new Pair<String, Command>("AimAtAmp",new AimToPose(drivetrainS, new
@@ -655,8 +655,7 @@ public class RobotContainer {
 				System.out.println("SIM SETUP DONE!");
 				climber = new Climber(new ClimberIOSim());
 				intake = new Intake(new IntakeIOSim());
-				turret = new Turret(new TurretIO() {
-				});
+				turret = new Turret(new AzimuthIOSim(-Math.PI,Math.PI), new FlywheelIOSim(), new HoodIOSim());
 				/*autoCommands.addAll(Arrays.asList(
 						 new Pair<String, Command>("AimAtAmp",new AimToPose(drivetrainS, new
 						 Pose2d(1.9,7.7, new Rotation2d(Units.degreesToRadians(0))))),
@@ -702,7 +701,7 @@ public class RobotContainer {
 				});
 				climber = new Climber(new ClimberIO(){});
 				intake = new Intake(new IntakeIO(){});
-				turret = new Turret(new TurretIO() {});
+				turret = new Turret(new AzimuthIO() {}, new FlywheelIO() {}, new HoodIO() {});
 
 		}
 
@@ -993,7 +992,6 @@ public class RobotContainer {
 				turret.getSystemCheckCommand());
 
 	}
-	//TODO: FIX FOR OUR SUBSYSTEMS
 	public static HashMap<String, Double> combineMaps(
 			List<HashMap<String, Double>> maps) {
 		HashMap<String, Double> combinedMap = new HashMap<>();
@@ -1039,7 +1037,7 @@ public class RobotContainer {
 
 	public static SubsystemChecker[] getAllSubsystems() {
 
-		SubsystemChecker[] subsystems = new SubsystemChecker[4];
+		SubsystemChecker[] subsystems = new SubsystemChecker[5];
 		switch (DriveConstants.driveType) {
 			case SWERVE:
 				subsystems[0] = (Swerve) drivetrainS;

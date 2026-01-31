@@ -13,8 +13,6 @@ import com.ctre.phoenix6.hardware.TalonFX;
 
 import frc.robot.subsystems.SubsystemChecker;
 import frc.robot.utils.selfCheck.SelfChecking;
-import frc.robot.subsystems.arm.ArmIO;
-import frc.robot.subsystems.arm.ArmIOInputsAutoLogged;
 
 
 public abstract class Arm<G extends Arm.positionRadiansGoal> extends SubsystemChecker {
