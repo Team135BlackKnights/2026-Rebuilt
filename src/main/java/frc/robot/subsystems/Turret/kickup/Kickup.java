@@ -1,4 +1,4 @@
-package frc.robot.subsystems.simpleMechanisms.roller.ExampleIntake;
+package frc.robot.subsystems.Turret.kickup;
 
 import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
@@ -7,22 +7,18 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.utils.LoggableTunedNumber;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import frc.robot.Constants;
 import frc.robot.subsystems.simpleMechanisms.roller.GenericRollerSystem;
 
 @Getter
 @Setter
-public class Intake extends GenericRollerSystem<Intake.Goal> {
-    @RequiredArgsConstructor
+public class Kickup extends GenericRollerSystem<Kickup.Goal> {
     @Getter
     public enum Goal implements GenericRollerSystem.RollGoalSupplier {
-        IDLING(() -> 0),//only really for use in testing
-        INTAKING(
-                new LoggableTunedNumber("IntakingVoltage", 12.0, Constants.TuningConstants.isTuningIntake)),
-        VOMITING(new LoggableTunedNumber("VomitingVoltage",-12.0,Constants.TuningConstants.isTuningIntake));
-                
+        STOPPED(() -> 0),
+        SHOOTING(new LoggableTunedNumber("ShootingVoltage", 5.0, Constants.TuningConstants.isTuningShooter));
+        
         private final DoubleSupplier valueSupplier;
         private final BooleanSupplier isVoltageSupplier;
 
@@ -42,10 +38,10 @@ public class Intake extends GenericRollerSystem<Intake.Goal> {
         }
     }
 
-    private Goal goal = Goal.INTAKING; //should always intake or vomit
+    private Goal goal = Goal.STOPPED;
 
-    public Intake(IntakeIO io) {
-        super("Intake", io);
+    public Kickup(KickupIO io) {
+        super("Kickup", io);
     }
 
     public Goal getGoal() {
@@ -58,16 +54,16 @@ public class Intake extends GenericRollerSystem<Intake.Goal> {
      */
     protected Command systemCheckCommand() {
         return Commands.sequence(
-                Commands.runOnce(() -> goal = Goal.IDLING),
-                Commands.run(() -> goal = Goal.INTAKING).withTimeout(1),
+                Commands.runOnce(() -> goal = Goal.STOPPED),
+                Commands.run(() -> goal = Goal.SHOOTING).withTimeout(1),
                 Commands.runOnce(() -> {
-                    if (Math.abs(getAppliedVolts() - Goal.INTAKING.valueSupplier.getAsDouble()) < .5) {
+                    if (Math.abs(getAppliedVolts() - Goal.SHOOTING.valueSupplier.getAsDouble()) < .5) {
                         addFault(
-                                "[System Check] Ejecting voltage not reached for subsystem:"
+                                "[System Check] shooting voltage not reached for subsystem:"
                                         + getName(),
                                 false, true);
                     }
                 }),
-                Commands.runOnce(() -> goal = Goal.IDLING));
+                Commands.runOnce(() -> goal = Goal.STOPPED));
     }
 }

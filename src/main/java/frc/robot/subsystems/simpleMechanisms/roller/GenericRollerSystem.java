@@ -96,6 +96,10 @@ public abstract class GenericRollerSystem<G extends GenericRollerSystem.RollGoal
     return inputs.torqueCurrentAmps;
   }
 
+  
+  public boolean isConnected(){
+    return inputs.connected;
+  } 
   @Override
   public void setCurrentLimit(int amps) {
     io.setCurrentLimit(amps);

@@ -9,56 +9,72 @@ import org.littletonrobotics.junction.Logger;
 import com.ctre.phoenix6.hardware.ParentDevice;
 import com.ctre.phoenix6.hardware.TalonFX;
 
-import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
+import frc.robot.Constants.TuningConstants;
 import frc.robot.subsystems.SubsystemChecker;
+import frc.robot.subsystems.intake.Indexer.Indexer;
+import frc.robot.subsystems.intake.arm.ArmIO;
+import frc.robot.subsystems.intake.arm.ArmIOInputsAutoLogged;
 import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.selfCheck.SelfChecking;
+import lombok.Getter;
 
 public class Intake extends SubsystemChecker {
 
-    // Tuning 
-    private static final LoggableTunedNumber arm_kP = new LoggableTunedNumber("Intake/Arm/kP", 5.0);
-    private static final LoggableTunedNumber arm_kI = new LoggableTunedNumber("Intake/Arm/kI", 0.0);
-    private static final LoggableTunedNumber arm_kD = new LoggableTunedNumber("Intake/Arm/kD", 0.1);
-    private static final LoggableTunedNumber arm_kS = new LoggableTunedNumber("Intake/Arm/kS", 0.0);
-    private static final LoggableTunedNumber arm_kV = new LoggableTunedNumber("Intake/Arm/kV", 0.0);
-    
+    // Tuning
+    private static final LoggableTunedNumber arm_kP = new LoggableTunedNumber("Intake/Arm/kP", 5.0,
+            TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber arm_kI = new LoggableTunedNumber("Intake/Arm/kI", 0.0,
+            TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber arm_kD = new LoggableTunedNumber("Intake/Arm/kD", 0.1,
+            TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber arm_kS = new LoggableTunedNumber("Intake/Arm/kS", 0.0,
+            TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber arm_kV = new LoggableTunedNumber("Intake/Arm/kV", 0.0,
+            TuningConstants.isTuningIntake);
+
     // Setpoints
-    private static final LoggableTunedNumber angle_stow = new LoggableTunedNumber("Intake/Setpoints/StowRads", Math.PI / 2.0);
-    private static final LoggableTunedNumber angle_ground = new LoggableTunedNumber("Intake/Setpoints/GroundRads", 0.0);
-    private static final LoggableTunedNumber angle_score = new LoggableTunedNumber("Intake/Setpoints/ScoreRads", Math.PI / 4.0);
-    private static final LoggableTunedNumber roller_volts_intake = new LoggableTunedNumber("Intake/Rollers/IntakeVolts", 8.0);
-    private static final LoggableTunedNumber roller_volts_hold = new LoggableTunedNumber("Intake/Rollers/HoldVolts", 0.5);
-    private static final LoggableTunedNumber roller_volts_eject = new LoggableTunedNumber("Intake/Rollers/EjectVolts", -10.0);
+    private static final LoggableTunedNumber angle_stow = new LoggableTunedNumber("Intake/Setpoints/StowRads",
+            Math.PI / 2.0, TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber angle_ground = new LoggableTunedNumber("Intake/Setpoints/GroundRads", 0.0,
+            TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber time_jackhammer = new LoggableTunedNumber("Intake/JackhammerTimeSecs",
+            .25, TuningConstants.isTuningIntake);
 
-    //Tolerance
-    private static final LoggableTunedNumber arm_tolerance = new LoggableTunedNumber("Intake/ToleranceRads", 0.05);
+    // Tolerance
+    private static final LoggableTunedNumber arm_tolerance = new LoggableTunedNumber("Intake/ToleranceRads", 0.05,
+            TuningConstants.isTuningIntake);
 
-    // IO  
+    // IO
     private final ArmIO armIO;
-    private final RollerIO rollerIO;
+    private final Indexer indexer;
 
-    //Inputs
+    // Inputs
     private final ArmIOInputsAutoLogged armInputs = new ArmIOInputsAutoLogged();
-    private final RollerIOInputsAutoLogged rollerInputs = new RollerIOInputsAutoLogged();
+    protected Goal lastGoal;
+    private final Timer stateTimer = new Timer();
 
-    // State Machin
+    // State Machine
     public enum Goal {
-        STOW, // Arm up, rollers slow/stop
+        START, // Initial state
+        STOW, // Arm up, rollers slow
         INTAKE_GROUND, // Arm down, rollers intake
-        SCORE // Arm to score angle, rollers eject
+        INTAKE_OUTER_IDLE, // Arm down, rollers idling
+        JACKHAMMERING_OUT, // Rapidly pulse rollers to dislodge jams (with arm down)
+        JACKHAMMERING_IN // Rapidly pulse rollers to dislodge jams (with arm up)
     }
 
-    private Goal goal = Goal.STOW;
+    private Goal goal = Goal.START;
     private double currentArmSetpoint = 0.0;
     private double currentRollerVolts = 0.0;
-
-    public Intake(ArmIO armIO, RollerIO rollerIO) {
+    @Getter
+    private boolean intakeDeployed = false;
+    public Intake(ArmIO armIO, Indexer indexer) {
         this.armIO = armIO;
-        this.rollerIO = rollerIO;
-        
+        this.indexer = indexer;
+
         // Apply initial PID
         updateTunablePIDs();
     }
@@ -67,9 +83,8 @@ public class Intake extends SubsystemChecker {
     public void periodic() {
         // 1. Update Inputs
         armIO.updateInputs(armInputs);
-        rollerIO.updateInputs(rollerInputs);
         Logger.processInputs("Intake/Arm", armInputs);
-        Logger.processInputs("Intake/Rollers", rollerInputs);
+        indexer.periodic();
 
         // 2. Check for Tuning Updates
         updateTunablePIDs();
@@ -78,36 +93,54 @@ public class Intake extends SubsystemChecker {
         if (DriverStation.isDisabled()) {
             goal = Goal.STOW; // Reset state on disable
             armIO.stop();
-            rollerIO.stop();
+            indexer.setGoal(Indexer.Goal.STOPPED);
             return;
         }
 
+        if (getGoal() != lastGoal) {
+            stateTimer.reset();
+            lastGoal = getGoal();
+        }
         // 4. State Machine Logic
         switch (goal) {
+            case START -> {
+                currentArmSetpoint = angle_stow.get();
+                indexer.setGoal(Indexer.Goal.STOPPED);
+            }
             case STOW -> {
                 currentArmSetpoint = angle_stow.get();
-                // Apply a small holding voltage if we have game piece, or 0 if empty (logic simplified here)
-                currentRollerVolts = roller_volts_hold.get(); 
+                indexer.setGoal(Indexer.Goal.IDLING);
             }
             case INTAKE_GROUND -> {
                 currentArmSetpoint = angle_ground.get();
-                currentRollerVolts = roller_volts_intake.get();
+                indexer.setGoal(Indexer.Goal.INTAKING);
             }
-            case SCORE -> {
-                currentArmSetpoint = angle_score.get();
-                // Only eject if we are close to the angle? Or just eject?
-                // Typically you wait for the arm to be ready:
-                if (Math.abs(armInputs.positionRads - currentArmSetpoint) < arm_tolerance.get()) {
-                    currentRollerVolts = roller_volts_eject.get();
+            case INTAKE_OUTER_IDLE -> {
+                currentArmSetpoint = angle_ground.get();
+                indexer.setGoal(Indexer.Goal.IDLING);
+            }
+            case JACKHAMMERING_IN -> {
+                currentArmSetpoint = angle_stow.get();
+                //if the timer is in the first half of the jackhammer time, set to jackhammer in, else out
+                double t = Timer.getFPGATimestamp() % (time_jackhammer.get() * 2);
+                if (t < time_jackhammer.get()) {
+                    indexer.setGoal(Indexer.Goal.JACKHAMMER_IN);
                 } else {
-                    currentRollerVolts = 0.0; // Wait to arrive
+                    indexer.setGoal(Indexer.Goal.JACKHAMMER_OUT);
                 }
             }
-        }
+            case JACKHAMMERING_OUT -> {
+                currentArmSetpoint = angle_ground.get();
+                double t = Timer.getFPGATimestamp() % (time_jackhammer.get() * 2);
+                if (t < time_jackhammer.get()) {
+                    indexer.setGoal(Indexer.Goal.JACKHAMMER_OUT);
+                } else {
+                    indexer.setGoal(Indexer.Goal.JACKHAMMER_IN);
+                }
+            }
 
-        // 5. Apply Outputs
+        }
         armIO.setPosition(currentArmSetpoint);
-        rollerIO.setVoltage(currentRollerVolts);
 
         // 6. Logging
         Logger.recordOutput("Intake/Goal", goal);
@@ -118,6 +151,15 @@ public class Intake extends SubsystemChecker {
 
     public void setGoal(Goal goal) {
         this.goal = goal;
+        if (goal == Goal.INTAKE_GROUND || goal == Goal.INTAKE_OUTER_IDLE) {
+            intakeDeployed = true;
+        } else if (goal == Goal.STOW) {
+            intakeDeployed = false;
+        }
+    }
+
+    public Goal getGoal() {
+        return goal;
     }
 
     public boolean isAtSetpoint() {
@@ -137,7 +179,7 @@ public class Intake extends SubsystemChecker {
         List<ParentDevice> orchestra = new ArrayList<>();
         List<SelfChecking> hardware = new ArrayList<>();
         hardware.addAll(armIO.getSelfCheckingHardware());
-        hardware.addAll(rollerIO.getSelfCheckingHardware());
+        hardware.addAll(indexer.getHardware());
 
         for (SelfChecking device : hardware) {
             if (device.getHardware() instanceof TalonFX) {
@@ -149,14 +191,14 @@ public class Intake extends SubsystemChecker {
 
     @Override
     public double getCurrent() {
-        return armInputs.supplyCurrentAmps + rollerInputs.supplyCurrentAmps;
+        return armInputs.supplyCurrentAmps + indexer.getCurrent();
     }
 
     @Override
     public HashMap<String, Double> getTemps() {
         HashMap<String, Double> temps = new HashMap<>();
         temps.put("Arm", armInputs.tempCelsius);
-        temps.put("Rollers", rollerInputs.tempCelsius);
+        temps.put("Rollers", indexer.getTemps().get("Indexer"));
         return temps;
     }
 
@@ -164,16 +206,18 @@ public class Intake extends SubsystemChecker {
     public void setCurrentLimit(int amps) {
         // Split the limit or apply to both? Usually apply individually.
         armIO.setCurrentLimit(amps);
-        rollerIO.setCurrentLimit(amps);
+        indexer.setCurrentLimit(amps);
     }
 
     @Override
     protected Command systemCheckCommand() {
         return runOnce(() -> {
             // Simple check logic
-             if (armInputs.connected && rollerInputs.connected) {
-                 // Good
-             }
+            if (armInputs.connected && indexer.isConnected()) {
+                Logger.recordOutput("Intake" + "/SystemCheck/AzimuthConnected", "GOOD");
+            } else {
+                Logger.recordOutput("Intake" + "/SystemCheck/AzimuthConnected", "BAD");
+            }
         }).withName("FuelIntakeSystemCheck");
     }
 }

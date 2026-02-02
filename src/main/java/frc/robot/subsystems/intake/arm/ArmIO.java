@@ -1,5 +1,4 @@
-package frc.robot.subsystems.arm;
-
+package frc.robot.subsystems.intake.arm;
 import java.util.ArrayList;
 import java.util.List;
 import org.littletonrobotics.junction.AutoLog;
