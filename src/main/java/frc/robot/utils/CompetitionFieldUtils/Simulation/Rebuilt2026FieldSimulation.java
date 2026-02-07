@@ -57,7 +57,7 @@ public class Rebuilt2026FieldSimulation extends CompetitionFieldSimulation {
     protected static Translation2d blueDepotBottomRightCorner = new Translation2d(16.0274, 1.646936);
 	public Rebuilt2026FieldSimulation(AbstractDriveTrainSimulation robot) {
 		// Initialize faces
-		super(robot, new RebuiltFieldObstaclesMap(true));
+		super(robot, new RebuiltFieldObstaclesMap(false));
 		blueHub = new RebuiltHub(this, true);
         super.addCustomSimulation(blueHub);
 

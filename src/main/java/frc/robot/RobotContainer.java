@@ -117,7 +117,6 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
-import edu.wpi.first.wpilibj2.command.PrintCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.TuningConstants;
@@ -935,8 +934,9 @@ public class RobotContainer {
 																										// across gets
 																										// to below 4.4
 		Trigger inOpponentArea = new Trigger(() -> GeomUtil.applyX(drivetrainS.getPose().getX()) > 12.0);
-		Trigger beyondLeftTrench = new Trigger(() -> drivetrainS.getPose().getY() > 5.5);
-		Trigger beforeRightTrench = new Trigger(() -> drivetrainS.getPose().getY() < 2.3);
+		Trigger beyondLeftTrench = new Trigger(() -> GeomUtil.applyY(drivetrainS.getPose().getY()) > 5.5);
+		Trigger beyondCenter = new Trigger(() -> GeomUtil.applyY(drivetrainS.getPose().getY()) > 4);
+		Trigger beforeRightTrench = new Trigger(() -> GeomUtil.applyY(drivetrainS.getPose().getY()) < 2.3);
 		var targetHubBoth = Commands.runOnce(() -> {
 			leftTurret.setPresetTarget(Turret.PresetTarget.HUB_TOP_CENTER);
 			rightTurret.setPresetTarget(Turret.PresetTarget.HUB_TOP_CENTER);
@@ -1048,25 +1048,29 @@ public class RobotContainer {
 		AtomicBoolean committedToMadMax  = new AtomicBoolean(false);
 		Trigger trenchesAllowed = new Trigger(() -> !committedToMadMax.get());
 
-		leftTriggerDriveFull.and(beforeRightTrench).and(trenchesAllowed).whileTrue(PathFinder.goToAutoPilotPoseNoHardLineup(pathFinder,
-						new APTarget(new Pose2d(4.605, .639, new Rotation2d())).withVelocity(3)
+		leftTriggerDriveFull.and((beforeRightTrench.and(trenchesAllowed)).or(beyondCenter.negate().and(inScoreArea).and(trenchesAllowed))).whileTrue(Commands.defer(() -> 
+						PathFinder.goToAutoPilotPoseNoHardLineup(pathFinder,
+						new APTarget(GeomUtil.apply(new Pose2d(4.609, .639, new Rotation2d()),false)).withVelocity(4)
 								.withEntryAngle(new Rotation2d(Math.PI / 2)),
-						drivetrainS, () -> DriveConstants.pathConstraints, Units.inchesToMeters(3)));
-		leftTriggerDriveFull.and(beyondLeftTrench).and(trenchesAllowed)
-				.whileTrue(PathFinder.goToAutoPilotPoseNoHardLineup(pathFinder,
-						new APTarget(new Pose2d(4.605, 7.404, new Rotation2d())).withVelocity(3)
+						drivetrainS, () -> DriveConstants.pathConstraints, Units.inchesToMeters(6)),Set.of(drivetrainS)));
+		leftTriggerDriveFull.and(((beyondLeftTrench).and(trenchesAllowed)).or(beyondCenter.and(inScoreArea).and(trenchesAllowed)))
+				.whileTrue(Commands.defer(() -> 
+						PathFinder.goToAutoPilotPoseNoHardLineup(pathFinder,
+						new APTarget(GeomUtil.apply(new Pose2d(4.605, 7.404, new Rotation2d()),false)).withVelocity(4)
 								.withEntryAngle(new Rotation2d(Math.PI / 2)),
-						drivetrainS, () -> DriveConstants.pathConstraints, Units.inchesToMeters(3)));
+						drivetrainS, () -> DriveConstants.pathConstraints, Units.inchesToMeters(6)),Set.of(drivetrainS)));
 		leftTriggerDriveFull
 				.and((beforeRightTrench.negate().and(beyondLeftTrench.negate())).or(trenchesAllowed.negate()))
+				.and(inScoreArea.negate())
 				.whileTrue(
 						Commands.runOnce(() -> committedToMadMax.set(true)).andThen(Commands.defer(() -> 
 						PathFinder.goToAutoPilotPose(pathFinder,
-								new APTarget(GeomUtil.apply(new Pose2d(3, drivetrainS.getPose().getY(),
-										drivetrainS.getPose().getRotation()), false)),
+								new APTarget(GeomUtil.apply(new Pose2d(3.6, drivetrainS.getPose().getY(),
+										new Rotation2d()),false)).withVelocity(4).withEntryAngle(new Rotation2d(Math.PI / 2)),
 								drivetrainS,
-								() -> DriveConstants.pathConstraints, 1, .02),Set.of(drivetrainS)))
-				.finallyDo(() -> committedToMadMax.set(false)));
+								() -> DriveConstants.pathConstraints, 1, Units.inchesToMeters(16)),Set.of(drivetrainS)))
+				);
+		leftTriggerDriveFull.onFalse(Commands.runOnce(() -> committedToMadMax.set(false)));
 		// Turret Controls
 		rightTriggerDriveFull.and(leftBumperDrive.negate()).whileTrue(shootTurrets);
 		rightTriggerDriveFull.and(leftBumperDrive).whileTrue(shootTurretsWhileIntaking);
