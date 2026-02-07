@@ -19,9 +19,10 @@ public class Indexer extends GenericRollerSystem<Indexer.Goal> {
     @Getter
     public enum Goal implements GenericRollerSystem.RollGoalSupplier {
         STOPPED(() -> 0),
-        IDLING(new LoggableTunedNumber("IdlingVoltage", 2.0, Constants.TuningConstants.isTuningIntake)),
+        IDLING(new LoggableTunedNumber("IdlingVoltage", 4.0, Constants.TuningConstants.isTuningIntake)),
         INTAKING(
-                new LoggableTunedNumber("IntakingVoltage", 6.0, Constants.TuningConstants.isTuningIntake)),
+                new LoggableTunedNumber("IntakingVoltage", 8.0, Constants.TuningConstants.isTuningIntake)),
+        SHOOTING(new LoggableTunedNumber("ShootingVoltage", 10.0, Constants.TuningConstants.isTuningIntake)),
         VOMITING(new LoggableTunedNumber("VomitingVoltage",-6.0,Constants.TuningConstants.isTuningIntake)),
         JACKHAMMER_IN(new LoggableTunedNumber("JackhammerInAmps", 20.0, Constants.TuningConstants.isTuningIntake),
                 () -> false),

@@ -86,6 +86,10 @@ public class ShotCalculator {
       .putHoodAngle(2.00, Rotation2d.fromDegrees(18.0))
       .putFlywheelSpeed(2.00, 140.0)
       .putTimeOfFlight(2.00, 0.75);
+  public static final ShotProfile NEUTRAL_ZONE_PROFILE = new ShotProfile("NeutralZone")
+      .putHoodAngle(3.50, Rotation2d.fromDegrees(30.0))
+      .putFlywheelSpeed(3.50, 120.0)
+      .putTimeOfFlight(3.50, 1.10);
 
   private final LinearFilter turretAngleFilter =
       LinearFilter.movingAverage((int) (0.1 / .02));

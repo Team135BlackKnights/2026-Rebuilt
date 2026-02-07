@@ -153,20 +153,20 @@ public abstract class GenericSlamElevator<G extends GenericSlamElevator.SlamElev
         // Update coast mode
         setBrakeMode(!coastModeSupplier.getAsBoolean());
 
-        Logger.recordOutput("Superstructure/" + name + "/Goal", getGoal().toString());
+        Logger.recordOutput("SuperStructure/" + name + "/Goal", getGoal().toString());
     }
 
-    @AutoLogOutput(key = "Superstructure/{name}/AtGoal")
+    @AutoLogOutput(key = "SuperStructure/{name}/AtGoal")
     public boolean atGoal() {
         return atGoal;
     }
 
-    @AutoLogOutput(key = "Superstructure/{name}/Extended")
+    @AutoLogOutput(key = "SuperStructure/{name}/Extended")
     public boolean extended() {
         return getGoal().getState() == SlamElevatorState.EXTENDING && atGoal;
     }
 
-    @AutoLogOutput(key = "Superstructure/{name}/Retracted")
+    @AutoLogOutput(key = "SuperStructure/{name}/Retracted")
     public boolean retracted() {
         return getGoal().getState() == SlamElevatorState.RETRACTING && atGoal;
     }

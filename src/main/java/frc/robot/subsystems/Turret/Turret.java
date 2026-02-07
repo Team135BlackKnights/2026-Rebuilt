@@ -10,16 +10,18 @@ import com.ctre.phoenix6.hardware.ParentDevice;
 import com.ctre.phoenix6.hardware.TalonFX;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
+import frc.robot.RobotContainer;
 import frc.robot.subsystems.SubsystemChecker;
 import frc.robot.subsystems.Turret.azimuth.AzimuthIOInputsAutoLogged;
 import frc.robot.subsystems.Turret.flywheel.FlywheelIOInputsAutoLogged;
 import frc.robot.subsystems.Turret.hood.HoodIOInputsAutoLogged;
-import frc.robot.subsystems.Turret.kickup.Kickup;
 import frc.robot.subsystems.Turret.ShotCalculator.ShotProfile;
 import frc.robot.subsystems.Turret.azimuth.AzimuthIO;
 import frc.robot.subsystems.Turret.flywheel.FlywheelIO;
@@ -82,7 +84,6 @@ public class Turret extends SubsystemChecker {
   private final AzimuthIO azimuthIO;
   private final FlywheelIO flywheelIO;
   private final HoodIO hoodIO;
-  private final Kickup kickup;
   private final String name;
 
   private final Transform2d robotToTurret;
@@ -90,12 +91,6 @@ public class Turret extends SubsystemChecker {
   private final AzimuthIOInputsAutoLogged azimuthInputs = new AzimuthIOInputsAutoLogged();
   private final FlywheelIOInputsAutoLogged flywheelInputs = new FlywheelIOInputsAutoLogged();
   private final HoodIOInputsAutoLogged hoodInputs = new HoodIOInputsAutoLogged();
-
-  public enum TurretGoalType {
-    AIMING,
-    SHOOTING,
-    IDLE
-  }
 
   public enum Goal {
     AIMING,          // hub top center + pre-spin
@@ -106,28 +101,27 @@ public class Turret extends SubsystemChecker {
   public enum PresetTarget {
     HUB_TOP_CENTER,
     LEFT_TRENCH_CENTER,
-    RIGHT_TRENCH_CENTER
+    RIGHT_TRENCH_CENTER,
+    OVER_NEUTRAL_ZONE,
   }
 
   private Goal goal = Goal.IDLE;
   private Goal lastGoal = Goal.IDLE;
-  private TurretGoalType currentGoalType = TurretGoalType.IDLE;
 
-  private PresetTarget activeOtherPreset = PresetTarget.LEFT_TRENCH_CENTER;
+  private PresetTarget activePreset = PresetTarget.HUB_TOP_CENTER;
 
   private final ShotCalculator shotCalculator = ShotCalculator.getInstance();
-
+  private ShotProfile profile = ShotCalculator.HUB_PROFILE;
   private Translation2d target = new Translation2d();
 
   private double desiredTurretRads = 0.0;
   private double desiredHoodRads = 0.0;
   private double desiredFlywheelRadsPerSec = 0.0;
 
-  public Turret(AzimuthIO azimuthIO, FlywheelIO flywheelIO, HoodIO hoodIO, Kickup kickup, Transform2d robotToTurret, String name) {
+  public Turret(AzimuthIO azimuthIO, FlywheelIO flywheelIO, HoodIO hoodIO, Transform2d robotToTurret, String name) {
     this.azimuthIO = azimuthIO;
     this.flywheelIO = flywheelIO;
     this.hoodIO = hoodIO;
-    this.kickup = kickup;
     this.robotToTurret = robotToTurret;
     this.name = name;
 
@@ -147,15 +141,11 @@ public class Turret extends SubsystemChecker {
     return goal;
   }
 
-  public TurretGoalType getCurrentGoalType() {
-    return currentGoalType;
-  }
-
-  /** Choose which preset the "OTHER" mode shoots to. */
   public void setPresetTarget(PresetTarget preset) {
     if (preset == null) return;
-    this.activeOtherPreset = preset;
+    this.activePreset = preset;
     this.target = getPresetTarget2d(preset);
+    this.profile = getPresetTargetProfile(preset);
   }
 
   private void applyAllPIDs() {
@@ -210,10 +200,6 @@ public class Turret extends SubsystemChecker {
     return hoodInputs.connected;
   }
 
-  private boolean isKickupConnected() {
-    return kickup.isConnected();
-  }
-
   private double turretAngleErrorRads() {
     return MathUtil.angleModulus(desiredTurretRads - azimuthInputs.turretPositionRads);
   }
@@ -226,7 +212,6 @@ public class Turret extends SubsystemChecker {
     return isAzimuthConnected()
         && isHoodConnected()
         && isFlywheelConnected()
-        && isKickupConnected()
         && Math.abs(turretAngleErrorRads()) < aimToleranceRads.get()
         && Math.abs(hoodInputs.positionRads - desiredHoodRads) < hoodToleranceRads.get()
         && Math.abs(flywheelInputs.velocityRadsPerSec - desiredFlywheelRadsPerSec) < flywheelToleranceRadsPerSec.get();
@@ -242,7 +227,6 @@ public class Turret extends SubsystemChecker {
     Logger.processInputs(name + "/Azimuth", azimuthInputs);
     Logger.processInputs(name + "/Flywheel", flywheelInputs);
     Logger.processInputs(name + "/Hood", hoodInputs);
-    kickup.periodic();
     updateTunablePIDs(); //way cleaner than last year lol
 
     if (DriverStation.isDisabled()) {
@@ -259,22 +243,23 @@ public class Turret extends SubsystemChecker {
 
     switch (goal) {
       case IDLE -> {
-        currentGoalType = TurretGoalType.IDLE;
-
+        if (activePreset == PresetTarget.OVER_NEUTRAL_ZONE){
+          target = getPresetTarget2d(PresetTarget.OVER_NEUTRAL_ZONE); //update for the robot pos, since target moves
+        }
         desiredFlywheelRadsPerSec = 0.0;
 
         azimuthIO.stop();
         hoodIO.stop();
         flywheelIO.stop();
-        kickup.setGoal(Kickup.Goal.STOPPED);
         desiredTurretRads = azimuthInputs.turretPositionRads;
         desiredHoodRads = hoodInputs.positionRads;
       }
 
       case AIMING -> {
-        currentGoalType = TurretGoalType.AIMING;
-
         // Use HUB profile for turret + hood, but override flywheel speed to a constant pre-spin
+        if (activePreset == PresetTarget.OVER_NEUTRAL_ZONE){
+          target = getPresetTarget2d(PresetTarget.OVER_NEUTRAL_ZONE); //update for the robot pos, since target moves
+        }
         var params = shotCalculator.getParameters(target, robotToTurret, ShotCalculator.HUB_PROFILE);
 
         desiredTurretRads = params.turretAngle().getRadians();
@@ -284,13 +269,12 @@ public class Turret extends SubsystemChecker {
         azimuthIO.setDesiredPosition(desiredTurretRads);
         hoodIO.setPosition(desiredHoodRads);
         flywheelIO.setVelocity(desiredFlywheelRadsPerSec);
-        kickup.setGoal(Kickup.Goal.STOPPED);
       }
 
       case SHOOTING -> {
-        currentGoalType = TurretGoalType.SHOOTING;
-
-        ShotProfile profile = ShotCalculator.TRENCH_PROFILE; //might want more...
+        if (activePreset == PresetTarget.OVER_NEUTRAL_ZONE){
+          target = getPresetTarget2d(PresetTarget.OVER_NEUTRAL_ZONE); //update for the robot pos, since target moves
+        }
         var params = shotCalculator.getParameters(target, robotToTurret,profile);
 
         desiredTurretRads = params.turretAngle().getRadians();
@@ -300,15 +284,15 @@ public class Turret extends SubsystemChecker {
         azimuthIO.setDesiredPosition(desiredTurretRads);
         hoodIO.setPosition(desiredHoodRads);
         flywheelIO.setVelocity(desiredFlywheelRadsPerSec);
-        if (atShootSetpoints())
-          kickup.setGoal(Kickup.Goal.SHOOTING);
       }
     }
 
     // Logging
     Logger.recordOutput(name + "/Goal", goal.toString());
-    Logger.recordOutput(name + "/GoalType", currentGoalType.toString());
-    Logger.recordOutput(name + "/Preset", activeOtherPreset.toString());
+    Logger.recordOutput("SuperStructure/"+name+"/Goal", goal.toString());
+        Logger.recordOutput("SuperStructure/"+name+"/TargetName", activePreset.toString());
+    Logger.recordOutput("SuperStructure/"+name+"/TargetPos", new Pose2d(target,new Rotation2d()));
+    Logger.recordOutput(name + "/Preset", activePreset.toString());
 
     Logger.recordOutput(name + "/Targets/Target2d", target);
 
@@ -340,6 +324,18 @@ public class Turret extends SubsystemChecker {
         Translation2d center = new Translation2d((a.getX() + b.getX()) * 0.5, (a.getY() + b.getY()) * 0.5);
         yield GeomUtil.apply(center);
       }
+      
+      case OVER_NEUTRAL_ZONE ->  {
+        //same Y, but in our area X.
+        yield new Translation2d(GeomUtil.applyX(3), RobotContainer.drivetrainS.getPose().getY());
+      }
+    };
+  }
+  private static ShotProfile getPresetTargetProfile(PresetTarget preset) {
+    return switch (preset) {
+      case HUB_TOP_CENTER -> ShotCalculator.HUB_PROFILE;
+      case LEFT_TRENCH_CENTER, RIGHT_TRENCH_CENTER -> ShotCalculator.TRENCH_PROFILE;
+      case OVER_NEUTRAL_ZONE -> ShotCalculator.NEUTRAL_ZONE_PROFILE;
     };
   }
 
@@ -370,8 +366,7 @@ public class Turret extends SubsystemChecker {
   public double getCurrent() {
     return Math.abs(azimuthInputs.supplyCurrentAmps)
         + Math.abs(flywheelInputs.supplyCurrentAmps)
-        + Math.abs(hoodInputs.supplyCurrentAmps)+
-        kickup.getCurrent();
+        + Math.abs(hoodInputs.supplyCurrentAmps);
   }
 
   @Override
@@ -383,7 +378,6 @@ public class Turret extends SubsystemChecker {
     azimuthIO.setCurrentLimit(azimuthAmps);
     flywheelIO.setCurrentLimit(flywheelAmps);
     hoodIO.setCurrentLimit(hoodAmps);
-    kickup.setCurrentLimit(kickupAmps);
   }
 
   @Override

@@ -2,7 +2,8 @@ package frc.robot.commands.drive;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.function.BiConsumer;
+
+import org.littletonrobotics.junction.Logger;
 
 import com.pathplanner.lib.path.GoalEndState;
 import com.pathplanner.lib.path.PathConstraints;
@@ -20,6 +21,7 @@ import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.RobotContainer;
 import frc.robot.subsystems.drive.DrivetrainS;
 import frc.robot.subsystems.drive.FastSwerve.Swerve;
+import frc.robot.utils.TriConsumer;
 import frc.robot.utils.drive.DriveConstants;
 import frc.robot.utils.drive.LocalADStarAK;
 
@@ -34,7 +36,7 @@ import frc.robot.utils.drive.LocalADStarAK;
  */
 public class AutoPilotAlign extends Command {
     private final LocalADStarAK adStar;
-    private final BiConsumer<PathConstraints, GoalEndState> pathConsumer;
+    private final TriConsumer<PathConstraints, GoalEndState, Pose2d> pathConsumer;
     private final APTarget m_finalTarget;
     private final GoalEndState goalEndState;
     private final DrivetrainS m_drivetrain;
@@ -57,9 +59,13 @@ public class AutoPilotAlign extends Command {
     public void initialize() {
         isFinished = false;
         RobotContainer.userDrive = false;
+
         desiredRotation = m_drivetrain.getRotation2d();
         thetaControllerCommand = new AimToRotation(() -> desiredRotation, m_drivetrain, DriveConstants.pathConstraints);
         thetaControllerCommand.initialize();
+
+        // Set goal ONCE (unless the goal actually changes)
+        adStar.setGoalPosition(m_finalTarget.getReference().getTranslation());
     }
 
     @Override
@@ -68,9 +74,8 @@ public class AutoPilotAlign extends Command {
         Pose2d robotPose = m_drivetrain.getLookAheadPose();
         ChassisSpeeds currentRobotRelative = m_drivetrain.getChassisSpeeds();
         adStar.setStartPosition(robotPose.getTranslation());
-        adStar.setGoalPosition(m_finalTarget.getReference().getTranslation());
         // get path from supplier
-        pathConsumer.accept(DriveConstants.pathConstraints, goalEndState);
+        pathConsumer.accept(DriveConstants.pathConstraints, goalEndState, m_finalTarget.getReference());
         List<Pose2d> path = adStar.cachedPath;
 
         APTarget activeTarget;
@@ -109,11 +114,12 @@ public class AutoPilotAlign extends Command {
         thetaControllerCommand.execute();
 
         long endTime = System.currentTimeMillis();
-        System.out.println("Execution time: " + (endTime - startTime) + " ms");
+        // System.out.println("Execution time: " + (endTime - startTime) + " ms");
 
         m_drivetrain
                 .setChassisSpeeds(robotRelativeFromField.plus(new ChassisSpeeds(0, 0, RobotContainer.angularSpeed)));
-
+        Logger.recordOutput("RobotState/ActiveAutopilotTarget", activeTarget.getReference());
+        Logger.recordOutput("RobotState/EndAutopilotTarget", m_finalTarget.getReference());
         if (Swerve.autopilot.atTarget(m_drivetrain.getPose(), m_finalTarget) && thetaControllerCommand.atGoal()) {
             isFinished = true;
         }
@@ -131,6 +137,7 @@ public class AutoPilotAlign extends Command {
         RobotContainer.angleOverrider = Optional.empty();
         RobotContainer.angularSpeed = 0;
         RobotContainer.userDrive = true;
+        Logger.recordOutput("RobotState/ActiveAutopilotTarget", new Pose2d(-50, -50, new Rotation2d()));
     }
 
     /**

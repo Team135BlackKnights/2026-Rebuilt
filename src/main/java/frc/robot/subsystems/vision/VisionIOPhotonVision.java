@@ -43,7 +43,7 @@ public class VisionIOPhotonVision implements VisionIO {
     for (var result : camera.getAllUnreadResults()) {
       // Update latest target observation
       if (result.hasTargets()) {
-        Optional<EstimatedRobotPose> visionEst = photonEstimator.estimateCoprocMultiTagPose(result);
+        Optional<EstimatedRobotPose> visionEst = photonEstimator.estimateClosestToCameraHeightPose(result);
         if (visionEst.isPresent()) {
           var visionResult = visionEst.get();
           double ambiguity;

@@ -46,7 +46,6 @@ import frc.robot.subsystems.intake.Indexer.Indexer;
 import frc.robot.subsystems.intake.Indexer.IndexerIO;
 import frc.robot.subsystems.intake.Indexer.IndexerIOKrakenFOC;
 import frc.robot.subsystems.intake.Indexer.IndexerIOSim;
-import frc.robot.subsystems.intake.Indexer.IndexerIOSparkBase;
 import frc.robot.subsystems.intake.Intake.Goal;
 import frc.robot.subsystems.intake.arm.ArmIO;
 import frc.robot.subsystems.intake.arm.ArmIOKrakenFOC;
@@ -88,6 +87,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
@@ -117,12 +117,12 @@ import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.InstantCommand;
+import edu.wpi.first.wpilibj2.command.PrintCommand;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.TuningConstants;
 
 import frc.robot.subsystems.drive.FastSwerve.Swerve.ModuleLimits;
-import frc.robot.subsystems.leds.LEDs;
 import frc.robot.subsystems.simpleMechanisms.slamElevator.ExampleClimber.Climber;
 import frc.robot.subsystems.simpleMechanisms.slamElevator.ExampleClimber.ClimberIO;
 import frc.robot.subsystems.simpleMechanisms.slamElevator.ExampleClimber.ClimberIOKrakenFOC;
@@ -133,7 +133,6 @@ import frc.robot.utils.GeomUtil;
 import frc.robot.utils.IntakeConstants;
 import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.Rebuilt2026FieldSimulation;
-import frc.robot.utils.leds.LEDConstants.ImageStates;
 import frc.robot.utils.robotToggles.Toggles;
 import frc.robot.utils.robotToggles.TogglesIO;
 import frc.robot.utils.robotToggles.TogglesIOHardware;
@@ -154,11 +153,12 @@ import frc.robot.utils.advancedMechs.AdvancedMechanismConstants;
 public class RobotContainer {
 	// The robot's subsystems and commands are defined here...
 	public static DrivetrainS drivetrainS;
-	private static final LEDs leds = new LEDs();
+	// private static final LEDs leds = new LEDs();
 	public static Vision visionS;
 	public static Toggles toggles;
 	public static LocalADStarAK pathFinder = new LocalADStarAK();
 	public static Climber climber;
+	public static Kickup kickup;
 	public static Turret leftTurret;
 	public static Turret rightTurret;
 	public static Intake intake;
@@ -174,8 +174,6 @@ public class RobotContainer {
 	public static double angularSpeed = 0;
 	public static double xSpeed = 0;
 	public static double ySpeed = 0;
-	@AutoLogOutput(key = "SuperStructure/ScorePosition")
-
 	Trigger aButtonDrive = driveController.a();
 	Trigger bButtonDrive = driveController.b();
 	Trigger xButtonDrive = driveController.x();
@@ -510,8 +508,12 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.hoodEncoderToHoodArmRatio,
 						AdvancedMechanismConstants.Turret.minHoodAngle,
 						AdvancedMechanismConstants.Turret.maxHoodAngle);
-				Kickup kickupLeftTurret = new Kickup(new KickupIOKrakenFOC(AdvancedMechanismConstants.Turret.leftKickupID, Robot.rioCanBus, "LeftKickup", AdvancedMechanismConstants.Turret.currentLimitKickup, AdvancedMechanismConstants.Turret.invertKickup, true, AdvancedMechanismConstants.Turret.kickerRatio));
-				leftTurret = new Turret(azimuthIOLeftTurret, flywheelIOLeftTurret, hoodIOLeftTurret,kickupLeftTurret,
+				kickup = new Kickup(
+						new KickupIOKrakenFOC(AdvancedMechanismConstants.Turret.leftKickupID, Robot.rioCanBus,
+								"LeftKickup", AdvancedMechanismConstants.Turret.currentLimitKickup,
+								AdvancedMechanismConstants.Turret.invertKickup, true,
+								AdvancedMechanismConstants.Turret.kickerRatio));
+				leftTurret = new Turret(azimuthIOLeftTurret, flywheelIOLeftTurret, hoodIOLeftTurret,
 						AdvancedMechanismConstants.Turret.robotToLeftTurretHoleCenter, "LeftTurret");
 				// Right Turret
 				AzimuthIO azimuthIORightTurret = new AzimuthIOKrakenFOC(Robot.rioCanBus,
@@ -538,8 +540,7 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.hoodEncoderToHoodArmRatio,
 						AdvancedMechanismConstants.Turret.minHoodAngle,
 						AdvancedMechanismConstants.Turret.maxHoodAngle);
-				Kickup kickupRightTurret = new Kickup(new KickupIOKrakenFOC(AdvancedMechanismConstants.Turret.rightKickupID, Robot.rioCanBus, "RightKickup", AdvancedMechanismConstants.Turret.currentLimitKickup, AdvancedMechanismConstants.Turret.invertKickup, true, AdvancedMechanismConstants.Turret.kickerRatio));
-				rightTurret = new Turret(azimuthIORightTurret, flywheelIORightTurret, hoodIORightTurret,kickupRightTurret,
+				rightTurret = new Turret(azimuthIORightTurret, flywheelIORightTurret, hoodIORightTurret,
 						AdvancedMechanismConstants.Turret.robotToRightTurretHoleCenter, "RightTurret");
 
 				autoCommands.addAll(Arrays.asList(
@@ -673,14 +674,16 @@ public class RobotContainer {
 				toggles = new Toggles(new TogglesIONetworkTables());
 				System.out.println("SIM SETUP DONE!");
 				climber = new Climber(new ClimberIOSim());
-				intake = new Intake(new ArmIOSim(),new Indexer(new IndexerIOSim(DCMotor.getKrakenX44Foc(1), "Indexer",
+				intake = new Intake(new ArmIOSim(), new Indexer(new IndexerIOSim(DCMotor.getKrakenX44Foc(1), "Indexer",
 						IntakeConstants.intakeReductionToIndexerRollers, IntakeConstants.intakeMOI)));
-						
+				kickup = new Kickup(new KickupIOSim(AdvancedMechanismConstants.Turret.kickupMotor, "Kickup",
+						AdvancedMechanismConstants.Turret.kickerRatio,
+						AdvancedMechanismConstants.Turret.kickupMOI));
 				leftTurret = new Turret(new AzimuthIOSim(-Math.PI, Math.PI), new FlywheelIOSim(), new HoodIOSim(),
-					new Kickup(new KickupIOSim(AdvancedMechanismConstants.Turret.kickupMotor, "Kickup", AdvancedMechanismConstants.Turret.kickerRatio, AdvancedMechanismConstants.Turret.kickupMOI)),
+
 						AdvancedMechanismConstants.Turret.robotToLeftTurretHoleCenter, "LeftTurret");
 				rightTurret = new Turret(new AzimuthIOSim(-Math.PI, Math.PI), new FlywheelIOSim(), new HoodIOSim(),
-						new Kickup(new KickupIOSim(AdvancedMechanismConstants.Turret.kickupMotor, "Kickup", AdvancedMechanismConstants.Turret.kickerRatio, AdvancedMechanismConstants.Turret.kickupMOI)),
+
 						AdvancedMechanismConstants.Turret.robotToRightTurretHoleCenter, "RightTurret");
 				/*
 				 * autoCommands.addAll(Arrays.asList(
@@ -734,17 +737,16 @@ public class RobotContainer {
 				intake = new Intake(new ArmIO() {
 				}, new Indexer(new IndexerIO() {
 				}));
+				kickup = new Kickup(new KickupIO() {
+				});
 				leftTurret = new Turret(new AzimuthIO() {
 				}, new FlywheelIO() {
 				}, new HoodIO() {
-				}, new Kickup(new KickupIO() {
-				}),AdvancedMechanismConstants.Turret.robotToLeftTurretHoleCenter, "LeftTurret");
+				}, AdvancedMechanismConstants.Turret.robotToLeftTurretHoleCenter, "LeftTurret");
 				rightTurret = new Turret(new AzimuthIO() {
 				}, new FlywheelIO() {
 				}, new HoodIO() {
-				},
-				 new Kickup(new KickupIO() {
-				 }), AdvancedMechanismConstants.Turret.robotToRightTurretHoleCenter, "RightTurret");
+				}, AdvancedMechanismConstants.Turret.robotToRightTurretHoleCenter, "RightTurret");
 
 		}
 
@@ -827,10 +829,12 @@ public class RobotContainer {
 				.ignoringDisable(true)
 				.finallyDo(() -> RobotContainer.field.getObject("target pose")
 						.setPose(new Pose2d(-50, -50, new Rotation2d()))));
-		if (!leds.gifFound(ImageStates.debug)) {
-			Logger.recordOutput("LEDS/Main",
-					"No images found for " + ImageStates.debug.name());
-		}
+		/*
+		 * if (!leds.gifFound(ImageStates.debug)) {
+		 * Logger.recordOutput("LEDS/Main",
+		 * "No images found for " + ImageStates.debug.name());
+		 * }
+		 */
 		if (!AutoBuilder.isConfigured()) {
 			throw new RuntimeException(
 					"AutoBuilder was not configured before attempting to build an auto chooser");
@@ -919,62 +923,100 @@ public class RobotContainer {
 	}
 
 	private void configureBindings() {
-Trigger povUp = driveController.pov(0);
+		Trigger povUp = driveController.pov(0);
 		Trigger povRight = driveController.pov(90);
 		Trigger povDown = driveController.pov(180);
 		Trigger povLeft = driveController.pov(270);
 
 		Trigger manualTurretControl = povUp.or(povRight).or(povDown).or(povLeft);
-		Trigger inScoreArea = new Trigger(() -> drivetrainS.getPose().getX() < 5.0);
-
-		var aimHubBoth = Commands.runOnce(() -> {
-			leftTurret.setPresetTarget(Turret.PresetTarget.HUB_TOP_CENTER);
-			rightTurret.setPresetTarget(Turret.PresetTarget.HUB_TOP_CENTER);
-		}, leftTurret, rightTurret);
-
+		Trigger inScoreArea = new Trigger(() -> GeomUtil.applyX(drivetrainS.getPose().getX()) < 4.4); // when red, we
+																										// are at 12,
+																										// flipping
+																										// across gets
+																										// to below 4.4
+		Trigger inOpponentArea = new Trigger(() -> GeomUtil.applyX(drivetrainS.getPose().getX()) > 12.0);
+		Trigger beyondLeftTrench = new Trigger(() -> drivetrainS.getPose().getY() > 5.5);
+		Trigger beforeRightTrench = new Trigger(() -> drivetrainS.getPose().getY() < 2.3);
 		var targetHubBoth = Commands.runOnce(() -> {
 			leftTurret.setPresetTarget(Turret.PresetTarget.HUB_TOP_CENTER);
 			rightTurret.setPresetTarget(Turret.PresetTarget.HUB_TOP_CENTER);
+			leftTurret.setGoal(Turret.Goal.AIMING);
+			rightTurret.setGoal(Turret.Goal.AIMING);
 		}, leftTurret, rightTurret);
 
-		// Opposing trenches (left to left) = each turret shoots its own side
 		var targetSplitTrenches = Commands.runOnce(() -> {
 			leftTurret.setPresetTarget(Turret.PresetTarget.LEFT_TRENCH_CENTER);
 			rightTurret.setPresetTarget(Turret.PresetTarget.RIGHT_TRENCH_CENTER);
+			leftTurret.setGoal(Turret.Goal.AIMING);
+			rightTurret.setGoal(Turret.Goal.AIMING);
 		}, leftTurret, rightTurret);
 
 		var targetBothLeftTrench = Commands.runOnce(() -> {
 			leftTurret.setPresetTarget(Turret.PresetTarget.LEFT_TRENCH_CENTER);
 			rightTurret.setPresetTarget(Turret.PresetTarget.LEFT_TRENCH_CENTER);
+			leftTurret.setGoal(Turret.Goal.AIMING);
+			rightTurret.setGoal(Turret.Goal.AIMING);
 		}, leftTurret, rightTurret);
 
 		var targetBothRightTrench = Commands.runOnce(() -> {
 			leftTurret.setPresetTarget(Turret.PresetTarget.RIGHT_TRENCH_CENTER);
 			rightTurret.setPresetTarget(Turret.PresetTarget.RIGHT_TRENCH_CENTER);
+			leftTurret.setGoal(Turret.Goal.AIMING);
+			rightTurret.setGoal(Turret.Goal.AIMING);
 		}, leftTurret, rightTurret);
-
-		var idleBoth = Commands.runOnce(() -> {
-			leftTurret.setGoal(Turret.Goal.IDLE);
-			rightTurret.setGoal(Turret.Goal.IDLE);
+		var targetBothOverNeutral = Commands.runOnce(() -> {
+			leftTurret.setPresetTarget(Turret.PresetTarget.OVER_NEUTRAL_ZONE);
+			rightTurret.setPresetTarget(Turret.PresetTarget.OVER_NEUTRAL_ZONE);
+			leftTurret.setGoal(Turret.Goal.AIMING);
+			rightTurret.setGoal(Turret.Goal.AIMING);
 		}, leftTurret, rightTurret);
 		var shootTurrets = Commands.run(() -> {
 			leftTurret.setGoal(Turret.Goal.SHOOTING);
 			rightTurret.setGoal(Turret.Goal.SHOOTING);
+			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints()) {
+				intake.setGoal(Goal.SHOOTING);
+				kickup.setGoal(Kickup.Goal.SHOOTING);
+			} else {
+				kickup.setGoal(Kickup.Goal.STOPPED);
+			}
 		}, leftTurret, rightTurret).finallyDo(() -> {
-			leftTurret.setGoal(Turret.Goal.IDLE);
-			rightTurret.setGoal(Turret.Goal.IDLE);
+			leftTurret.setGoal(Turret.Goal.AIMING);
+			rightTurret.setGoal(Turret.Goal.AIMING);
+			if (intake.isIntakeDeployed()) {
+				intake.setGoal(Goal.INTAKE_OUTER_IDLE);
+			} else {
+				intake.setGoal(Goal.STOW);
+			}
+			kickup.setGoal(Kickup.Goal.STOPPED);
 		});
-		//Start of actual bindings
+		var shootTurretsWhileIntaking = Commands.run(() -> {
+			leftTurret.setGoal(Turret.Goal.SHOOTING);
+			rightTurret.setGoal(Turret.Goal.SHOOTING);
+			intake.setGoal(Goal.INTAKE_GROUND);
+			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints()) {
+				kickup.setGoal(Kickup.Goal.SHOOTING);
+			} else {
+				kickup.setGoal(Kickup.Goal.STOPPED);
+			}
+		}, leftTurret, rightTurret, intake).finallyDo(() -> {
+			leftTurret.setGoal(Turret.Goal.AIMING);
+			rightTurret.setGoal(Turret.Goal.AIMING);
+			intake.setGoal(Goal.INTAKE_OUTER_IDLE);
+			kickup.setGoal(Kickup.Goal.STOPPED);
+		});
+		// Start of actual bindings
 		startButtonDrive
 				.onTrue(new InstantCommand(() -> {
 					System.out.println("Zeroing Gyro");
 					drivetrainS.zeroHeading();
 					// drivetrainS.resetPose(GeomUtil.apply(startingPose.get(), false));
 				}));
-		selectButtonDrive 
+		selectButtonDrive
 				.onTrue(new InstantCommand(() -> {
-					System.out.println("Resetting Systems");
-					//TODO: More reset stuff
+					System.out.println("Stowing Intake/Stopping Turrets");
+					intake.setGoal(Goal.STOW);
+					leftTurret.setGoal(Turret.Goal.IDLE);
+					rightTurret.setGoal(Turret.Goal.IDLE);
 				}));
 		leftStickButtonDrive.onTrue(drivetrainS.orientModules(Swerve.getXOrientations()));
 		leftStickButtonDrive.onFalse(Commands.runOnce(() -> drivetrainS.stopModules(), drivetrainS));
@@ -983,30 +1025,78 @@ Trigger povUp = driveController.pov(0);
 		aButtonDrive.toggleOnTrue(Commands.none()); // Prepare Climb
 		bButtonDrive.toggleOnTrue(Commands.none()); // Climb Sequence
 		yButtonDrive.toggleOnTrue(Commands.none()); // Emergency Stop Climb
-		//Intake controls
-		leftBumperDrive.whileTrue(Commands.run(() -> intake.setGoal(Goal.INTAKE_GROUND)).finallyDo(() ->intake.setGoal(Goal.STOW)));
+		// Intake controls
+		leftBumperDrive.and(rightTriggerDriveFull.negate()).whileTrue(
+				Commands.run(() -> intake.setGoal(Goal.INTAKE_GROUND))
+						.finallyDo(() -> intake.setGoal(Goal.INTAKE_OUTER_IDLE)));
 		rightBumperDrive.onChange(new InstantCommand(() -> {
 			DriveConstants.autoIntake = !DriveConstants.autoIntake; // Assist with intake driving.
 		}));
-		xButtonDrive.whileTrue(Commands.either(Commands.run(() -> intake.setGoal(Goal.JACKHAMMERING_OUT),intake).finallyDo(() ->intake.setGoal(Goal.STOW)), Commands.run(() -> intake.setGoal(Goal.JACKHAMMERING_IN), intake).finallyDo(() ->intake.setGoal(Goal.STOW)), () -> intake.isIntakeDeployed())); // jackhammer
-		leftTriggerDriveFull.whileTrue(PathFinder.goToAutoPilotPose(pathFinder,
-				new APTarget(GeomUtil.apply(new Pose2d(8, 3.5, Rotation2d.fromDegrees(-45)), false)), drivetrainS,
-				() -> DriveConstants.pathConstraints, 1, .02));// make this a "go to our alliance's zone"
+		xButtonDrive.whileTrue(Commands.either(
+				Commands.run(() -> intake.setGoal(Goal.JACKHAMMERING_OUT), intake)
+						.finallyDo(() -> intake.setGoal(Goal.INTAKE_OUTER_IDLE)),
+				Commands.run(() -> intake.setGoal(Goal.JACKHAMMERING_IN), intake)
+						.finallyDo(() -> intake.setGoal(Goal.STOW)),
+				() -> intake.isIntakeDeployed())); // jackhammer
+
+		// Auto Driving To Alliance
+		// If we're before the right, go to the right trench with 3 m/s going DOWN (up
+		// if on red).
+		// If we're after the left, go to the left trench with 3 m/s going "DOWN" (up if
+		// on red).
+		// If we're between, just MadMax it over the bumps, using normal pathfinding.
+		AtomicBoolean committedToMadMax  = new AtomicBoolean(false);
+		Trigger trenchesAllowed = new Trigger(() -> !committedToMadMax.get());
+
+		leftTriggerDriveFull.and(beforeRightTrench).and(trenchesAllowed).whileTrue(PathFinder.goToAutoPilotPoseNoHardLineup(pathFinder,
+						new APTarget(new Pose2d(4.605, .639, new Rotation2d())).withVelocity(3)
+								.withEntryAngle(new Rotation2d(Math.PI / 2)),
+						drivetrainS, () -> DriveConstants.pathConstraints, Units.inchesToMeters(3)));
+		leftTriggerDriveFull.and(beyondLeftTrench).and(trenchesAllowed)
+				.whileTrue(PathFinder.goToAutoPilotPoseNoHardLineup(pathFinder,
+						new APTarget(new Pose2d(4.605, 7.404, new Rotation2d())).withVelocity(3)
+								.withEntryAngle(new Rotation2d(Math.PI / 2)),
+						drivetrainS, () -> DriveConstants.pathConstraints, Units.inchesToMeters(3)));
+		leftTriggerDriveFull
+				.and((beforeRightTrench.negate().and(beyondLeftTrench.negate())).or(trenchesAllowed.negate()))
+				.whileTrue(
+						Commands.runOnce(() -> committedToMadMax.set(true)).andThen(Commands.defer(() -> 
+						PathFinder.goToAutoPilotPose(pathFinder,
+								new APTarget(GeomUtil.apply(new Pose2d(3, drivetrainS.getPose().getY(),
+										drivetrainS.getPose().getRotation()), false)),
+								drivetrainS,
+								() -> DriveConstants.pathConstraints, 1, .02),Set.of(drivetrainS)))
+				.finallyDo(() -> committedToMadMax.set(false)));
 		// Turret Controls
-		rightTriggerDriveFull.whileTrue(shootTurrets);
+		rightTriggerDriveFull.and(leftBumperDrive.negate()).whileTrue(shootTurrets);
+		rightTriggerDriveFull.and(leftBumperDrive).whileTrue(shootTurretsWhileIntaking);
 		povUp.onTrue(targetHubBoth);
 		povDown.onTrue(targetSplitTrenches);
 		povLeft.onTrue(targetBothLeftTrench);
 		povRight.onTrue(targetBothRightTrench);
+		// Automatic Turret Controls
+		inScoreArea.whileTrue(new PrintCommand("inScoreZone"));
+		inOpponentArea.whileTrue(new PrintCommand("inOpponentZone"));
+		manualTurretControl.negate().and(inScoreArea).whileTrue(targetHubBoth);
+		manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.negate()).and(beforeRightTrench)
+				.whileTrue(targetBothRightTrench);
+		manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.negate()).and(beyondLeftTrench)
+				.whileTrue(targetBothLeftTrench);
+		manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.negate())
+				.and(beyondLeftTrench.negate()).and(beforeRightTrench.negate()).whileTrue(targetSplitTrenches);
+		manualTurretControl.negate().and(inOpponentArea).whileTrue(targetBothOverNeutral);
 
 		// - If in score area AND not manually holding POV: aim both turrets at hub
-		/*inScoreArea.and(manualTurretControl.negate())
-				.whileTrue(aimHubBoth);*/
+		/*
+		 * inScoreArea.and(manualTurretControl.negate())
+		 * .whileTrue(aimHubBoth);
+		 */
 
 		// - If NOT in score area AND not holding POV: idle both turrets
-		inScoreArea.negate().and(manualTurretControl.negate())
-				.onTrue(idleBoth);
-
+		/*
+		 * inScoreArea.negate().and(manualTurretControl.negate())
+		 * .onTrue(idleBoth);
+		 */
 		if (Constants.currentMode == Mode.SIM) {
 			/*
 			 * testDPadUp.onTrue(new InstantCommand(() -> {
@@ -1086,11 +1176,12 @@ Trigger povUp = driveController.pov(0);
 		return Commands.sequence(
 				drivetrainS.getRunnableSystemCheckCommand(),
 				visionS.getSystemCheckCommand(),
-				leds.getSystemCheckCommand(),
+				// leds.getSystemCheckCommand(),
 				climber.getSystemCheckCommand(),
 				intake.getSystemCheckCommand(),
 				leftTurret.getSystemCheckCommand(),
-				rightTurret.getSystemCheckCommand());
+				rightTurret.getSystemCheckCommand(),
+				kickup.getSystemCheckCommand());
 
 	}
 
@@ -1107,7 +1198,7 @@ Trigger povUp = driveController.pov(0);
 	public static HashMap<String, Double> getAllTemps() {
 		// List of HashMaps
 		List<HashMap<String, Double>> maps = List.of(drivetrainS.getTemps(), visionS.getTemps(), climber.getTemps(),
-				intake.getTemps(), leftTurret.getTemps(), rightTurret.getTemps());
+				intake.getTemps(), leftTurret.getTemps(), rightTurret.getTemps(), kickup.getTemps());
 		// Combine all maps
 		HashMap<String, Double> combinedMap = combineMaps(maps);
 		return combinedMap;
@@ -1120,12 +1211,13 @@ Trigger povUp = driveController.pov(0);
 	 */
 	public static boolean allSystemsOK() {
 		return drivetrainS.getTrueSystemStatus() == SubsystemChecker.SystemStatus.OK
-				&& leds.getSystemStatus() == SubsystemChecker.SystemStatus.OK
+				// && leds.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& visionS.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& climber.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& intake.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& leftTurret.getSystemStatus() == SubsystemChecker.SystemStatus.OK
-				&& rightTurret.getSystemStatus() == SubsystemChecker.SystemStatus.OK;
+				&& rightTurret.getSystemStatus() == SubsystemChecker.SystemStatus.OK
+				&& kickup.getSystemStatus() == SubsystemChecker.SystemStatus.OK;
 
 	}
 
@@ -1135,6 +1227,7 @@ Trigger povUp = driveController.pov(0);
 		devices.addAll(drivetrainS.getDriveOrchestraDevices());
 		devices.addAll(climber.getOrchestraDevices());
 		devices.addAll(intake.getOrchestraDevices());
+		devices.addAll(kickup.getOrchestraDevices());
 		devices.addAll(leftTurret.getOrchestraDevices());
 		devices.addAll(rightTurret.getOrchestraDevices());
 		return devices;
@@ -1142,7 +1235,7 @@ Trigger povUp = driveController.pov(0);
 
 	public static SubsystemChecker[] getAllSubsystems() {
 
-		SubsystemChecker[] subsystems = new SubsystemChecker[6];
+		SubsystemChecker[] subsystems = new SubsystemChecker[7];
 		switch (DriveConstants.driveType) {
 			case SWERVE:
 				subsystems[0] = (Swerve) drivetrainS;
@@ -1159,6 +1252,7 @@ Trigger povUp = driveController.pov(0);
 		subsystems[3] = intake;
 		subsystems[4] = leftTurret;
 		subsystems[5] = rightTurret;
+		subsystems[6] = kickup;
 		return subsystems;
 	}
 

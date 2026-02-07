@@ -63,7 +63,8 @@ public class Intake extends SubsystemChecker {
         INTAKE_GROUND, // Arm down, rollers intake
         INTAKE_OUTER_IDLE, // Arm down, rollers idling
         JACKHAMMERING_OUT, // Rapidly pulse rollers to dislodge jams (with arm down)
-        JACKHAMMERING_IN // Rapidly pulse rollers to dislodge jams (with arm up)
+        JACKHAMMERING_IN, // Rapidly pulse rollers to dislodge jams (with arm up)
+        SHOOTING, // Don't mess with the arm, but run the rollers at shooting speed
     }
 
     private Goal goal = Goal.START;
@@ -138,15 +139,20 @@ public class Intake extends SubsystemChecker {
                     indexer.setGoal(Indexer.Goal.JACKHAMMER_IN);
                 }
             }
+            case SHOOTING -> {
+                // Don't mess with the arm position, since we might want to shoot from either stow or ground intake
+                indexer.setGoal(Indexer.Goal.SHOOTING);
+            }
 
         }
         armIO.setPosition(currentArmSetpoint);
 
         // 6. Logging
         Logger.recordOutput("Intake/Goal", goal);
+        Logger.recordOutput("SuperStructure/IntakeGoal", goal);
         Logger.recordOutput("Intake/SetpointAngle", currentArmSetpoint);
         Logger.recordOutput("Intake/SetpointVolts", currentRollerVolts);
-        Logger.recordOutput("ntake/AtSetpoint", isAtSetpoint());
+        Logger.recordOutput("Intake/AtSetpoint", isAtSetpoint());
     }
 
     public void setGoal(Goal goal) {
