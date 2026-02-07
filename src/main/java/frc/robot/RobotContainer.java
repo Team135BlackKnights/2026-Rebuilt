@@ -1075,8 +1075,6 @@ public class RobotContainer {
 		povLeft.onTrue(targetBothLeftTrench);
 		povRight.onTrue(targetBothRightTrench);
 		// Automatic Turret Controls
-		inScoreArea.whileTrue(new PrintCommand("inScoreZone"));
-		inOpponentArea.whileTrue(new PrintCommand("inOpponentZone"));
 		manualTurretControl.negate().and(inScoreArea).whileTrue(targetHubBoth);
 		manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.negate()).and(beforeRightTrench)
 				.whileTrue(targetBothRightTrench);
