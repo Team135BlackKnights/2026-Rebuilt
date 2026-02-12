@@ -8,7 +8,7 @@ public class IntakeConstants {
     public static final int indexerMotorID = 41;
     public static final int intakeCurrentLimit = 30; // amps
     public static final int indexerCurrentLimit = 30; // amps
-    public static final boolean indexerInverted = false;
+    public static final boolean indexerInverted = true;
     public static final boolean intakeInverted = true;
     public static final DCMotor intakeArmMotor = DCMotor.getKrakenX44Foc(1);
     public static final double intakeReductionToIndexerRollers = 24.0/8.0 * 32.0/24.0; // 4.0

@@ -10,7 +10,7 @@ public class SimpleMechanismConstants {
 
     public static class Climber {
         public static final int id = 41;
-        public static final CANBus bus = Robot.everythingCanBus;
+        public static final CANBus bus = Robot.rioCanBus;
         public static final String name = "ClimbMotor";
         public static final MotorVendor motorType = MotorVendor.CTRE_ON_RIO;
         public static final int currentLimitAmps = 40;

@@ -39,7 +39,6 @@ public abstract class GenericRollerSystem<G extends GenericRollerSystem.RollGoal
 
     stateTimer.start();
     registerSelfCheckHardware();
-		CommandScheduler.getInstance().unregisterSubsystem(this);//Let SuperStructure handle it.
   }
   @Override
   public void periodic() {

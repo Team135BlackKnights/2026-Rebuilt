@@ -54,7 +54,7 @@ public class TurretMathematics {
                 }
             }
 
-            throw new IllegalArgumentException("No turret angle solution; crashing to prevent wire damage");
+            return 0;
         }
 
         /**

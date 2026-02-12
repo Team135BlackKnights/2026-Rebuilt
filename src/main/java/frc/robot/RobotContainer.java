@@ -24,6 +24,7 @@ import frc.robot.subsystems.Turret.kickup.Kickup;
 import frc.robot.subsystems.Turret.kickup.KickupIO;
 import frc.robot.subsystems.Turret.kickup.KickupIOKrakenFOC;
 import frc.robot.subsystems.Turret.kickup.KickupIOSim;
+import frc.robot.subsystems.Turret.kickup.KickupIOSparkBase;
 import frc.robot.subsystems.drive.DrivetrainS;
 import frc.robot.subsystems.drive.FastSwerve.Swerve;
 import frc.robot.subsystems.drive.Mecanum.Mecanum;
@@ -158,7 +159,7 @@ public class RobotContainer {
 	public static LocalADStarAK pathFinder = new LocalADStarAK();
 	public static Climber climber;
 	public static Kickup kickup;
-	public static Turret leftTurret;
+	//public static Turret leftTurret;
 	public static Turret rightTurret;
 	public static Intake intake;
 	private final LoggedDashboardChooser<Command> autoChooser;
@@ -482,7 +483,7 @@ public class RobotContainer {
 								IntakeConstants.intakeReductionToIndexerRollers));
 				intake = new Intake(armIO, indexer);
 				// Left Turret
-				AzimuthIO azimuthIOLeftTurret = new AzimuthIOKrakenFOC(Robot.rioCanBus,
+				/*AzimuthIO azimuthIOLeftTurret = new AzimuthIOKrakenFOC(Robot.rioCanBus,
 						AdvancedMechanismConstants.Turret.leftAzimuthID,
 						AdvancedMechanismConstants.Turret.leftAzimuthBigEncoderID,
 						AdvancedMechanismConstants.Turret.leftAzimuthSmallEncoderID,
@@ -507,14 +508,15 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.hoodEncoderToHoodArmRatio,
 						AdvancedMechanismConstants.Turret.minHoodAngle,
 						AdvancedMechanismConstants.Turret.maxHoodAngle);
+				
+				leftTurret = new Turret(azimuthIOLeftTurret, flywheelIOLeftTurret, hoodIOLeftTurret,
+						AdvancedMechanismConstants.Turret.robotToLeftTurretHoleCenter, "LeftTurret");*/
 				kickup = new Kickup(
-						new KickupIOKrakenFOC(AdvancedMechanismConstants.Turret.leftKickupID, Robot.rioCanBus,
-								"LeftKickup", AdvancedMechanismConstants.Turret.currentLimitKickup,
+						new KickupIOSparkBase(AdvancedMechanismConstants.Turret.leftKickupID, Robot.rioCanBus,
+								"Kickup", AdvancedMechanismConstants.Turret.currentLimitKickup,
 								AdvancedMechanismConstants.Turret.invertKickup, true,
 								AdvancedMechanismConstants.Turret.kickerRatio));
-				leftTurret = new Turret(azimuthIOLeftTurret, flywheelIOLeftTurret, hoodIOLeftTurret,
-						AdvancedMechanismConstants.Turret.robotToLeftTurretHoleCenter, "LeftTurret");
-				// Right Turret
+						// Right Turret
 				AzimuthIO azimuthIORightTurret = new AzimuthIOKrakenFOC(Robot.rioCanBus,
 						AdvancedMechanismConstants.Turret.rightAzimuthID,
 						AdvancedMechanismConstants.Turret.rightAzimuthBigEncoderID,
@@ -678,10 +680,10 @@ public class RobotContainer {
 				kickup = new Kickup(new KickupIOSim(AdvancedMechanismConstants.Turret.kickupMotor, "Kickup",
 						AdvancedMechanismConstants.Turret.kickerRatio,
 						AdvancedMechanismConstants.Turret.kickupMOI));
-				leftTurret = new Turret(new AzimuthIOSim(-Math.PI, Math.PI), new FlywheelIOSim(), new HoodIOSim(),
+				/*leftTurret = new Turret(new AzimuthIOSim(-Math.PI, Math.PI), new FlywheelIOSim(), new HoodIOSim(),
 
 						AdvancedMechanismConstants.Turret.robotToLeftTurretHoleCenter, "LeftTurret");
-				rightTurret = new Turret(new AzimuthIOSim(-Math.PI, Math.PI), new FlywheelIOSim(), new HoodIOSim(),
+				*/rightTurret = new Turret(new AzimuthIOSim(-Math.PI, Math.PI), new FlywheelIOSim(), new HoodIOSim(),
 
 						AdvancedMechanismConstants.Turret.robotToRightTurretHoleCenter, "RightTurret");
 				/*
@@ -738,11 +740,11 @@ public class RobotContainer {
 				}));
 				kickup = new Kickup(new KickupIO() {
 				});
-				leftTurret = new Turret(new AzimuthIO() {
+				/*leftTurret = new Turret(new AzimuthIO() {
 				}, new FlywheelIO() {
 				}, new HoodIO() {
 				}, AdvancedMechanismConstants.Turret.robotToLeftTurretHoleCenter, "LeftTurret");
-				rightTurret = new Turret(new AzimuthIO() {
+				*/rightTurret = new Turret(new AzimuthIO() {
 				}, new FlywheelIO() {
 				}, new HoodIO() {
 				}, AdvancedMechanismConstants.Turret.robotToRightTurretHoleCenter, "RightTurret");
@@ -938,71 +940,71 @@ public class RobotContainer {
 		Trigger beyondCenter = new Trigger(() -> GeomUtil.applyY(drivetrainS.getPose().getY()) > 4);
 		Trigger beforeRightTrench = new Trigger(() -> GeomUtil.applyY(drivetrainS.getPose().getY()) < 2.3);
 		var targetHubBoth = Commands.runOnce(() -> {
-			leftTurret.setPresetTarget(Turret.PresetTarget.HUB_TOP_CENTER);
+			//leftTurret.setPresetTarget(Turret.PresetTarget.HUB_TOP_CENTER);
 			rightTurret.setPresetTarget(Turret.PresetTarget.HUB_TOP_CENTER);
-			leftTurret.setGoal(Turret.Goal.AIMING);
+			//leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
-		}, leftTurret, rightTurret);
+		}, /*leftTurret,*/ rightTurret);
 
 		var targetSplitTrenches = Commands.runOnce(() -> {
-			leftTurret.setPresetTarget(Turret.PresetTarget.LEFT_TRENCH_CENTER);
+			//leftTurret.setPresetTarget(Turret.PresetTarget.LEFT_TRENCH_CENTER);
 			rightTurret.setPresetTarget(Turret.PresetTarget.RIGHT_TRENCH_CENTER);
-			leftTurret.setGoal(Turret.Goal.AIMING);
+			//leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
-		}, leftTurret, rightTurret);
+		}, /*leftTurret,*/ rightTurret);
 
 		var targetBothLeftTrench = Commands.runOnce(() -> {
-			leftTurret.setPresetTarget(Turret.PresetTarget.LEFT_TRENCH_CENTER);
+			//leftTurret.setPresetTarget(Turret.PresetTarget.LEFT_TRENCH_CENTER);
 			rightTurret.setPresetTarget(Turret.PresetTarget.LEFT_TRENCH_CENTER);
-			leftTurret.setGoal(Turret.Goal.AIMING);
+			//leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
-		}, leftTurret, rightTurret);
+		}, /*leftTurret,*/ rightTurret);
 
 		var targetBothRightTrench = Commands.runOnce(() -> {
-			leftTurret.setPresetTarget(Turret.PresetTarget.RIGHT_TRENCH_CENTER);
+			//leftTurret.setPresetTarget(Turret.PresetTarget.RIGHT_TRENCH_CENTER);
 			rightTurret.setPresetTarget(Turret.PresetTarget.RIGHT_TRENCH_CENTER);
-			leftTurret.setGoal(Turret.Goal.AIMING);
+			//leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
-		}, leftTurret, rightTurret);
+		}, /*leftTurret,*/ rightTurret);
 		var targetBothOverNeutral = Commands.runOnce(() -> {
-			leftTurret.setPresetTarget(Turret.PresetTarget.OVER_NEUTRAL_ZONE);
+			//leftTurret.setPresetTarget(Turret.PresetTarget.OVER_NEUTRAL_ZONE);
 			rightTurret.setPresetTarget(Turret.PresetTarget.OVER_NEUTRAL_ZONE);
-			leftTurret.setGoal(Turret.Goal.AIMING);
+			//leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
-		}, leftTurret, rightTurret);
+		}, /*leftTurret,*/ rightTurret);
 		var shootTurrets = Commands.run(() -> {
-			leftTurret.setGoal(Turret.Goal.SHOOTING);
+			//leftTurret.setGoal(Turret.Goal.SHOOTING);
 			rightTurret.setGoal(Turret.Goal.SHOOTING);
-			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints()) {
+			if (/*leftTurret.atShootSetpoints() || */rightTurret.atShootSetpoints()) {
 				intake.setGoal(Goal.SHOOTING);
 				kickup.setGoal(Kickup.Goal.SHOOTING);
 			} else {
-				kickup.setGoal(Kickup.Goal.STOPPED);
+				kickup.setGoal(Kickup.Goal.IDLING);
 			}
-		}, leftTurret, rightTurret).finallyDo(() -> {
-			leftTurret.setGoal(Turret.Goal.AIMING);
+		}, /*leftTurret,*/ rightTurret, kickup, intake).finallyDo(() -> {
+			//leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
 			if (intake.isIntakeDeployed()) {
 				intake.setGoal(Goal.INTAKE_OUTER_IDLE);
 			} else {
 				intake.setGoal(Goal.STOW);
 			}
-			kickup.setGoal(Kickup.Goal.STOPPED);
+			kickup.setGoal(Kickup.Goal.IDLING);
 		});
 		var shootTurretsWhileIntaking = Commands.run(() -> {
-			leftTurret.setGoal(Turret.Goal.SHOOTING);
+			//leftTurret.setGoal(Turret.Goal.SHOOTING);
 			rightTurret.setGoal(Turret.Goal.SHOOTING);
 			intake.setGoal(Goal.INTAKE_GROUND);
-			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints()) {
+			if (/*leftTurret.atShootSetpoints() ||*/ rightTurret.atShootSetpoints()) {
 				kickup.setGoal(Kickup.Goal.SHOOTING);
 			} else {
-				kickup.setGoal(Kickup.Goal.STOPPED);
+				kickup.setGoal(Kickup.Goal.IDLING);
 			}
-		}, leftTurret, rightTurret, intake).finallyDo(() -> {
-			leftTurret.setGoal(Turret.Goal.AIMING);
+		}, /*leftTurret, */rightTurret, intake, kickup).finallyDo(() -> {
+			//leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
 			intake.setGoal(Goal.INTAKE_OUTER_IDLE);
-			kickup.setGoal(Kickup.Goal.STOPPED);
+			kickup.setGoal(Kickup.Goal.IDLING);
 		});
 		// Start of actual bindings
 		startButtonDrive
@@ -1015,7 +1017,7 @@ public class RobotContainer {
 				.onTrue(new InstantCommand(() -> {
 					System.out.println("Stowing Intake/Stopping Turrets");
 					intake.setGoal(Goal.STOW);
-					leftTurret.setGoal(Turret.Goal.IDLE);
+					//leftTurret.setGoal(Turret.Goal.IDLE);
 					rightTurret.setGoal(Turret.Goal.IDLE);
 				}));
 		leftStickButtonDrive.onTrue(drivetrainS.orientModules(Swerve.getXOrientations()));
@@ -1032,6 +1034,7 @@ public class RobotContainer {
 		rightBumperDrive.onChange(new InstantCommand(() -> {
 			DriveConstants.autoIntake = !DriveConstants.autoIntake; // Assist with intake driving.
 		}));
+		//leftBumperDrive.onTrue(Commands.runOnce(()));
 		xButtonDrive.whileTrue(Commands.either(
 				Commands.run(() -> intake.setGoal(Goal.JACKHAMMERING_OUT), intake)
 						.finallyDo(() -> intake.setGoal(Goal.INTAKE_OUTER_IDLE)),
@@ -1157,7 +1160,7 @@ public class RobotContainer {
 	public static double[] getCurrentDraw() {
 
 		return new double[] { Math.min(drivetrainS.getCurrent(), 200), climber.getCurrent(), intake.getCurrent(),
-				leftTurret.getCurrent(), rightTurret.getCurrent() };
+				/*leftTurret.getCurrent(),*/ rightTurret.getCurrent() };
 		// superStructure.getCurrent() };
 	}
 
@@ -1181,7 +1184,7 @@ public class RobotContainer {
 				// leds.getSystemCheckCommand(),
 				climber.getSystemCheckCommand(),
 				intake.getSystemCheckCommand(),
-				leftTurret.getSystemCheckCommand(),
+				//leftTurret.getSystemCheckCommand(),
 				rightTurret.getSystemCheckCommand(),
 				kickup.getSystemCheckCommand());
 
@@ -1200,7 +1203,7 @@ public class RobotContainer {
 	public static HashMap<String, Double> getAllTemps() {
 		// List of HashMaps
 		List<HashMap<String, Double>> maps = List.of(drivetrainS.getTemps(), visionS.getTemps(), climber.getTemps(),
-				intake.getTemps(), leftTurret.getTemps(), rightTurret.getTemps(), kickup.getTemps());
+				intake.getTemps(), /*leftTurret.getTemps(),*/ rightTurret.getTemps(), kickup.getTemps());
 		// Combine all maps
 		HashMap<String, Double> combinedMap = combineMaps(maps);
 		return combinedMap;
@@ -1217,7 +1220,7 @@ public class RobotContainer {
 				&& visionS.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& climber.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& intake.getSystemStatus() == SubsystemChecker.SystemStatus.OK
-				&& leftTurret.getSystemStatus() == SubsystemChecker.SystemStatus.OK
+				//&& leftTurret.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& rightTurret.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& kickup.getSystemStatus() == SubsystemChecker.SystemStatus.OK;
 
@@ -1229,15 +1232,15 @@ public class RobotContainer {
 		devices.addAll(drivetrainS.getDriveOrchestraDevices());
 		devices.addAll(climber.getOrchestraDevices());
 		devices.addAll(intake.getOrchestraDevices());
-		devices.addAll(kickup.getOrchestraDevices());
-		devices.addAll(leftTurret.getOrchestraDevices());
+		//devices.addAll(kickup.getOrchestraDevices());
+		//devices.addAll(leftTurret.getOrchestraDevices());
 		devices.addAll(rightTurret.getOrchestraDevices());
 		return devices;
 	}
 
 	public static SubsystemChecker[] getAllSubsystems() {
 
-		SubsystemChecker[] subsystems = new SubsystemChecker[7];
+		SubsystemChecker[] subsystems = new SubsystemChecker[6];
 		switch (DriveConstants.driveType) {
 			case SWERVE:
 				subsystems[0] = (Swerve) drivetrainS;
@@ -1252,9 +1255,9 @@ public class RobotContainer {
 		subsystems[1] = visionS;
 		subsystems[2] = climber;
 		subsystems[3] = intake;
-		subsystems[4] = leftTurret;
-		subsystems[5] = rightTurret;
-		subsystems[6] = kickup;
+		//subsystems[4] = leftTurret;
+		subsystems[4] = rightTurret;
+		subsystems[5] = kickup;
 		return subsystems;
 	}
 
