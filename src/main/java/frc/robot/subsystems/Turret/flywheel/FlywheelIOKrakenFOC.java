@@ -24,6 +24,7 @@ import frc.robot.utils.selfCheck.drive.SelfCheckingTalonFX;
 
 public class FlywheelIOKrakenFOC implements FlywheelIO {
     private final TalonFX talon;
+    private final TalonFXConfiguration config;
     private final StatusSignal<AngularAcceleration> accel;
     private final StatusSignal<AngularVelocity> velocity;
     private final StatusSignal<Voltage> appliedVoltage;
@@ -41,7 +42,7 @@ public class FlywheelIOKrakenFOC implements FlywheelIO {
         this.reduction = reduction;
         this.name = name;
         this.talon = new TalonFX(ID, bus);
-        TalonFXConfiguration config = new TalonFXConfiguration();
+        config = new TalonFXConfiguration();
         config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
         config.CurrentLimits.SupplyCurrentLimit = currentLimitAmps;
         config.CurrentLimits.SupplyCurrentLimitEnable = true;
@@ -81,14 +82,12 @@ public class FlywheelIOKrakenFOC implements FlywheelIO {
 
     @Override
     public void setCurrentLimit(double amps) {
-        TalonFXConfiguration config = new TalonFXConfiguration();
         config.CurrentLimits.SupplyCurrentLimit = amps;
         talon.getConfigurator().apply(config);
     }
     
     @Override
     public void setBrakeMode(boolean brake) {
-        TalonFXConfiguration config = new TalonFXConfiguration();
         config.MotorOutput.NeutralMode = brake ? NeutralModeValue.Brake : NeutralModeValue.Coast;
         talon.getConfigurator().apply(config);
     }
@@ -106,7 +105,6 @@ public class FlywheelIOKrakenFOC implements FlywheelIO {
 
     @Override
     public void setPID(double p, double d, double ks, double kv) {
-        TalonFXConfiguration config = new TalonFXConfiguration();
         config.Slot0.kP = p;
         config.Slot0.kD = d;
         config.Slot0.kS = ks;

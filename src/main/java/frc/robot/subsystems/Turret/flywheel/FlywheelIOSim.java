@@ -11,7 +11,7 @@ public class FlywheelIOSim implements FlywheelIO {
   private static final FlywheelSim sim =
       new FlywheelSim(LinearSystemId.createFlywheelSystem(motorModel, .025, AdvancedMechanismConstants.Turret.flywheelRatio), motorModel);
 
-  private PIDController controller = new PIDController(0, 0, 0, 0.02);
+  private PIDController controller = new PIDController(10, 0, 0, 0.02);
   private double currentOutput = 0.0;
   private double currentOutputAsVolt = 0.0;
   private double appliedVolts = 0.0;
@@ -57,6 +57,7 @@ public class FlywheelIOSim implements FlywheelIO {
         double kv) {
         controller.setP(p);
         controller.setD(d);
+        System.out.println("Updating PID P to " + p);
     }
     @Override
     public void setCurrentLimit(double amps) {

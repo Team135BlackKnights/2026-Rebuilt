@@ -28,7 +28,7 @@ import frc.robot.utils.selfCheck.drive.SelfCheckingTalonFX;
  */
 public abstract class GenericRollerSystemIOKrakenFOC implements GenericRollerSystemIO {
   private final TalonFX talon;
-
+  private final TalonFXConfiguration config;
   private final StatusSignal<Angle> position;
   private final StatusSignal<AngularVelocity> velocity;
   private final StatusSignal<Voltage> appliedVoltage;
@@ -49,7 +49,7 @@ public abstract class GenericRollerSystemIOKrakenFOC implements GenericRollerSys
     this.name = name;
     talon = new TalonFX(id, bus);
 
-    TalonFXConfiguration config = new TalonFXConfiguration();
+    config = new TalonFXConfiguration();
     config.MotorOutput.Inverted = invert ? InvertedValue.Clockwise_Positive : InvertedValue.CounterClockwise_Positive;
     config.MotorOutput.NeutralMode = brake ? NeutralModeValue.Brake : NeutralModeValue.Coast;
     config.CurrentLimits.SupplyCurrentLimit = currentLimitAmps;
@@ -87,7 +87,6 @@ public abstract class GenericRollerSystemIOKrakenFOC implements GenericRollerSys
 
   @Override
   public void setCurrentLimit(double amps) {
-    TalonFXConfiguration config = new TalonFXConfiguration();
     config.CurrentLimits.SupplyCurrentLimit = amps;
     talon.getConfigurator().apply(config);
   }
