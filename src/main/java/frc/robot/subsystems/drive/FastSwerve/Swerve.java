@@ -59,6 +59,7 @@ import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.path.PathConstraints;
 import com.pathplanner.lib.util.DriveFeedforwards;
 import com.pathplanner.lib.util.PathPlannerLogging;
+import com.therekrab.autopilot.APProfile;
 import com.therekrab.autopilot.Autopilot;
 
 public class Swerve extends SubsystemChecker implements DrivetrainS {
@@ -154,7 +155,7 @@ public class Swerve extends SubsystemChecker implements DrivetrainS {
 	};
 	private final OdometryThread odometryThread;
 	private Feedforwards pathPlannerNM = new Feedforwards(4);
-	public static final Autopilot autopilot = new Autopilot(DriveConstants.AutopilotConstants.kFastProfile);
+	public Autopilot autopilot = new Autopilot(DriveConstants.AutopilotConstants.kFastProfile);
 	private double characterizationVelocity = 0.0;
 	private static final Map<Integer, Pose2d> tagPoses2d = new HashMap<>();
 
@@ -414,7 +415,9 @@ public class Swerve extends SubsystemChecker implements DrivetrainS {
 		 * DriveConstants.TrainConstants.robotOffsetAngleDirection));
 		 */
 	}
-
+	public void updateAutoProfile(APProfile profile){
+		autopilot = new Autopilot(profile);
+	}
 	@Override
 	public ModuleLimits getModuleLimits() {
 		return currentModuleLimits;

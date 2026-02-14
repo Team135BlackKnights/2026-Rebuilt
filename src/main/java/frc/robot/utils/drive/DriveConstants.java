@@ -123,7 +123,7 @@ public class DriveConstants {
 	}
 
 	public static final LoggableTunedNumber maxTranslationalAcceleration = new LoggableTunedNumber(
-			"Drive/MaxTranslationalAcceleration", 41,TuningConstants.isTuningMacros);
+			"Drive/MaxTranslationalAcceleration", 36,TuningConstants.isTuningMacros);
 	public static final LoggableTunedNumber maxRotationalAcceleration = new LoggableTunedNumber(
 			"Drive/MaxRotationalAcceleration", 2 * Math.PI * 50,TuningConstants.isTuningMacros);
 	public static boolean fieldOriented = true;
@@ -209,7 +209,7 @@ public class DriveConstants {
 					/ new Translation2d(kChassisLength / 2, kChassisWidth / 2).getNorm());
 	public static class AutopilotConstants {
 			public static final APConstraints kTightAutopilotAPConstraints =
-			new APConstraints().withAcceleration(maxTranslationalAcceleration.get()/2).withJerk(1.5);
+			new APConstraints().withAcceleration(maxTranslationalAcceleration.get()).withJerk(1.5);
 
 			public static final APProfile kTightProfile =
 			new APProfile(kTightAutopilotAPConstraints)

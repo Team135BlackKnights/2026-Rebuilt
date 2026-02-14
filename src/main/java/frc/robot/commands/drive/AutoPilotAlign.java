@@ -19,9 +19,13 @@ import edu.wpi.first.units.Units;
 import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.RobotContainer;
+import frc.robot.Constants.TuningConstants;
 import frc.robot.subsystems.drive.DrivetrainS;
 import frc.robot.subsystems.drive.FastSwerve.Swerve;
+import frc.robot.utils.GeomUtil;
+import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.TriConsumer;
+import frc.robot.utils.CompetitionFieldUtils.FieldConstants;
 import frc.robot.utils.drive.DriveConstants;
 import frc.robot.utils.drive.LocalADStarAK;
 
@@ -44,7 +48,9 @@ public class AutoPilotAlign extends Command {
     private boolean isFinished = false;
     private AimToRotation thetaControllerCommand;
     private Rotation2d desiredRotation;
+    private boolean currentlyCloseToTrench = false;
 
+    private final static LoggableTunedNumber trenchCircleDistance = new LoggableTunedNumber("AutoPilot/TrenchCircleDistance", 2.0, TuningConstants.isTuningMacros);
     public AutoPilotAlign(LocalADStarAK adStar, APTarget finalTarget, DrivetrainS drivetrain, double lookaheadMeters) {
         this.adStar = adStar;
         this.pathConsumer = adStar.pathConsumer();
@@ -103,7 +109,16 @@ public class AutoPilotAlign extends Command {
         Pose2d maskedPose = new Pose2d(
                 robotPose.getTranslation(),
                 maskedRot);
-        APResult out = Swerve.autopilot.calculate(maskedPose, maskedRobotRelative, activeTarget);
+        //if the robot pose is within a trench of 2 meters, we use the Tight profile, otherwise, we use the fast profile
+        if (closeToATrench() && !currentlyCloseToTrench)  {
+            ((Swerve)m_drivetrain).updateAutoProfile(DriveConstants.AutopilotConstants.kTightProfile);
+            System.out.println("Using tight profile");
+            currentlyCloseToTrench = true;
+        } else if (!closeToATrench() && currentlyCloseToTrench) {
+            ((Swerve)m_drivetrain).updateAutoProfile(DriveConstants.AutopilotConstants.kFastProfile);
+            currentlyCloseToTrench = false;
+        }
+        APResult out = ((Swerve)m_drivetrain).autopilot.calculate(maskedPose, maskedRobotRelative, activeTarget);
 
         ChassisSpeeds fieldRelativeSpeeds = new ChassisSpeeds(out.vx().baseUnitMagnitude(),
                 out.vy().baseUnitMagnitude(), 0.0);
@@ -120,11 +135,24 @@ public class AutoPilotAlign extends Command {
                 .setChassisSpeeds(robotRelativeFromField.plus(new ChassisSpeeds(0, 0, RobotContainer.angularSpeed)));
         Logger.recordOutput("RobotState/ActiveAutopilotTarget", activeTarget.getReference());
         Logger.recordOutput("RobotState/EndAutopilotTarget", m_finalTarget.getReference());
-        if (Swerve.autopilot.atTarget(m_drivetrain.getPose(), m_finalTarget) && thetaControllerCommand.atGoal()) {
+        if (((Swerve)m_drivetrain).autopilot.atTarget(m_drivetrain.getPose(), m_finalTarget) && thetaControllerCommand.atGoal()) {
             isFinished = true;
         }
     }
-
+    private boolean closeToATrench() {
+        Pose2d robotPose = m_drivetrain.getPose();
+        Translation2d pos = robotPose.getTranslation();
+        // check if we're within 2 meters of either trench
+        Translation2d[] trenchCenters = {
+            FieldConstants.LeftTrench.openingCenter,
+            FieldConstants.RightTrench.openingCenter,
+            // opposite side, too
+            GeomUtil.apply(FieldConstants.LeftTrench.openingCenter, true),
+            GeomUtil.apply(FieldConstants.RightTrench.openingCenter,true)
+        }; 
+        double distanceThreshold = trenchCircleDistance.get();
+        return pos.getDistance(trenchCenters[0]) < distanceThreshold || pos.getDistance(trenchCenters[1]) < distanceThreshold || pos.getDistance(trenchCenters[2]) < distanceThreshold || pos.getDistance(trenchCenters[3]) < distanceThreshold;
+    }
     @Override
     public boolean isFinished() {
         return isFinished;

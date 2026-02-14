@@ -190,7 +190,8 @@ public class FieldConstants {
         new Translation3d(LinesVertical.hubCenter, FIELD_HEIGHT, openingHeight);
     public static final Translation3d openingTopRight =
         new Translation3d(LinesVertical.hubCenter, FIELD_HEIGHT - openingWidth, openingHeight);
-
+    public static final Translation2d openingCenter =
+        new Translation2d(LinesVertical.hubCenter, FIELD_HEIGHT - (openingWidth / 2.0));
     // Relevant reference points on opposing side
     public static final Translation3d oppOpeningTopLeft =
         new Translation3d(LinesVertical.oppHubCenter, FIELD_HEIGHT, openingHeight);
@@ -212,6 +213,8 @@ public class FieldConstants {
         new Translation3d(LinesVertical.hubCenter, openingWidth, openingHeight);
     public static final Translation3d openingTopRight =
         new Translation3d(LinesVertical.hubCenter, 0, openingHeight);
+    public static final Translation2d openingCenter =
+        new Translation2d(LinesVertical.hubCenter, openingWidth / 2.0);
 
     // Relevant reference points on opposing side
     public static final Translation3d oppOpeningTopLeft =

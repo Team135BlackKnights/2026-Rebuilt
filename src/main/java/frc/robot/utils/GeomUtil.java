@@ -358,6 +358,9 @@ public static Pose3d flip(Pose3d toFlip) {
                 new Translation3d(FieldConstants.FIELD_WIDTH - toFlip.getX(), FieldConstants.FIELD_HEIGHT - toFlip.getY(), toFlip.getZ()),
                 toFlip.getRotation());
     }
+	public static Translation3d apply(Translation3d translation, boolean forceFlip) {
+		return new Translation3d(applyX(translation.getX(), forceFlip), applyY(translation.getY(), forceFlip), translation.getZ());
+	}
 
 	public static Translation2d apply(Translation2d translation, boolean forceFlip) {
 		return new Translation2d(applyX(translation.getX(), forceFlip), applyY(translation.getY(), forceFlip));
