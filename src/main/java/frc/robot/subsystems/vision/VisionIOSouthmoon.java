@@ -2,10 +2,12 @@ package frc.robot.subsystems.vision;
 
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Quaternion;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.networktables.*;
 import edu.wpi.first.util.WPIUtilJNI;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
+import java.util.ArrayList;
 import java.util.function.Supplier;
 
 import frc.robot.RobotContainer;
@@ -23,6 +25,7 @@ public class VisionIOSouthmoon implements VisionIO {
   private final String deviceId;
   private final DoubleArraySubscriber observationSubscriber;
   private final DoubleArraySubscriber objDetectObservationSubscriber;
+  private final DoubleArraySubscriber objDetectTxySubscriber;
   private final IntegerSubscriber fpsAprilTagsSubscriber;
   private final IntegerSubscriber fpsObjDetectSubscriber;
   private final StringPublisher eventNamePublisher;
@@ -99,6 +102,15 @@ public class VisionIOSouthmoon implements VisionIO {
                 PubSubOption.sendAll(true),
                 PubSubOption.pollStorage(5),
                 PubSubOption.periodic(0.01667));
+    objDetectTxySubscriber =
+        outputTable
+            .getDoubleArrayTopic("objdetect_txy")
+            .subscribe(
+                new double[] {},
+                PubSubOption.keepDuplicates(true),
+                PubSubOption.sendAll(true),
+                PubSubOption.pollStorage(5),
+                PubSubOption.periodic(0.01667));
     fpsAprilTagsSubscriber = outputTable.getIntegerTopic("fps_apriltags").subscribe(0);
     fpsObjDetectSubscriber = outputTable.getIntegerTopic("fps_objdetect").subscribe(0);
 
@@ -161,13 +173,53 @@ public class VisionIOSouthmoon implements VisionIO {
       inputs.fps_april = fpsAprilTagsSubscriber.get();
     }
 
-    // Get object detection data
+    // Get object detection tx/ty-only data
+    var objDetectTxyQueue = objDetectTxySubscriber.readQueue();
+    ArrayList<ObjDetectTxyObservation> txyObservations = new ArrayList<>();
+    for (int i = 0; i < objDetectTxyQueue.length; i++) {
+      double timestamp = objDetectTxyQueue[i].timestamp / 1000000.0;
+      double[] values = objDetectTxyQueue[i].value;
+      if (values.length == 0) {
+        continue;
+      }
+      int count = (int) values[0];
+      int expectedLen = 1 + count * 5;
+      int safeLen = Math.min(values.length, expectedLen);
+      for (int idx = 0; idx < count; idx++) {
+        int base = 1 + idx * 5;
+        if (base + 4 >= safeLen) {
+          break;
+        }
+        int classId = (int) values[base];
+        double confidence = values[base + 1];
+        double txDeg = values[base + 2];
+        double tyDeg = values[base + 3];
+        double distanceMeters = values[base + 4];
+        txyObservations.add(
+            new ObjDetectTxyObservation(
+                classId,
+                confidence,
+                Rotation2d.fromDegrees(txDeg),
+                Rotation2d.fromDegrees(tyDeg),
+                distanceMeters,
+                timestamp));
+      }
+    }
+    inputs.objDetectTxyObservations = txyObservations.toArray(new ObjDetectTxyObservation[0]);
+
+    // Get object detection data (legacy "best" + pose). If tx/ty-only data is present,
+    // we still drain the queue but do not populate frames_obj.
     var objDetectQueue = objDetectObservationSubscriber.readQueue();
-    inputs.timestamps_obj = new double[objDetectQueue.length];
-    inputs.frames_obj  = new double[objDetectQueue.length][];
-    for (int i = 0; i < objDetectQueue.length; i++) {
-      inputs.timestamps_obj[i] = objDetectQueue[i].timestamp / 1000000.0;
-      inputs.frames_obj[i] = objDetectQueue[i].value;
+    if (inputs.objDetectTxyObservations.length == 0) {
+      inputs.timestamps_obj = new double[objDetectQueue.length];
+      inputs.frames_obj  = new double[objDetectQueue.length][];
+      for (int i = 0; i < objDetectQueue.length; i++) {
+        inputs.timestamps_obj[i] = objDetectQueue[i].timestamp / 1000000.0;
+        inputs.frames_obj[i] = objDetectQueue[i].value;
+      }
+    } else {
+      inputs.timestamps_obj = new double[] {};
+      inputs.frames_obj = new double[][] {};
     }
     if (slowPeriodic) {
       inputs.fps_obj  = fpsObjDetectSubscriber.get();

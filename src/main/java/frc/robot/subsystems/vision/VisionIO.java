@@ -24,6 +24,7 @@ public interface VisionIO {
     public double[] timestamps_obj = new double[] {};
     public double[][] frames_obj = new double[][] {};
     public long fps_obj = 0;
+    public ObjDetectTxyObservation[] objDetectTxyObservations = new ObjDetectTxyObservation[0];
   }
   /** Represents the position of a simple target, not used for pose estimation. */
   public static record TargetObservation(
@@ -31,6 +32,15 @@ public interface VisionIO {
       Rotation2d ty, 
       int id, 
       Transform3d cameraToTarget, 
+      double timestamp) {}
+
+  /** Represents an object detection with tx/ty only. */
+  public static record ObjDetectTxyObservation(
+      int classId,
+      double confidence,
+      Rotation2d tx,
+      Rotation2d ty,
+      double distanceMeters,
       double timestamp) {}
 
   /** Represents a robot pose sample used for pose estimation. */

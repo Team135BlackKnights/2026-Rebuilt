@@ -104,6 +104,7 @@ public class Vision extends SubsystemChecker {
 
 			io[i].updateInputs(inputs[i]);
 			Logger.processInputs("Vision/Camera" + inputs[i].name, inputs[i]);
+			Logger.recordOutput("Vision/" + inputs[i].name + "/ObjTxyCount", inputs[i].objDetectTxyObservations.length);
 			// turn this on for debugging camera positions
 			Logger.recordOutput("Vision/" + inputs[i].name + "/CamPose",
 					new Pose3d(RobotContainer.drivetrainS.getPose())
@@ -716,6 +717,46 @@ public class Vision extends SubsystemChecker {
 				inputs[cam.ordinal()].targetObservations[0].ty(), inputs[cam.ordinal()].targetObservations[0].id(),
 				inputs[cam.ordinal()].targetObservations[0].cameraToTarget(),
 				inputs[cam.ordinal()].targetObservations[0].timestamp());
+	}
+
+	/** Get the latest objdetect tx/ty-only observations for a Southmoon camera. */
+	public VisionIO.ObjDetectTxyObservation[] getLatestObjDetectTxyObservations(CameraID cam) {
+		return inputs[cam.ordinal()].objDetectTxyObservations;
+	}
+
+	/**
+	 * Get the objdetect tx/ty-only observation closest to the camera centerline.
+	 * This uses the smallest angular magnitude (sqrt(tx^2 + ty^2)) as a proxy.
+	 */
+	public Optional<VisionIO.ObjDetectTxyObservation> getClosestObjDetectTxyObservation(CameraID cam) {
+		VisionIO.ObjDetectTxyObservation[] observations = inputs[cam.ordinal()].objDetectTxyObservations;
+		if (observations == null || observations.length == 0) {
+			return Optional.empty();
+		}
+		VisionIO.ObjDetectTxyObservation best = null;
+		double bestDistance = Double.POSITIVE_INFINITY;
+		for (VisionIO.ObjDetectTxyObservation obs : observations) {
+			double d = obs.distanceMeters();
+			if (d > 0.0 && d < bestDistance) {
+				best = obs;
+				bestDistance = d;
+			}
+		}
+		if (best != null) {
+			return Optional.of(best);
+		}
+		// Fallback to angular magnitude if no valid distance.
+		VisionIO.ObjDetectTxyObservation angularBest = observations[0];
+		double bestScore = Math.hypot(angularBest.tx().getRadians(), angularBest.ty().getRadians());
+		for (int i = 1; i < observations.length; i++) {
+			VisionIO.ObjDetectTxyObservation obs = observations[i];
+			double score = Math.hypot(obs.tx().getRadians(), obs.ty().getRadians());
+			if (score < bestScore) {
+				angularBest = obs;
+				bestScore = score;
+			}
+		}
+		return Optional.of(angularBest);
 	}
 
 	/**

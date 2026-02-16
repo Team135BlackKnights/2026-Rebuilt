@@ -443,14 +443,12 @@ public class RobotContainer {
 								"Unknown drivetrain implementation type, please check DriveConstants.java!");
 				}
 				visionS = new Vision(() -> getSelectedAprilTagLayout(),
-						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "FrontRightCam", 0,
+						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "IntakeCam", 0,
 								VisionConstants.cameras[0]),
-						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "FrontLeftCam", 1,
+						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackRightCam", 1,
 								VisionConstants.cameras[1]),
-						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackRightCam", 2,
-								VisionConstants.cameras[2]),
-						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackLeftCam", 3,
-								VisionConstants.cameras[3]));
+						new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackLeftCam", 2,
+								VisionConstants.cameras[2]));
 				/**
 				 * visionS = new Vision(() -> getSelectedAprilTagLayout(),
 				 * new VisionIOPhotonVision(() -> getSelectedAprilTagLayout(),
@@ -651,30 +649,25 @@ public class RobotContainer {
 						AIRobotInSimulation.startOpponentRobotSimulations(); // Start your engines...
 						break;
 				}
-				/*
-				 * visionS = new Vision(() -> getSelectedAprilTagLayout(),
-				 * new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "FrontRightCam",0,
-				 * VisionConstants.cameras[0]),
-				 * new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "FrontLeftCam",1,
-				 * VisionConstants.cameras[1]),
-				 * new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackRightCam",2,
-				 * VisionConstants.cameras[2]),
-				 * new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackLeftCam",3,
-				 * VisionConstants.cameras[3]));
-				 */
-				visionS = new Vision(() -> getSelectedAprilTagLayout(),
-						new VisionIOPhotonVisionSim(() -> getSelectedAprilTagLayout(), "FrontRightCam",
+				
+				  visionS = new Vision(() -> getSelectedAprilTagLayout(),
+				  new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "IntakeCam",0,
+				  VisionConstants.cameras[0]),
+				  new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackRightCam",1,
+				  VisionConstants.cameras[1]),
+				 new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackLeftCam",2,
+				 VisionConstants.cameras[2]));
+				 
+				/*visionS = new Vision(() -> getSelectedAprilTagLayout(),
+						new VisionIOPhotonVisionSim(() -> getSelectedAprilTagLayout(), "IntakeCam",
 								GeomUtil.poseToTransform3d(VisionConstants.cameras[0].getPose().get()),
 								() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()),
-						new VisionIOPhotonVisionSim(() -> getSelectedAprilTagLayout(), "FrontLeftCam",
+						new VisionIOPhotonVisionSim(() -> getSelectedAprilTagLayout(), "BackRightCam",
 								GeomUtil.poseToTransform3d(VisionConstants.cameras[1].getPose().get()),
 								() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()),
-						new VisionIOPhotonVisionSim(() -> getSelectedAprilTagLayout(), "BackRightCam",
-								GeomUtil.poseToTransform3d(VisionConstants.cameras[2].getPose().get()),
-								() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()),
 						new VisionIOPhotonVisionSim(() -> getSelectedAprilTagLayout(), "BackLeftCam",
-								GeomUtil.poseToTransform3d(VisionConstants.cameras[3].getPose().get()),
-								() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()));
+								GeomUtil.poseToTransform3d(VisionConstants.cameras[2].getPose().get()),
+								() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()));*/
 				toggles = new Toggles(new TogglesIONetworkTables());
 				System.out.println("SIM SETUP DONE!");
 				climber = new Climber(new ClimberIOSim());
@@ -734,7 +727,6 @@ public class RobotContainer {
 				}, new VisionIO() {
 				},
 						new VisionIO() {
-						}, new VisionIO() {
 						}); // MUST be same number of cameras as in real robot
 				toggles = new Toggles(new TogglesIO() {
 				});
