@@ -28,7 +28,7 @@ public class VisionConstants {
 
 	public enum AITargets {
 		//Make SURE these are in ORDER of the actual classID.
-		BLUE_BOT,RED_BOT
+		FUEL
 
 	}
 	public static final long[] objLowerHSV = {0,0,100};
@@ -50,7 +50,7 @@ public class VisionConstants {
 	public static final double objDetectConfidenceThreshold = .6;
 	public static final double maxZError = 0.75;
 	public static final double maxObjZError = 0.25;
-	public static final double maxYawError = 5.0;
+	public static final double maxYawError = 15.0;
 	public static final double linearStdDevBaseline = 0.005;
 	public static final double angularStdDevBaseline = 0.04;
 
@@ -83,17 +83,17 @@ public class VisionConstants {
 			CameraConfig.builder()
 					.pose(
 							() -> new Pose3d(
-									Units.inchesToMeters(12.117),
-									Units.inchesToMeters(-10.367),
-									Units.inchesToMeters(8.512+.037),
+									Units.inchesToMeters(0), //centered on robot
+									Units.inchesToMeters(0),
+									Units.inchesToMeters(0), //it changes, we don't know
 									new Rotation3d(
 											Math.toRadians(0.0),
-											Math.toRadians(10),
-											Math.toRadians(-45))))
+											Math.toRadians(30.237350),
+											Math.toRadians(0)))) //we don't know, but it faces forward so we assume no yaw/pitch
 					.id("Microsoft® LifeCam HD-3000:usb_045e_0810_001_001")
 					.location("0x01100000 / 1")  
-					.width(1280)//1600
-					.height(800)//1304
+					.width(1600)//1600
+					.height(1304)//1304
 					.exposure(150)
 					.saturation(50)
 					.hue(0)
@@ -105,13 +105,13 @@ public class VisionConstants {
 			CameraConfig.builder()
 					.pose(
 							() -> new Pose3d(
-								Units.inchesToMeters(11.791),
-								Units.inchesToMeters(10.041),
-								Units.inchesToMeters(8.512+.037),
+								-.317,
+								-.263,
+								.205,
 								new Rotation3d(
 										Math.toRadians(0.0),
-										Math.toRadians(10),
-										Math.toRadians(45))))
+										Math.toRadians(-25),
+										Math.toRadians(160))))
 										.id("SPCA2630 PC Camera:usb_05c8_0a00_002_005")
 										.location("0x01230000 / 4")
 					.width(1600)
@@ -127,13 +127,13 @@ public class VisionConstants {
 					CameraConfig.builder()
 					.pose(
 							() -> new Pose3d(
-									Units.inchesToMeters(-11.791),
-									Units.inchesToMeters(-10.041),
-									Units.inchesToMeters(7.967-.037),
+									-.317,
+									.263,
+									.205,
 									new Rotation3d(
 											Math.toRadians(0.0),
 											Math.toRadians(-25),
-											Math.toRadians(-135))))
+											Math.toRadians(-160))))
 					.id("SPCA2630 PC Camera:usb_05c8_0a00_001_004")
 					.location("0x02211000 / 5")
 					.width(1600)

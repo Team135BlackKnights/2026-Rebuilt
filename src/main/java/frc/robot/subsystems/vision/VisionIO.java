@@ -58,10 +58,9 @@ public interface VisionIO {
   }
   
   public static enum CameraID {
-    FRONT_LEFT,
-    FRONT_RIGHT,
-    BACK_LEFT,
-    BACK_RIGHT
+    INTAKE_CAM,
+    BACK_RIGHT,
+    BACK_LEFT
   }
   
   /** 

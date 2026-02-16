@@ -15,134 +15,147 @@ import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.RobotContainer;
 import frc.robot.Constants.TuningConstants;
 import frc.robot.subsystems.drive.DrivetrainS;
-import frc.robot.subsystems.drive.FastSwerve.Swerve;
-import frc.robot.subsystems.drive.FastSwerve.Swerve.TxTyPoseRecord;
 import frc.robot.utils.GeomUtil;
 import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.vision.VisionConstants;
 
+import frc.robot.subsystems.vision.VisionIO.CameraID;
+import frc.robot.subsystems.vision.VisionIO.ObjDetectTxyObservation;
+
 public class AimToObject extends Command {
-	private final DrivetrainS drive;
-	private final String tagId;
-	private final double desiredDistanceMeters;
+  private final DrivetrainS drive;
+  private final CameraID cam;
+  private final int desiredClassId;
+  private final double desiredDistanceMeters;
 
-	private LoggableTunedNumber kPTx = new LoggableTunedNumber("AimToApriltagTx/kP", 4, TuningConstants.isTuningMacros);
-	private LoggableTunedNumber kDTx = new LoggableTunedNumber("AimToApriltagTx/kD", 0.6, TuningConstants.isTuningMacros);
-	private LoggableTunedNumber kPDistance = new LoggableTunedNumber("AimToApriltagTx/kPDistance", 3.5, TuningConstants.isTuningMacros);
-	private LoggableTunedNumber maxSpeed = new LoggableTunedNumber("AimToApriltagTx/maxSpeedMetersPerSec", 4.5, TuningConstants.isTuningMacros);
-	private LoggableTunedNumber maxRotation = new LoggableTunedNumber("AimToApriltagTx/MaxRotationRadPerSec", 15, TuningConstants.isTuningMacros);
+  private final LoggableTunedNumber kPTx = new LoggableTunedNumber("AimToObjectTx/kP", 4,
+      TuningConstants.isTuningMacros);
+  private final LoggableTunedNumber kDTx = new LoggableTunedNumber("AimToObjectTx/kD", 0.6,
+      TuningConstants.isTuningMacros);
+  private final LoggableTunedNumber kPDistance = new LoggableTunedNumber("AimToObjectTx/kPDistance", 3.5,
+      TuningConstants.isTuningMacros);
+  private final LoggableTunedNumber maxSpeed = new LoggableTunedNumber("AimToObjectTx/maxSpeedMetersPerSec", 4.5,
+      TuningConstants.isTuningMacros);
+  private final LoggableTunedNumber maxRotation = new LoggableTunedNumber("AimToObjectTx/MaxRotationRadPerSec", 15,
+      TuningConstants.isTuningMacros);
 
-	// tolerances
-	private LoggableTunedNumber txTolerance = new LoggableTunedNumber("AimToApriltagTx/txToleranceRad", .05, TuningConstants.isTuningMacros);
-	private LoggableTunedNumber distanceTolerance = new LoggableTunedNumber("AimToApriltagTx/distanceToleranceMeters", Units.inchesToMeters(3), TuningConstants.isTuningMacros);
-	private LoggableTunedNumber staleTime = new LoggableTunedNumber("AimToApriltagTx/staleTime",.75,TuningConstants.isTuningMacros);
-	private double prevTxRadians = 0.0;
-	private double latestTxRadians = 0.0;
-	private double latestDistanceMeters = 0.0;
-	private boolean hasValidObservation = false;
-    private boolean isFinished = false;
-    private int camId = 0;
+  // tolerances
+  private final LoggableTunedNumber txTolerance = new LoggableTunedNumber("AimToObjectTx/txToleranceRad", .05,
+      TuningConstants.isTuningMacros);
+  private final LoggableTunedNumber distanceTolerance = new LoggableTunedNumber("AimToObjectTx/distanceToleranceMeters",
+      Units.inchesToMeters(3), TuningConstants.isTuningMacros);
+  private final LoggableTunedNumber staleTime = new LoggableTunedNumber("AimToObjectTx/staleTime", .5,
+      TuningConstants.isTuningMacros);
 
-	public AimToObject(DrivetrainS drive, String tagId, double desiredDistanceMeters) {
-		this.drive = drive;
-		this.tagId = tagId;
-		this.desiredDistanceMeters = desiredDistanceMeters;
-	}
+  private double prevTxRadians = 0.0; // raw tx (negative=left)
+  private double latestTxRadians = 0.0; // raw tx (negative=left)
+  private double latestDistanceMeters = 0.0;
+  private boolean hasValidObservation = false;
+  private boolean isFinished = false;
 
-	@Override
-	public void initialize() {
-		RobotContainer.currentPath = "AIMTOOBJECT_" + tagId;
-		prevTxRadians = 0.0;
-        isFinished = false;
-	}
+  /**
+   * Aim at the closest detected object in a given camera.
+   * 
+   * @param drive                 drivetrain
+   * @param cam                   which camera to use
+   * @param desiredClassId        object class to aim at (-1 means any class)
+   * @param desiredDistanceMeters standoff distance to maintain (0 means just aim
+   *                              and GO TOWARDS until we can't see it anymore)
+   */
+  public AimToObject(DrivetrainS drive,
+      CameraID cam,
+      int desiredClassId,
+      double desiredDistanceMeters) {
+    this.drive = drive;
+    this.cam = cam;
+    this.desiredClassId = desiredClassId;
+    this.desiredDistanceMeters = desiredDistanceMeters;
+  }
 
-	@Override
-	public void execute() {
-		hasValidObservation = false;
-		Optional<TxTyPoseRecord> txTyData = ((Swerve) drive).getTxPoseRecord(tagId);
-		if (txTyData.isPresent()) {
-			var data = txTyData.get();
-			if (Timer.getTimestamp() - data.timestamp() >= staleTime.get() || (!tagId.contains("A") && data.pose().getZ() > VisionConstants.maxObjZError)) {
-				hasValidObservation = false;
-			}else{
-				hasValidObservation = true;
-				latestTxRadians = -data.tx();
-				latestDistanceMeters = data.distance();
-				camId = data.camIndex();
-			}
-		}else{
-			hasValidObservation = false;
-		}
+  @Override
+  public void initialize() {
+    RobotContainer.currentPath = "AIMTOOBJECT_CAM_" + cam + "_CLASS_" + desiredClassId;
+    prevTxRadians = 0.0;
+    isFinished = false;
+  }
 
-		if (!hasValidObservation) {
-			drive.setChassisSpeeds(new ChassisSpeeds(0, 0, 0));
-			return;
-		}
+  @Override
+  public void execute() {
+    hasValidObservation = false;
+    Optional<ObjDetectTxyObservation> obsOpt = RobotContainer.visionS.getClosestObjDetectTxyObservation(cam);
 
-		double angularCommand = 0;
-		double forwardCommand = 0;
+    if (obsOpt.isPresent()) {
+      var obs = obsOpt.get();
+      boolean classOk = (desiredClassId < 0) || (obs.classId() == desiredClassId);
+      boolean freshOk = (Timer.getTimestamp() - obs.timestamp()) < staleTime.get();
 
-		double dTx = latestTxRadians - prevTxRadians;
+      if (classOk && freshOk) {
+        hasValidObservation = true;
+        latestTxRadians = obs.tx().getRadians();
+        latestDistanceMeters = obs.distanceMeters();
+      }
+    }
+    if (!hasValidObservation) {
+      drive.setChassisSpeeds(new ChassisSpeeds(0, 0, 0));
+      return;
+    }
 
-		// only compute angular if outside tolerance
-		if (Math.abs(latestTxRadians) > txTolerance.get()) {
-			angularCommand = kPTx.get() * latestTxRadians + kDTx.get() * dTx;
-			angularCommand = Math.max(-maxRotation.get(), Math.min(maxRotation.get(), angularCommand));
-		}
+    double angularCommand = 0.0;
+    double forwardCommand = 0.0;
 
-		// only compute forward if outside tolerance
-		double distanceError = latestDistanceMeters - desiredDistanceMeters;
-		if (Math.abs(distanceError) > distanceTolerance.get()) {
-			forwardCommand = kPDistance.get() * distanceError;
-			forwardCommand = Math.max(-maxSpeed.get(), Math.min(maxSpeed.get(), forwardCommand));
-		}
+    double dTx = latestTxRadians - prevTxRadians;
 
-		// Get current robot pose
-		Pose2d robotPose = drive.getPose();
-		
-		// Get camera-to-robot transform (this is the offset of camera from robot origin)
-		Transform2d robotToCamera = GeomUtil.poseToTransform(VisionConstants.cameras[camId].getPose().get().toPose2d());
-		
-		// Calculate camera pose in field coordinates
-		Pose2d cameraPose = robotPose.plus(robotToCamera);
-		
-		// The AprilTag is at distance `latestDistanceMeters` and angle `tx` from the camera
-		// Camera's heading + tx gives us the field-relative direction to the AprilTag
-		Rotation2d directionToTag = cameraPose.getRotation().plus(new Rotation2d(latestTxRadians));
-		
-		// The direction vector pointing from camera toward the OBJ
-		Translation2d directionVector = new Translation2d(
-			Math.cos(directionToTag.getRadians()),
-			Math.sin(directionToTag.getRadians())
-		);
-		
-		// Scale by forwardCommand (positive means move closer, negative means move away)
-		Translation2d driveVelocity = directionVector.times(forwardCommand);
-		
-		drive.setChassisSpeeds(ChassisSpeeds.fromFieldRelativeSpeeds(
-				driveVelocity.getX(), 
-				driveVelocity.getY(),
-				angularCommand,
-				robotPose.getRotation()));
+    // TURNING:
+    // tx is negative (object is TO THE LEFT), we want +omega (turn left/CCW).
+    if (Math.abs(latestTxRadians) > txTolerance.get()) {
+      angularCommand = -(kPTx.get() * latestTxRadians + kDTx.get() * dTx);
+      angularCommand = Math.max(-maxRotation.get(), Math.min(maxRotation.get(), angularCommand));
+    }
 
-		prevTxRadians = latestTxRadians;
+    double distanceError = latestDistanceMeters - desiredDistanceMeters;
+    if (Math.abs(distanceError) > distanceTolerance.get()) {
+      forwardCommand = kPDistance.get() * distanceError;
+      forwardCommand = Math.max(-maxSpeed.get(), Math.min(maxSpeed.get(), forwardCommand));
+    }
 
-		Logger.recordOutput("AimToObject/tx", latestTxRadians);
-		Logger.recordOutput("AimToObject/distance", latestDistanceMeters);
-		Logger.recordOutput("AimToObject/forwardCommand", forwardCommand);
-		Logger.recordOutput("AimToObject/angularCommand", angularCommand);
-		Logger.recordOutput("AimToObject/directionToTag", directionToTag.getDegrees());
-	}
+    Pose2d robotPose = drive.getPose();
+    int camIndex = cam.ordinal();
+    Transform2d robotToCamera = GeomUtil.poseToTransform(VisionConstants.cameras[camIndex].getPose().get().toPose2d());
+    Pose2d cameraPose = robotPose.plus(robotToCamera);
+    // Build an estimated object point in the field, then drive toward it.
+    Rotation2d dir = cameraPose.getRotation().minus(new Rotation2d(latestTxRadians));
+    Translation2d unit = new Translation2d(dir.getCos(), dir.getSin());
+    Translation2d objField = cameraPose.getTranslation().plus(unit.times(latestDistanceMeters));
 
-	@Override
-	public void end(boolean interrupted) {
-		drive.setChassisSpeeds(new ChassisSpeeds(0, 0, 0));
-		RobotContainer.currentPath = "";
-        isFinished = true;
-	}
+    Translation2d robotToObj = objField.minus(robotPose.getTranslation());
+    Translation2d robotToObjUnit = robotToObj.div(robotToObj.getNorm() + 1e-9);
 
-	@Override
-	public boolean isFinished() {
-		return isFinished;
-	}
+    Translation2d driveVelocity = robotToObjUnit.times(forwardCommand);
+
+    drive.setChassisSpeeds(
+        ChassisSpeeds.fromFieldRelativeSpeeds(
+            driveVelocity.getX(),
+            driveVelocity.getY(),
+            angularCommand,
+            robotPose.getRotation()));
+
+    prevTxRadians = latestTxRadians;
+
+    Logger.recordOutput("AimToObject/txRad", latestTxRadians);
+    Logger.recordOutput("AimToObject/distance", latestDistanceMeters);
+    Logger.recordOutput("AimToObject/forwardCommand", forwardCommand);
+    Logger.recordOutput("AimToObject/angularCommand", angularCommand);
+  }
+
+  @Override
+  public void end(boolean interrupted) {
+    drive.setChassisSpeeds(new ChassisSpeeds(0, 0, 0));
+    RobotContainer.currentPath = "";
+    isFinished = true;
+  }
+
+  @Override
+  public boolean isFinished() {
+    return isFinished;
+  }
 }

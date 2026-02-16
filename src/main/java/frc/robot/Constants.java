@@ -107,6 +107,7 @@ public final class Constants {
 	public static class GeometryConstants {
 		public static final double shotSpeed = 15;
 		public static final double intakeSpeed = 3;
+		public static final double intakeDistance = Units.inchesToMeters(10);
 		public static double intakeOffset = Units.inchesToMeters(17.5);
 		public static double ObjectDistanceZeroSpeed = Units.inchesToMeters(12);
 		public static final Transform3d hopperStartTransform = new Transform3d(-Units.inchesToMeters(20),
@@ -116,8 +117,8 @@ public final class Constants {
 		public static final Transform3d hopperTransform = new Transform3d(0, -Units.inchesToMeters(9),
 				Units.inchesToMeters(36.25), new Rotation3d(0, 0, 0.0));
 		// Intake position compared to the robot
-		public static final Transform3d coralScorerTransform = new Transform3d(0.14, -0.015,
-				0.16, new Rotation3d(0, Units.degreesToRadians(22), 0));
+		public static final Transform3d coralScorerTransform = new Transform3d(0.0, 0.0,
+				0.16, new Rotation3d(0, Units.degreesToRadians(0), 0));
 		//Placeholder!
 			public static final Transform3d CoralDistanceFromCenter = new Transform3d(0,0, 0, new Rotation3d(0,0,0));
 

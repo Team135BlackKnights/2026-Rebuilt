@@ -61,6 +61,7 @@ import frc.robot.utils.CompetitionFieldUtils.Simulation.drive.Swerve.SwerveModul
 import frc.robot.utils.drive.DriveConstants;
 import frc.robot.subsystems.vision.Vision;
 import frc.robot.subsystems.vision.VisionIO;
+import frc.robot.subsystems.vision.VisionIO.CameraID;
 import frc.robot.subsystems.vision.VisionIOPhotonVisionSim;
 import frc.robot.subsystems.vision.VisionIOSouthmoon;
 import frc.robot.utils.vision.VisionConstants;
@@ -650,15 +651,15 @@ public class RobotContainer {
 						break;
 				}
 				
-				  visionS = new Vision(() -> getSelectedAprilTagLayout(),
+				 /* visionS = new Vision(() -> getSelectedAprilTagLayout(),
 				  new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "IntakeCam",0,
 				  VisionConstants.cameras[0]),
 				  new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackRightCam",1,
 				  VisionConstants.cameras[1]),
 				 new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackLeftCam",2,
-				 VisionConstants.cameras[2]));
+				 VisionConstants.cameras[2]));*/
 				 
-				/*visionS = new Vision(() -> getSelectedAprilTagLayout(),
+				visionS = new Vision(() -> getSelectedAprilTagLayout(),
 						new VisionIOPhotonVisionSim(() -> getSelectedAprilTagLayout(), "IntakeCam",
 								GeomUtil.poseToTransform3d(VisionConstants.cameras[0].getPose().get()),
 								() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()),
@@ -667,7 +668,7 @@ public class RobotContainer {
 								() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()),
 						new VisionIOPhotonVisionSim(() -> getSelectedAprilTagLayout(), "BackLeftCam",
 								GeomUtil.poseToTransform3d(VisionConstants.cameras[2].getPose().get()),
-								() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()));*/
+								() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()));
 				toggles = new Toggles(new TogglesIONetworkTables());
 				System.out.println("SIM SETUP DONE!");
 				climber = new Climber(new ClimberIOSim());
@@ -894,9 +895,19 @@ public class RobotContainer {
 			kickup.setGoal(Kickup.Goal.IDLING);
 		});
 		//Auto factory setup
-		touchboardAutoFactory = new TouchboardAutoFactory(pathFinder,drivetrainS,() -> new AutoIntake(), Set.of(intake,drivetrainS),
+		touchboardAutoFactory = new TouchboardAutoFactory(pathFinder,drivetrainS,() -> new AutoIntake(drivetrainS,intake,CameraID.INTAKE_CAM), Set.of(intake,drivetrainS),
 				() -> buildTargetHubBothCommand().andThen(buildShootTurretsCommand()).withName("Shoot Turrets Auto"), Set.of(/* leftTurret, */rightTurret,kickup, intake)
 		);
+		Command teleAutoIntake =
+    Commands.defer(
+        () -> new AutoIntake(
+            drivetrainS,
+            intake,
+           	CameraID.INTAKE_CAM
+        ),
+        Set.of(drivetrainS, intake)
+    );
+
 		// Start of actual DRIVER bindings
 		startButtonDrive
 				.onTrue(new InstantCommand(() -> {
@@ -922,9 +933,7 @@ public class RobotContainer {
 		leftBumperDrive.and(rightTriggerDriveFull.negate()).whileTrue(
 				Commands.run(() -> intake.setGoal(Goal.INTAKE_GROUND))
 						.finallyDo(() -> intake.setGoal(Goal.INTAKE_OUTER_IDLE)));
-		rightBumperDrive.onChange(new InstantCommand(() -> {
-			DriveConstants.autoIntake = !DriveConstants.autoIntake; // Assist with intake driving.
-		}));
+		rightBumperDrive.whileTrue(teleAutoIntake);
 		// leftBumperDrive.onTrue(Commands.runOnce(()));
 		xButtonDrive.whileTrue(Commands.either(
 				Commands.run(() -> intake.setGoal(Goal.JACKHAMMERING_OUT), intake)

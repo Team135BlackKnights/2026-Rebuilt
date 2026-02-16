@@ -140,7 +140,14 @@ public abstract class CompetitionFieldSimulation {
 				// YEARLYUPDATE: change the "reefscape2025fieldobjects.algaeballinfly" to the
 				// year's gamepieceinfly class,
 				// & add score handling to match the score zones for this year's gamepiece
-
+				// if we're a fuel on field, if we touch the front side of the robot, we become
+				// a fuel on manipulator
+				if (gamePiece instanceof Rebuilt2026FieldObjects.FuelOnFieldSimulated) {
+					if (mainRobot.getPose3d().plus(new Transform3d(Units.inchesToMeters(15),0, 0, new Rotation3d())).getTranslation()
+							.getDistance(gamePiece.getPose3d().getTranslation()) < GeometryConstants.intakeDistance) {
+						intakeFuel(gamePiece);
+					}
+				}
 			}
 			// memory management
 			gamePiecesCopy = null;
@@ -243,8 +250,7 @@ public abstract class CompetitionFieldSimulation {
 	}
 
 	// YEARLYUPDATE: change these to match the year's gamepiece
-	public void intakeFuel() {
-		GamePieceInSimulation gamePiece = getClosestFuelOnGround();
+	public void intakeFuel(GamePieceInSimulation gamePiece) {
 		if (gamePiece != null) {
 			this.physicsWorld.removeBody(gamePiece);
 			this.competitionField.deleteObject(gamePiece);
@@ -280,44 +286,11 @@ public abstract class CompetitionFieldSimulation {
 			this.competitionField.addObject(gamePiece);
 		}
 	}
+
 	public void removeGamepiece(GamePieceInSimulation gamePiece) {
 		this.physicsWorld.removeBody(gamePiece);
 		this.competitionField.deleteObject(gamePiece);
 		gamePieces.remove(gamePiece);
-	}
-	// YEARLYUPDATE: change these to match the year's gamepiece
-	public void shootAlgae(Pose3d startPose) {
-
-		double speed = 1;
-		// double speed = calculateObjectSpeed(mainRobot.getLinearVelocity().x,
-		// (RobotContainer.flywheelS.getTopRPM()+RobotContainer.flywheelS.getBottomRPM())/2);
-		// Logger.recordOutput("ShotRPM",
-		// (RobotContainer.flywheelS.getTopRPM()+RobotContainer.flywheelS.getBottomRPM())/2);
-		// TODO
-		/*
-		 * GamePieceInSimulation gamePiece = new Rebuilt2026FieldObjects.AlgaeBallInFly(
-		 * TimeUtil.getLogTimeSeconds(),
-		 * speed, startPose);
-		 * this.addGamePiece(gamePiece);
-		 * this.competitionField.addObject(gamePiece);
-		 */
-
-	}
-
-	// YEARLYUPDATE: change these to match the year's gamepiece
-	public void intakeCoral() {
-		// TODO
-		/*
-		 * gamePiece = getClosestCoralOnGround();
-		 * if (gamePiece != null) {
-		 * this.physicsWorld.removeBody(gamePiece);
-		 * this.competitionField.deleteObject(gamePiece);
-		 * gamePieces.remove(gamePiece);
-		 * gamePiece = new Rebuilt2026FieldObjects.ReefscapeCoralOnManipulator();
-		 * this.addGamePiece(gamePiece);
-		 * this.competitionField.addObject(gamePiece);
-		 * }
-		 */
 	}
 
 	// Example of how to calculate the speed of an object launched by a flywheel
@@ -343,7 +316,7 @@ public abstract class CompetitionFieldSimulation {
 		double closestDistance = Double.MAX_VALUE;
 		Set<Class<?>> allowedClasses = new HashSet<>();
 		for (Class<?> gamePiece : wantedType) {
-			allowedClasses.add(gamePiece.getClass());
+			allowedClasses.add(gamePiece);
 		}
 
 		for (GamePieceInSimulation gamePiece : gamePieces) {
@@ -363,9 +336,10 @@ public abstract class CompetitionFieldSimulation {
 
 		return closestGamePiece;
 	}
-	public Pose2d getClosestGamePiecePose2d(List<Class<?>> wantedType){
+
+	public Pose2d getClosestGamePiecePose2d(List<Class<?>> wantedType) {
 		GamePieceInSimulation closestGamePiece = getClosestGamePiece(wantedType);
-		if(closestGamePiece == null){
+		if (closestGamePiece == null) {
 			return new Pose2d();
 		}
 		return closestGamePiece.getObjectOnFieldPose2d();

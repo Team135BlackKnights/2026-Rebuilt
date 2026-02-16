@@ -104,13 +104,13 @@ public class BotAborter extends Command {
 				if (object.confidence < .4) {
 					continue;
 				}
-				if (object.classID == AITargets.BLUE_BOT.ordinal()) {
+				if (object.classID == AITargets.FUEL.ordinal()) {
 					gamePieceTx = -object.tx;
 					gamePieceTy = object.ty;
 					gamePieceTv = true;
 				} else {
 					gamePieceTv = false;
-					if (object.classID == AITargets.RED_BOT.ordinal()) {
+					if (object.classID == AITargets.FUEL.ordinal()) {
 						robotTx = -object.tx;
 						robotTy = object.ty;
 						robotTv = true;

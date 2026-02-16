@@ -179,14 +179,15 @@ public class Vision extends SubsystemChecker {
 			// Pose2d simedAIPose = new Pose2d(2,2,Rotation2d.fromDegrees(0));
 			// grab opposting robot sim poses
 			Pose2d simedAIPose = CompetitionFieldSimulation.getClosestRobotPose(currentOdomPose.getTranslation());
-			Pose2d simedAICoralPose = RobotContainer.fieldSimulation.getClosestGamePiecePose2d(List.of(Rebuilt2026FieldObjects.FuelOnFieldSimulated.class));
+			Pose2d simedAICoralPose = RobotContainer.fieldSimulation
+					.getClosestGamePiecePose2d(List.of(Rebuilt2026FieldObjects.FuelOnFieldSimulated.class));
 			if (simedAIPose != null) {
-				TxTyObservation simedAIObservation = new TxTyObservation(AITargets.BLUE_BOT.name(), 0, new double[4],
+				TxTyObservation simedAIObservation = new TxTyObservation(AITargets.FUEL.name(), 0, new double[4],
 						new double[4],
 						simedAIPose.getTranslation()
 								.getDistance(RobotContainer.drivetrainS.getPose().getTranslation()),
 						TimeUtil.getLogTimeSeconds(), Optional.of(new Pose3d(simedAIPose)));
-				allTxTyObservations.put(AITargets.BLUE_BOT.name(), simedAIObservation);
+				allTxTyObservations.put(AITargets.FUEL.name(), simedAIObservation);
 				RobotContainer.drivetrainS
 						.addTxTyObservation(simedAIObservation);
 			}
@@ -726,9 +727,42 @@ public class Vision extends SubsystemChecker {
 
 	/**
 	 * Get the objdetect tx/ty-only observation closest to the camera centerline.
-	 * This uses the smallest angular magnitude (sqrt(tx^2 + ty^2)) as a proxy.
 	 */
 	public Optional<VisionIO.ObjDetectTxyObservation> getClosestObjDetectTxyObservation(CameraID cam) {
+		if (Constants.currentMode == Mode.SIM) {
+			// In sim, get the closest game piece, and CREATE tx/ty from the cam.
+			Pose2d simedAIFuelPose = RobotContainer.fieldSimulation.getClosestFuelOnGround().getPose3d().toPose2d();
+			// create tx/ty for cam
+			if (simedAIFuelPose != null) {
+				Pose2d robotPose = RobotContainer.drivetrainS.getPose();
+				Transform2d robotToCamera = GeomUtil
+						.poseToTransform(VisionConstants.cameras[cam.ordinal()].getPose().get().toPose2d());
+				Pose2d cameraPose = robotPose.plus(robotToCamera);
+				Translation2d toTargetField = simedAIFuelPose.getTranslation().minus(cameraPose.getTranslation());
+
+				double distance = toTargetField.getNorm();
+
+				double bearingField = Math.atan2(toTargetField.getY(), toTargetField.getX());
+
+				double yawCCW = bearingField - cameraPose.getRotation().getRadians();
+				yawCCW = Math.atan2(Math.sin(yawCCW), Math.cos(yawCCW)); 
+				Rotation2d tx = new Rotation2d(-yawCCW);
+				Rotation2d ty = new Rotation2d(0.0);
+				Logger.recordOutput("Vision/Simulated/ClosestObjDetect/Tx", tx.getDegrees());
+				Logger.recordOutput("Vision/Simulated/ClosestObjDetect/Ty", ty.getDegrees());
+				Logger.recordOutput("Vision/Simulated/ClosestObjDetect/Distance", distance);
+				Logger.recordOutput("Vision/Simulated/ClosestObjDetect/TargetPose", simedAIFuelPose);
+				return Optional.of(new VisionIO.ObjDetectTxyObservation(
+						0,
+						1.0,
+						tx,
+						ty,
+						distance,
+						TimeUtil.getLogTimeSeconds()));
+			} else {
+				return Optional.empty();
+			}
+		}
 		VisionIO.ObjDetectTxyObservation[] observations = inputs[cam.ordinal()].objDetectTxyObservations;
 		if (observations == null || observations.length == 0) {
 			return Optional.empty();

@@ -72,7 +72,7 @@ public class VisionIOSouthmoon implements VisionIO {
     configTable.getDoubleTopic("fiducial_size_m").publish().set(VisionConstants.aprilTagWidth);
     configTable.getIntegerArrayTopic("obj_lower_hsv").publish().set(VisionConstants.objLowerHSV);
     configTable.getIntegerArrayTopic("obj_upper_hsv").publish().set(VisionConstants.objUpperHSV);
-    configTable.getIntegerTopic("obj_blender_ai_id").publish().set(VisionConstants.AITargets.BLUE_BOT.ordinal());
+    configTable.getIntegerTopic("obj_blender_ai_id").publish().set(VisionConstants.AITargets.FUEL.ordinal());
 
     isRecordingPublisher = configTable.getBooleanTopic("is_recording").publish();
     isRecordingPublisher.set(false);

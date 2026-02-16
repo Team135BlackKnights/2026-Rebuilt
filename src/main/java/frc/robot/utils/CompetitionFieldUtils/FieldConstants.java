@@ -284,11 +284,11 @@ public class FieldConstants {
 
     // Relevant reference points on alliance side
     public static final Translation3d depotCenter =
-        new Translation3d(depth, (FIELD_WIDTH / 2) + distanceFromCenterY, height);
+        new Translation3d(depth, (FIELD_HEIGHT / 2) + distanceFromCenterY, height);
     public static final Translation3d leftCorner =
-        new Translation3d(depth, (FIELD_WIDTH / 2) + distanceFromCenterY + (width / 2), height);
+        new Translation3d(depth, (FIELD_HEIGHT / 2) + distanceFromCenterY + (width / 2), height);
     public static final Translation3d rightCorner =
-        new Translation3d(depth, (FIELD_WIDTH / 2) + distanceFromCenterY - (width / 2), height);
+        new Translation3d(depth, (FIELD_HEIGHT / 2) + distanceFromCenterY - (width / 2), height);
   }
 
   public static class Outpost {

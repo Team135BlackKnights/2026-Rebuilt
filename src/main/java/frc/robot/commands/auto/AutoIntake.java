@@ -1,34 +1,27 @@
 package frc.robot.commands.auto;
 
-import com.therekrab.autopilot.APTarget;
+import edu.wpi.first.wpilibj2.command.Commands;
+import edu.wpi.first.wpilibj2.command.ParallelCommandGroup;
 
-import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.CommandScheduler;
-import frc.robot.RobotContainer;
-import frc.robot.utils.drive.DriveConstants;
-import frc.robot.utils.drive.PathFinder;
+import frc.robot.commands.drive.vision.AimToObject;
+import frc.robot.subsystems.drive.DrivetrainS;
+import frc.robot.subsystems.intake.Intake;
+import frc.robot.subsystems.intake.Intake.Goal;
+import frc.robot.subsystems.vision.VisionIO.CameraID;
 
+public class AutoIntake extends ParallelCommandGroup {
 
-//Go to hub center, at x of 10
-public class AutoIntake extends Command{
-    private boolean isFinished = false;
-    @Override
-    public void initialize() {    
-        isFinished = false;
-        //for now, just go using Pathfinder
-        CommandScheduler.getInstance().schedule(PathFinder.goToAutoPilotPose(RobotContainer.pathFinder, new APTarget(new Pose2d(4.4,6,new Rotation2d())), RobotContainer.drivetrainS, () ->DriveConstants.pathConstraints, 1.0, .2));
-    }
-    @Override
-    public void execute() {
-    }
-    @Override
-    public boolean isFinished() {
-        return isFinished;
-    }
-     @Override
-    public void end(boolean interrupted) {
-        isFinished = true;
-    }
+  public AutoIntake(
+      DrivetrainS drive,
+      Intake intake,
+     CameraID cam
+  ) {
+    addCommands(
+        new AimToObject(drive, cam, 0, 0),
+        Commands.run(() -> intake.setGoal(Goal.INTAKE_GROUND), intake)
+            .finallyDo(() -> intake.setGoal(Goal.INTAKE_OUTER_IDLE))
+    );
+
+    setName("AutoIntake");
+  }
 }

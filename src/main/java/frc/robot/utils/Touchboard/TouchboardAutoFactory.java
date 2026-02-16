@@ -10,7 +10,6 @@ import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.drive.DriveConstants;
 import frc.robot.utils.drive.LocalADStarAK;
 import frc.robot.utils.drive.PathFinder;
-import lombok.extern.java.Log;
 import frc.robot.Robot;
 import frc.robot.Constants.TuningConstants;
 import frc.robot.subsystems.drive.DrivetrainS;
@@ -73,7 +72,12 @@ public class TouchboardAutoFactory {
                 seq = seq.andThen(holdUntilTimeRemaining(step.atSecondsRemaining));
             }
 
-            seq = seq.andThen(commandForStep(step, next));
+            Set<Subsystem> reqs = new java.util.HashSet<>();
+            reqs.add(drivetrainS);
+            if (intakeRequirements != null) reqs.addAll(intakeRequirements);
+            if (shootRequirements != null) reqs.addAll(shootRequirements);
+            seq = seq.andThen(Commands.print("Running " + step.type)
+                .andThen(Commands.defer(() ->commandForStep(step, next), reqs)));
 
             // If this step was a "return trench" (NOT followed by INTAKE) and next step is
             // timed,
@@ -98,9 +102,10 @@ public class TouchboardAutoFactory {
                 if (step.untilSecondsRemaining == null) {
                     return deferIntake();
                 }
-                return Commands.race(
+                return Commands.deadline(
                         Commands.waitUntil(
-                                () -> AutoTime.isRunning() && AutoTime.remaining() <= step.untilSecondsRemaining),
+                                () -> 
+                                     AutoTime.remaining() <= step.untilSecondsRemaining),
                         deferIntake());
             case TRENCH: {
                 TouchboardAutoPlan.TrenchChoice choice = (step.choice == null) ? TouchboardAutoPlan.TrenchChoice.BEST
@@ -182,6 +187,7 @@ public class TouchboardAutoFactory {
     private Pose2d depotPose() {
         // depotCenter is Translation3d; use its x/y and keep heading 0
         var d = GeomUtil.apply(FieldConstants.Depot.depotCenter, false);
+        Logger.recordOutput("Auto/DepotPose", new Pose2d(d.getX(), d.getY(), Rotation2d.fromDegrees(0)));
         return new Pose2d(d.getX(), d.getY(), Rotation2d.fromDegrees(0));
     }
 
@@ -214,7 +220,6 @@ public class TouchboardAutoFactory {
             Translation2d candidate = new Translation2d(
                     hub.getX() + radius * Math.cos(ang),
                     hub.getY() + radius * Math.sin(ang));
-            Logger.recordOutput("Auto/Candidate" + i, candidate);
             if (!isSafeCandidate(candidate, margin))
                 continue;
 
