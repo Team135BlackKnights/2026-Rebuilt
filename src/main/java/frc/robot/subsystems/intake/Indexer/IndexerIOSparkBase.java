@@ -1,4 +1,4 @@
-package frc.robot.subsystems.intake.Indexer;
+package frc.robot.subsystems.intake.indexer;
 
 import frc.robot.subsystems.simpleMechanisms.roller.GenericRollerSystemIOSparkBase;
 

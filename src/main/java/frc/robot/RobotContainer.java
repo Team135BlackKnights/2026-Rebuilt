@@ -51,14 +51,18 @@ import frc.robot.subsystems.hang.wedgeArm.WedgeArmIO;
 import frc.robot.subsystems.hang.wedgeArm.WedgeArmIOKrakenFOC;
 import frc.robot.subsystems.hang.wedgeArm.WedgeArmIOSim;
 import frc.robot.subsystems.intake.Intake;
-import frc.robot.subsystems.intake.Indexer.Indexer;
-import frc.robot.subsystems.intake.Indexer.IndexerIO;
-import frc.robot.subsystems.intake.Indexer.IndexerIOKrakenFOC;
-import frc.robot.subsystems.intake.Indexer.IndexerIOSim;
 import frc.robot.subsystems.intake.Intake.Goal;
 import frc.robot.subsystems.intake.arm.ArmIO;
 import frc.robot.subsystems.intake.arm.ArmIOKrakenFOC;
 import frc.robot.subsystems.intake.arm.ArmIOSim;
+import frc.robot.subsystems.intake.frontRollers.FrontRollers;
+import frc.robot.subsystems.intake.frontRollers.FrontRollersIO;
+import frc.robot.subsystems.intake.frontRollers.FrontRollersIOKrakenFOC;
+import frc.robot.subsystems.intake.frontRollers.FrontRollersIOSim;
+import frc.robot.subsystems.intake.indexer.Indexer;
+import frc.robot.subsystems.intake.indexer.IndexerIO;
+import frc.robot.subsystems.intake.indexer.IndexerIOKrakenFOC;
+import frc.robot.subsystems.intake.indexer.IndexerIOSim;
 import frc.robot.subsystems.drive.Tank.Tank;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.AIRobotInSimulation;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.MecanumDriveSimulation;
@@ -507,7 +511,12 @@ public class RobotContainer {
 								IntakeConstants.indexerInverted,
 								true,
 								IntakeConstants.intakeReductionToIndexerRollers));
-				intake = new Intake(armIO, indexer);
+				FrontRollers frontRollers = new FrontRollers(
+						new FrontRollersIOKrakenFOC(IntakeConstants.frontRollersMotorID, Robot.rioCanBus,
+								IntakeConstants.frontRollersName, IntakeConstants.frontRollersCurrentLimit,
+								IntakeConstants.frontRollersInverted, true,
+								IntakeConstants.frontRollersReduction));
+				intake = new Intake(armIO, indexer, frontRollers);
 				// Left Turret
 				/*
 				 * AzimuthIO azimuthIOLeftTurret = new AzimuthIOKrakenFOC(Robot.rioCanBus,
@@ -690,7 +699,7 @@ public class RobotContainer {
 						SimpleMechanismConstants.Climber.climbMOI)),
 						new WedgeArmIOSim());
 				intake = new Intake(new ArmIOSim(), new Indexer(new IndexerIOSim(DCMotor.getKrakenX44Foc(1), "Indexer",
-						IntakeConstants.intakeReductionToIndexerRollers, IntakeConstants.intakeMOI)));
+						IntakeConstants.intakeReductionToIndexerRollers, IntakeConstants.intakeMOI)), new FrontRollers(new FrontRollersIOSim(DCMotor.getKrakenX44Foc(1), IntakeConstants.frontRollersName, IntakeConstants.frontRollersReduction, IntakeConstants.frontRollersMOI)));
 				kickup = new Kickup(new KickupIOSim(AdvancedMechanismConstants.Turret.kickupMotor, "Kickup",
 						AdvancedMechanismConstants.Turret.kickerRatio,
 						AdvancedMechanismConstants.Turret.kickupMOI));
@@ -754,6 +763,7 @@ public class RobotContainer {
 				});
 				intake = new Intake(new ArmIO() {
 				}, new Indexer(new IndexerIO() {
+				}), new FrontRollers(new FrontRollersIO() {
 				}));
 				kickup = new Kickup(new KickupIO() {
 				});

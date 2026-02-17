@@ -14,9 +14,11 @@ import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.TuningConstants;
 import frc.robot.subsystems.SubsystemChecker;
-import frc.robot.subsystems.intake.Indexer.Indexer;
 import frc.robot.subsystems.intake.arm.ArmIO;
 import frc.robot.subsystems.intake.arm.ArmIOInputsAutoLogged;
+import frc.robot.subsystems.intake.frontRollers.FrontRollers;
+import frc.robot.subsystems.intake.indexer.Indexer;
+import frc.robot.utils.IntakeConstants;
 import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.selfCheck.SelfChecking;
 import lombok.Getter;
@@ -50,6 +52,7 @@ public class Intake extends SubsystemChecker {
     // IO
     private final ArmIO armIO;
     private final Indexer indexer;
+    private final FrontRollers frontRollers;
 
     // Inputs
     private final ArmIOInputsAutoLogged armInputs = new ArmIOInputsAutoLogged();
@@ -72,9 +75,10 @@ public class Intake extends SubsystemChecker {
     private double currentRollerVolts = 0.0;
     @Getter
     private boolean intakeDeployed = false;
-    public Intake(ArmIO armIO, Indexer indexer) {
+    public Intake(ArmIO armIO, Indexer indexer, FrontRollers frontRollers) {
         this.armIO = armIO;
         this.indexer = indexer;
+        this.frontRollers = frontRollers;
 
         // Apply initial PID
         updateTunablePIDs();
@@ -86,6 +90,7 @@ public class Intake extends SubsystemChecker {
         armIO.updateInputs(armInputs);
         Logger.processInputs("Intake/Arm", armInputs);
         indexer.periodic();
+        frontRollers.periodic();
 
         // 2. Check for Tuning Updates
         updateTunablePIDs();
@@ -95,6 +100,7 @@ public class Intake extends SubsystemChecker {
             goal = Goal.STOW; // Reset state on disable
             armIO.stop();
             indexer.setGoal(Indexer.Goal.STOPPED);
+            frontRollers.setGoal(FrontRollers.Goal.STOPPED);
             return;
         }
 
@@ -107,18 +113,22 @@ public class Intake extends SubsystemChecker {
             case START -> {
                 currentArmSetpoint = angle_stow.get();
                 indexer.setGoal(Indexer.Goal.STOPPED);
+                frontRollers.setGoal(FrontRollers.Goal.STOPPED);
             }
             case STOW -> {
                 currentArmSetpoint = angle_stow.get();
-                indexer.setGoal(Indexer.Goal.IDLING);
+                indexer.setGoal(Indexer.Goal.STOPPED);
+                frontRollers.setGoal(FrontRollers.Goal.IDLING);
             }
             case INTAKE_GROUND -> {
                 currentArmSetpoint = angle_ground.get();
-                indexer.setGoal(Indexer.Goal.INTAKING);
+                indexer.setGoal(Indexer.Goal.STOPPED);
+                frontRollers.setGoal(FrontRollers.Goal.INTAKING);
             }
             case INTAKE_OUTER_IDLE -> {
                 currentArmSetpoint = angle_ground.get();
-                indexer.setGoal(Indexer.Goal.IDLING);
+                indexer.setGoal(Indexer.Goal.STOPPED);
+                frontRollers.setGoal(FrontRollers.Goal.IDLING);
             }
             case JACKHAMMERING_IN -> {
                 currentArmSetpoint = angle_stow.get();
@@ -126,8 +136,10 @@ public class Intake extends SubsystemChecker {
                 double t = Timer.getFPGATimestamp() % (time_jackhammer.get() * 2);
                 if (t < time_jackhammer.get()) {
                     indexer.setGoal(Indexer.Goal.JACKHAMMER_IN);
+                    frontRollers.setGoal(FrontRollers.Goal.INTAKING);
                 } else {
                     indexer.setGoal(Indexer.Goal.JACKHAMMER_OUT);
+                    frontRollers.setGoal(FrontRollers.Goal.INTAKING);
                 }
             }
             case JACKHAMMERING_OUT -> {
@@ -135,13 +147,16 @@ public class Intake extends SubsystemChecker {
                 double t = Timer.getFPGATimestamp() % (time_jackhammer.get() * 2);
                 if (t < time_jackhammer.get()) {
                     indexer.setGoal(Indexer.Goal.JACKHAMMER_OUT);
+                    frontRollers.setGoal(FrontRollers.Goal.INTAKING);
                 } else {
                     indexer.setGoal(Indexer.Goal.JACKHAMMER_IN);
+                    frontRollers.setGoal(FrontRollers.Goal.INTAKING);
                 }
             }
             case SHOOTING -> {
                 // Don't mess with the arm position, since we might want to shoot from either stow or ground intake
                 indexer.setGoal(Indexer.Goal.SHOOTING);
+                frontRollers.setGoal(FrontRollers.Goal.SHOOTING);
             }
 
         }
@@ -186,6 +201,7 @@ public class Intake extends SubsystemChecker {
         List<SelfChecking> hardware = new ArrayList<>();
         hardware.addAll(armIO.getSelfCheckingHardware());
         hardware.addAll(indexer.getHardware());
+        hardware.addAll(frontRollers.getHardware());
 
         for (SelfChecking device : hardware) {
             if (device.getHardware() instanceof TalonFX) {
@@ -197,7 +213,7 @@ public class Intake extends SubsystemChecker {
 
     @Override
     public double getCurrent() {
-        return armInputs.supplyCurrentAmps + indexer.getCurrent();
+        return armInputs.supplyCurrentAmps + indexer.getCurrent() + frontRollers.getCurrent();
     }
 
     @Override
@@ -205,6 +221,7 @@ public class Intake extends SubsystemChecker {
         HashMap<String, Double> temps = new HashMap<>();
         temps.put("Arm", armInputs.tempCelsius);
         temps.put("Rollers", indexer.getTemps().get("Indexer"));
+        temps.put("FrontRollers", frontRollers.getTemps().get(IntakeConstants.frontRollersName));
         return temps;
     }
 
@@ -212,6 +229,7 @@ public class Intake extends SubsystemChecker {
     public void setCurrentLimit(int amps) {
         // Split the limit or apply to both? Usually apply individually.
         armIO.setCurrentLimit(amps);
+        frontRollers.setCurrentLimit(amps);
         indexer.setCurrentLimit(amps);
     }
 
@@ -219,10 +237,10 @@ public class Intake extends SubsystemChecker {
     protected Command systemCheckCommand() {
         return runOnce(() -> {
             // Simple check logic
-            if (armInputs.connected && indexer.isConnected()) {
-                Logger.recordOutput("Intake" + "/SystemCheck/AzimuthConnected", "GOOD");
+            if (armInputs.connected && indexer.isConnected() && frontRollers.isConnected()) {
+                Logger.recordOutput("Intake" + "/SystemCheck/Connected", "GOOD");
             } else {
-                Logger.recordOutput("Intake" + "/SystemCheck/AzimuthConnected", "BAD");
+                Logger.recordOutput("Intake" + "/SystemCheck/Connected", "BAD");
             }
         }).withName("FuelIntakeSystemCheck");
     }

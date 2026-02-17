@@ -1,4 +1,4 @@
-package frc.robot.subsystems.intake.indexer;
+package frc.robot.subsystems.intake.frontRollers;
 
 import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
@@ -14,12 +14,12 @@ import frc.robot.subsystems.simpleMechanisms.roller.GenericRollerSystem;
 
 @Getter
 @Setter
-public class Indexer extends GenericRollerSystem<Indexer.Goal> {
+public class FrontRollers extends GenericRollerSystem<FrontRollers.Goal> {
     @RequiredArgsConstructor
     @Getter
     public enum Goal implements GenericRollerSystem.RollGoalSupplier {
         STOPPED(() -> 0),
-        IDLING(new LoggableTunedNumber("IdlingVoltage", 4.0, Constants.TuningConstants.isTuningIntake)),
+        IDLING(new LoggableTunedNumber("IdlingVoltage", 0.0, Constants.TuningConstants.isTuningIntake)),
         INTAKING(
                 new LoggableTunedNumber("IntakingVoltage", 8.0, Constants.TuningConstants.isTuningIntake)),
         SHOOTING(new LoggableTunedNumber("ShootingVoltage", 10.0, Constants.TuningConstants.isTuningIntake)),
@@ -50,8 +50,8 @@ public class Indexer extends GenericRollerSystem<Indexer.Goal> {
 
     private Goal goal = Goal.INTAKING; //should always intake or vomit
 
-    public Indexer(IndexerIO io) {
-        super("Intake/Indexer", io);
+    public FrontRollers(FrontRollersIO io) {
+        super("Intake/FrontRollers", io);
     }
 
     public Goal getGoal() {

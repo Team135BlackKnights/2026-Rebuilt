@@ -1,4 +1,4 @@
-package frc.robot.subsystems.intake.Indexer;
+package frc.robot.subsystems.intake.indexer;
 
 import com.ctre.phoenix6.CANBus;
 
