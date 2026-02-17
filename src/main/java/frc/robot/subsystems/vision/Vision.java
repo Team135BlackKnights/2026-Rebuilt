@@ -109,7 +109,10 @@ public class Vision extends SubsystemChecker {
 			Logger.recordOutput("Vision/" + inputs[i].name + "/CamPose",
 					new Pose3d(RobotContainer.drivetrainS.getPose())
 							.plus(GeomUtil.poseToTransform(VisionConstants.cameras[i].getPose().get())));
-
+		if (inputs[i].objDetectTxyObservations.length > 0) {
+			Logger.recordOutput("Vision/" + inputs[i].name + "/LatestObjTxy",
+					inputs[i].objDetectTxyObservations[inputs[i].objDetectTxyObservations.length - 1]);
+		}
 		}
 
 		Logger.recordOutput("SystemStatus/Periodic/VisionInputsMS", System.currentTimeMillis() - timestamp);

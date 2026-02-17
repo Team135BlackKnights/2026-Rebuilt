@@ -172,9 +172,9 @@ public class DriveToLine extends Command {
 
             }
         }
-        Logger.recordOutput("DriveToLine/DistanceError", distanceToLine);
-        Logger.recordOutput("DriveToLine/DistanceSetpoint", driveController.getSetpoint().position);
-        Logger.recordOutput("DriveToLine/ClosestPoint", new Pose2d(closestPoint, drive.getPose().getRotation()));
+        Logger.recordOutput("Drive/DriveToLine/DistanceError", distanceToLine);
+        Logger.recordOutput("Drive/DriveToLine/DistanceSetpoint", driveController.getSetpoint().position);
+        Logger.recordOutput("Drive/DriveToLine/ClosestPoint", new Pose2d(closestPoint, drive.getPose().getRotation()));
     }
 
     @Override

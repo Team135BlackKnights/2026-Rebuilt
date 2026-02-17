@@ -175,8 +175,8 @@ public class ShotCalculator {
             hoodVel,
             flywheelSpeed);
 
-    Logger.recordOutput("ShotCalculator/"+profile.name+"/LookaheadPose", lookaheadPose);
-    Logger.recordOutput("ShotCalculator/"+profile.name+"/LookaheadDist", lookaheadDist);
+    Logger.recordOutput("SuperStructure/ShotCalculator/"+profile.name+"/LookaheadPose", lookaheadPose);
+    Logger.recordOutput("SuperStructure/ShotCalculator/"+profile.name+"/LookaheadDist", lookaheadDist);
 
     return latestParameters;
   }

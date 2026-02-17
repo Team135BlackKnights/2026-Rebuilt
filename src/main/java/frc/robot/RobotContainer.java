@@ -42,6 +42,14 @@ import frc.robot.subsystems.drive.Tank.TankIO;
 import frc.robot.subsystems.drive.Tank.TankIOSim;
 import frc.robot.subsystems.drive.Tank.TankIOSparkBase;
 import frc.robot.subsystems.drive.Tank.TankIOTalonFX;
+import frc.robot.subsystems.hang.Hang;
+import frc.robot.subsystems.hang.climber.Climber;
+import frc.robot.subsystems.hang.climber.ClimberIO;
+import frc.robot.subsystems.hang.climber.ClimberIOKrakenFOC;
+import frc.robot.subsystems.hang.climber.ClimberIOSim;
+import frc.robot.subsystems.hang.wedgeArm.WedgeArmIO;
+import frc.robot.subsystems.hang.wedgeArm.WedgeArmIOKrakenFOC;
+import frc.robot.subsystems.hang.wedgeArm.WedgeArmIOSim;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.intake.Indexer.Indexer;
 import frc.robot.subsystems.intake.Indexer.IndexerIO;
@@ -122,10 +130,6 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.TuningConstants;
 
 import frc.robot.subsystems.drive.FastSwerve.Swerve.ModuleLimits;
-import frc.robot.subsystems.simpleMechanisms.slamElevator.ExampleClimber.Climber;
-import frc.robot.subsystems.simpleMechanisms.slamElevator.ExampleClimber.ClimberIO;
-import frc.robot.subsystems.simpleMechanisms.slamElevator.ExampleClimber.ClimberIOKrakenFOC;
-import frc.robot.subsystems.simpleMechanisms.slamElevator.ExampleClimber.ClimberIOSim;
 
 import frc.robot.utils.DriverStationHID;
 import frc.robot.utils.GeomUtil;
@@ -158,7 +162,7 @@ public class RobotContainer {
 	public static Toggles toggles;
 	public static LocalADStarAK pathFinder = new LocalADStarAK();
 	public static TouchboardAutoFactory touchboardAutoFactory;
-	public static Climber climber;
+	public static Hang hang;
 	public static Kickup kickup;
 	// public static Turret leftTurret;
 	public static Turret rightTurret;
@@ -227,6 +231,7 @@ public class RobotContainer {
 			leaveMinimumSpeed = new LoggableTunedNumber("PathFollowing/LeaveMinimumSpeed", .5,
 					TuningConstants.isTuningMacros);
 	ModuleLimits normalSpeeds = DriveConstants.moduleLimitsLow;
+
 	public static void precalculateAllStartAndEndChoreos() {
 		File choreoDirectory = new File(Filesystem.getDeployDirectory(),
 				"choreo/");
@@ -468,10 +473,20 @@ public class RobotContainer {
 				// Advanced Mechs Require Toggles
 				toggles = new Toggles(new TogglesIOHardware());
 				System.out.println("REAL SETUP DONE!");
-				switch (SimpleMechanismConstants.Climber.motorType) {
+				switch (SimpleMechanismConstants.Climber.climbMotorType) {
 					case CTRE_ON_RIO:
 					case CTRE_ON_CANIVORE:
-						climber = new Climber(new ClimberIOKrakenFOC());
+						hang = new Hang(new Climber(new ClimberIOKrakenFOC(SimpleMechanismConstants.Climber.climberId,
+								SimpleMechanismConstants.Climber.bus, SimpleMechanismConstants.Climber.climberName,
+								SimpleMechanismConstants.Climber.climbCurrentLimit,
+								SimpleMechanismConstants.Climber.climbInverted, true,
+								SimpleMechanismConstants.Climber.climbReductionToClimbRollers)),
+								new WedgeArmIOKrakenFOC(SimpleMechanismConstants.Climber.bus,
+										SimpleMechanismConstants.Climber.wedgeArmId,
+										SimpleMechanismConstants.Climber.wedgeArmName,
+										SimpleMechanismConstants.Climber.wedgeArmCurrentLimit,
+										SimpleMechanismConstants.Climber.wedgeArmInverted, true,
+										SimpleMechanismConstants.Climber.wedgeReduction));
 						break;
 					default:
 						throw new IllegalArgumentException(
@@ -650,15 +665,17 @@ public class RobotContainer {
 						AIRobotInSimulation.startOpponentRobotSimulations(); // Start your engines...
 						break;
 				}
-				
-				 /* visionS = new Vision(() -> getSelectedAprilTagLayout(),
-				  new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "IntakeCam",0,
-				  VisionConstants.cameras[0]),
-				  new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackRightCam",1,
-				  VisionConstants.cameras[1]),
-				 new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackLeftCam",2,
-				 VisionConstants.cameras[2]));*/
-				 
+
+				/*
+				 * visionS = new Vision(() -> getSelectedAprilTagLayout(),
+				 * new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "IntakeCam",0,
+				 * VisionConstants.cameras[0]),
+				 * new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackRightCam",1,
+				 * VisionConstants.cameras[1]),
+				 * new VisionIOSouthmoon(() -> getSelectedAprilTagLayout(), "BackLeftCam",2,
+				 * VisionConstants.cameras[2]));
+				 */
+
 				visionS = new Vision(() -> getSelectedAprilTagLayout(),
 						new VisionIOPhotonVisionSim(() -> getSelectedAprilTagLayout(), "IntakeCam",
 								GeomUtil.poseToTransform3d(VisionConstants.cameras[0].getPose().get()),
@@ -670,8 +687,10 @@ public class RobotContainer {
 								GeomUtil.poseToTransform3d(VisionConstants.cameras[2].getPose().get()),
 								() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()));
 				toggles = new Toggles(new TogglesIONetworkTables());
-				System.out.println("SIM SETUP DONE!");
-				climber = new Climber(new ClimberIOSim());
+				hang = new Hang(new Climber(new ClimberIOSim(DCMotor.getKrakenX44Foc(1), "Climber",
+						SimpleMechanismConstants.Climber.climbReductionToClimbRollers,
+						SimpleMechanismConstants.Climber.climbMOI)),
+						new WedgeArmIOSim());
 				intake = new Intake(new ArmIOSim(), new Indexer(new IndexerIOSim(DCMotor.getKrakenX44Foc(1), "Indexer",
 						IntakeConstants.intakeReductionToIndexerRollers, IntakeConstants.intakeMOI)));
 				kickup = new Kickup(new KickupIOSim(AdvancedMechanismConstants.Turret.kickupMotor, "Kickup",
@@ -703,6 +722,7 @@ public class RobotContainer {
 				 * // new Pair<String, Command>("PlayMiiSong", new OrchestraC("mii")),
 				 * ));
 				 */
+				System.out.println("SIM SETUP DONE!");
 				break;
 			default:
 				switch (DriveConstants.driveType) {
@@ -731,7 +751,8 @@ public class RobotContainer {
 						}); // MUST be same number of cameras as in real robot
 				toggles = new Toggles(new TogglesIO() {
 				});
-				climber = new Climber(new ClimberIO() {
+				hang = new Hang(new Climber(new ClimberIO() {
+				}), new WedgeArmIO() {
 				});
 				intake = new Intake(new ArmIO() {
 				}, new Indexer(new IndexerIO() {
@@ -762,7 +783,7 @@ public class RobotContainer {
 		// Make sure to watch your flipped poses. Our custom DriveToPose and all of
 		// those do NOT auto flip for red
 		precalculateAllStartAndEndChoreos();
-		
+
 		if (Constants.isCompetition) {
 			PPLibTelemetry.enableCompetitionMode();
 		}
@@ -833,7 +854,6 @@ public class RobotContainer {
 		return angleOverrider;
 	}
 
-
 	private void configureBindings() {
 		Trigger povUp = driveController.pov(0);
 		Trigger povRight = driveController.pov(90);
@@ -894,19 +914,17 @@ public class RobotContainer {
 			intake.setGoal(Goal.INTAKE_OUTER_IDLE);
 			kickup.setGoal(Kickup.Goal.IDLING);
 		});
-		//Auto factory setup
-		touchboardAutoFactory = new TouchboardAutoFactory(pathFinder,drivetrainS,() -> new AutoIntake(drivetrainS,intake,CameraID.INTAKE_CAM), Set.of(intake,drivetrainS),
-				() -> buildTargetHubBothCommand().andThen(buildShootTurretsCommand()).withName("Shoot Turrets Auto"), Set.of(/* leftTurret, */rightTurret,kickup, intake)
-		);
-		Command teleAutoIntake =
-    Commands.defer(
-        () -> new AutoIntake(
-            drivetrainS,
-            intake,
-           	CameraID.INTAKE_CAM
-        ),
-        Set.of(drivetrainS, intake)
-    );
+		// Auto factory setup
+		touchboardAutoFactory = new TouchboardAutoFactory(pathFinder, drivetrainS,
+				() -> new AutoIntake(drivetrainS, intake, CameraID.INTAKE_CAM), Set.of(intake, drivetrainS),
+				() -> buildTargetHubBothCommand().andThen(buildShootTurretsCommand()).withName("Shoot Turrets Auto"),
+				Set.of(/* leftTurret, */rightTurret, kickup, intake));
+		Command teleAutoIntake = Commands.defer(
+				() -> new AutoIntake(
+						drivetrainS,
+						intake,
+						CameraID.INTAKE_CAM),
+				Set.of(drivetrainS, intake));
 
 		// Start of actual DRIVER bindings
 		startButtonDrive
@@ -1095,7 +1113,7 @@ public class RobotContainer {
 	 */
 	public static double[] getCurrentDraw() {
 
-		return new double[] { Math.min(drivetrainS.getCurrent(), 200), climber.getCurrent(), intake.getCurrent(),
+		return new double[] { Math.min(drivetrainS.getCurrent(), 200), hang.getCurrent(), intake.getCurrent(),
 				/* leftTurret.getCurrent(), */ rightTurret.getCurrent() };
 		// superStructure.getCurrent() };
 	}
@@ -1118,7 +1136,7 @@ public class RobotContainer {
 				drivetrainS.getRunnableSystemCheckCommand(),
 				visionS.getSystemCheckCommand(),
 				// leds.getSystemCheckCommand(),
-				climber.getSystemCheckCommand(),
+				hang.getSystemCheckCommand(),
 				intake.getSystemCheckCommand(),
 				// leftTurret.getSystemCheckCommand(),
 				rightTurret.getSystemCheckCommand(),
@@ -1138,7 +1156,7 @@ public class RobotContainer {
 
 	public static HashMap<String, Double> getAllTemps() {
 		// List of HashMaps
-		List<HashMap<String, Double>> maps = List.of(drivetrainS.getTemps(), visionS.getTemps(), climber.getTemps(),
+		List<HashMap<String, Double>> maps = List.of(drivetrainS.getTemps(), visionS.getTemps(), hang.getTemps(),
 				intake.getTemps(), /* leftTurret.getTemps(), */ rightTurret.getTemps(), kickup.getTemps());
 		// Combine all maps
 		HashMap<String, Double> combinedMap = combineMaps(maps);
@@ -1154,7 +1172,7 @@ public class RobotContainer {
 		return drivetrainS.getTrueSystemStatus() == SubsystemChecker.SystemStatus.OK
 				// && leds.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& visionS.getSystemStatus() == SubsystemChecker.SystemStatus.OK
-				&& climber.getSystemStatus() == SubsystemChecker.SystemStatus.OK
+				&& hang.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& intake.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				// && leftTurret.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& rightTurret.getSystemStatus() == SubsystemChecker.SystemStatus.OK
@@ -1166,7 +1184,7 @@ public class RobotContainer {
 
 		Collection<ParentDevice> devices = new ArrayList<>();
 		devices.addAll(drivetrainS.getDriveOrchestraDevices());
-		devices.addAll(climber.getOrchestraDevices());
+		devices.addAll(hang.getOrchestraDevices());
 		devices.addAll(intake.getOrchestraDevices());
 		// devices.addAll(kickup.getOrchestraDevices());
 		// devices.addAll(leftTurret.getOrchestraDevices());
@@ -1189,7 +1207,7 @@ public class RobotContainer {
 				break;
 		}
 		subsystems[1] = visionS;
-		subsystems[2] = climber;
+		subsystems[2] = hang;
 		subsystems[3] = intake;
 		// subsystems[4] = leftTurret;
 		subsystems[4] = rightTurret;

@@ -141,10 +141,10 @@ public class AimToObject extends Command {
 
     prevTxRadians = latestTxRadians;
 
-    Logger.recordOutput("AimToObject/txRad", latestTxRadians);
-    Logger.recordOutput("AimToObject/distance", latestDistanceMeters);
-    Logger.recordOutput("AimToObject/forwardCommand", forwardCommand);
-    Logger.recordOutput("AimToObject/angularCommand", angularCommand);
+    Logger.recordOutput("Drive/AimToObject/txRad", latestTxRadians);
+    Logger.recordOutput("Drive/AimToObject/distance", latestDistanceMeters);
+    Logger.recordOutput("Drive/AimToObject/forwardCommand", forwardCommand);
+    Logger.recordOutput("Drive/AimToObject/angularCommand", angularCommand);
   }
 
   @Override

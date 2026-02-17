@@ -95,11 +95,11 @@ public class Tank extends SubsystemChecker implements DrivetrainS {
 				DriveConstants.mainConfig, () -> Robot.isRed, this);
 		Pathfinding.setPathfinder(new LocalADStarAK());
 		PathPlannerLogging.setLogActivePathCallback((activePath) -> {
-			Logger.recordOutput("Odometry/Trajectory",
+			Logger.recordOutput("RobotState/Trajectory",
 					activePath.toArray(new Pose2d[activePath.size()]));
 		});
 		PathPlannerLogging.setLogTargetPoseCallback((targetPose) -> {
-			Logger.recordOutput("Odometry/TrajectorySetpoint", targetPose);
+			Logger.recordOutput("RobotState/TrajectorySetpoint", targetPose);
 		});
 		for (int i = 0; i < 3; ++i) {
 			qStdDevs.set(i, 0, Math.pow(

@@ -52,8 +52,8 @@ public class GeomUtil {
 		double maxSpeed = DriveConstants.kMaxSpeedMetersPerSecond;
 
 		// Log the globals at least
-		Logger.recordOutput("Avoidance/MeasuredSpeed", measuredSpeed);
-		Logger.recordOutput("Avoidance/CommandedSpeed", commandedSpeed);
+		Logger.recordOutput("Controller/Avoidance/MeasuredSpeed", measuredSpeed);
+		Logger.recordOutput("Controller/Avoidance/CommandedSpeed", commandedSpeed);
 
 		for (TxTyPoseRecord otherRobotPose : ((Swerve) RobotContainer.drivetrainS).getOpposingRobotPoses()) {
 			Pose3d other3 = otherRobotPose.pose();
@@ -144,9 +144,9 @@ public class GeomUtil {
 					avoidRobotX += -uxRobot * reduction;
 					avoidRobotY += -uyRobot * reduction;
 					anyActive = true;
-					Logger.recordOutput("Avoidance/OtherAppliedReduction", reduction);
+					Logger.recordOutput("Controller/Avoidance/OtherAppliedReduction", reduction);
 				}
-				Logger.recordOutput("Avoidance/OtherAge", age);
+				Logger.recordOutput("Controller/Avoidance/OtherAge", age);
 			}
 		} // end loop
 
@@ -166,10 +166,10 @@ public class GeomUtil {
 		double newOmega = speeds.omegaRadiansPerSecond;
 
 		ChassisSpeeds out = new ChassisSpeeds(newVx, newVy, newOmega);
-		Logger.recordOutput("Avoidance/AppliedVX", avoidRobotX);
-		Logger.recordOutput("Avoidance/AppliedVY", avoidRobotY);
-		Logger.recordOutput("Avoidance/ResultVX", newVx);
-		Logger.recordOutput("Avoidance/ResultVY", newVy);
+		Logger.recordOutput("Controller/Avoidance/AppliedVX", avoidRobotX);
+		Logger.recordOutput("Controller/Avoidance/AppliedVY", avoidRobotY);
+		Logger.recordOutput("Controller/Avoidance/ResultVX", newVx);
+		Logger.recordOutput("Controller/Avoidance/ResultVY", newVy);
 
 		return out;
 	}

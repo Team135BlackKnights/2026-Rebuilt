@@ -86,7 +86,7 @@ public abstract class CompetitionFieldSimulation {
 
 	public void addPoints(int points) {
 		score += points;
-		Logger.recordOutput("Scoring/SimScore", score);
+		Logger.recordOutput("Field/Scoring/SimScore", score);
 	}
 
 	public synchronized void addCustomSimulation(Simulatable simulatable) {
@@ -118,7 +118,7 @@ public abstract class CompetitionFieldSimulation {
 				Pair<Boolean, String> inScoreZone = gamePiece.isInScoreZone();
 				if (inScoreZone.getFirst()) {
 					score += gamePiece.getScoreValue(inScoreZone.getSecond());
-					Logger.recordOutput("Scoring/SimScore", score);
+					Logger.recordOutput("Field/Scoring/SimScore", score);
 					if (gamePiece.shouldDeleteAndRemoveFromSimulation(inScoreZone.getSecond())) {
 						this.physicsWorld.removeBody(gamePiece);
 						this.competitionField.deleteObject(gamePiece);
@@ -152,13 +152,13 @@ public abstract class CompetitionFieldSimulation {
 			// memory management
 			gamePiecesCopy = null;
 		}
-		Logger.recordOutput("Scoring/SimScore", score);
+		Logger.recordOutput("Field/Scoring/SimScore", score);
 		competitionField.updateObjectsToDashboardAndTelemetry();
 	}
 
 	private boolean hasContact(GamePieceInSimulation gamePiece) {
 		gamePiece.setTransform(GeometryConvertor.toDyn4jTransform(gamePiece.getPose3d().toPose2d()));
-		Logger.recordOutput("PhysicsLocation", GeometryConvertor.toWpilibPose2d(gamePiece.getTransform()));
+		Logger.recordOutput("Field/PhysicsLocation", GeometryConvertor.toWpilibPose2d(gamePiece.getTransform()));
 		for (ContactConstraint<Body> contact : this.physicsWorld.getContacts(gamePiece)) {
 			// Check if either body in the contact is the game piece
 			if (contact.getOtherBody(gamePiece) != null) {
@@ -273,7 +273,7 @@ public abstract class CompetitionFieldSimulation {
 			double speed = 0;
 			// double speed = calculateObjectSpeed(mainRobot.getLinearVelocity().x,
 			// (RobotContainer.flywheelS.getTopRPM()+RobotContainer.flywheelS.getBottomRPM())/2);
-			Logger.recordOutput("ShotSpeed", speed);
+			Logger.recordOutput("Field/ShotSpeed", speed);
 			// Logger.recordOutput("ShotRPM",
 			// (RobotContainer.flywheelS.getTopRPM()+RobotContainer.flywheelS.getBottomRPM())/2);
 			// TODO
@@ -444,9 +444,9 @@ public abstract class CompetitionFieldSimulation {
 		score = 0;
 		scoredCoral = 0;
 		scoredAlgae = 0;
-		Logger.recordOutput("Scoring/SimScore", score);
-		Logger.recordOutput("Scoring/SimCoralScoredCount", scoredCoral);
-		Logger.recordOutput("Scoring/SimAlgaeScoredCount", scoredAlgae);
+		Logger.recordOutput("Field/Scoring/SimScore", score);
+		Logger.recordOutput("Field/Scoring/SimCoralScoredCount", scoredCoral);
+		Logger.recordOutput("Field/Scoring/SimAlgaeScoredCount", scoredAlgae);
 	}
 
 	/**

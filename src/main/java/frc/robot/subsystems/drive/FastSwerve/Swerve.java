@@ -204,11 +204,11 @@ public class Swerve extends SubsystemChecker implements DrivetrainS {
 				DriveConstants.mainConfig,
 				() -> Robot.isRed, this);
 		PathPlannerLogging.setLogActivePathCallback((activePath) -> {
-			Logger.recordOutput("Odometry/Trajectory",
+			Logger.recordOutput("RobotState/Trajectory",
 					activePath.toArray(new Pose2d[activePath.size()]));
 		});
 		PathPlannerLogging.setLogTargetPoseCallback((targetPose) -> {
-			Logger.recordOutput("Odometry/TrajectorySetpoint", targetPose);
+			Logger.recordOutput("RobotState/TrajectorySetpoint", targetPose);
 		});
 		// SwerveDrive view
 		SmartDashboard.putData("Swerve Drive", new Sendable() {
@@ -673,8 +673,8 @@ public class Swerve extends SubsystemChecker implements DrivetrainS {
 			pathPlannerNM.x_newtons[i] = robotRelativeForcesXNewtons[i];
 			pathPlannerNM.y_newtons[i] = robotRelativeForcesYNewtons[i];
 		}
-		Logger.recordOutput("Swerve/xForces", feedforwards.robotRelativeForcesXNewtons());
-		Logger.recordOutput("Swerve/yForces", feedforwards.robotRelativeForcesYNewtons());
+		Logger.recordOutput("Drive/xForces", feedforwards.robotRelativeForcesXNewtons());
+		Logger.recordOutput("Drive/yForces", feedforwards.robotRelativeForcesYNewtons());
 	}
 
 	/**

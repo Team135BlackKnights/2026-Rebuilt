@@ -1,6 +1,7 @@
 package frc.robot.subsystems.simpleMechanisms.roller;
 
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.subsystems.SubsystemChecker;
 import frc.robot.utils.selfCheck.SelfChecking;
 
@@ -38,12 +39,12 @@ public abstract class GenericRollerSystem<G extends GenericRollerSystem.RollGoal
 
     stateTimer.start();
     registerSelfCheckHardware();
+    CommandScheduler.getInstance().unregisterSubsystem(this);
   }
   @Override
   public void periodic() {
     io.updateInputs(inputs);
     Logger.processInputs(name, inputs);
-
     if (getGoal() != lastGoal) {
       stateTimer.reset();
       lastGoal = getGoal();

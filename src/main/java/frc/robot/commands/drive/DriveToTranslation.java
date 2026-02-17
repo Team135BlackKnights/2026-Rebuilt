@@ -226,13 +226,13 @@ public class DriveToTranslation extends Command {
 		chassisSpeeds = GeomUtil.avoidRobots(chassisSpeeds);
 		drive.setChassisSpeeds(chassisSpeeds); // assert that we are relative to the current pose
 		// Log data
-		Logger.recordOutput("DriveToPose/DistanceError", currentDistance);
-		Logger.recordOutput("DriveToPose/DistanceSetpoint",
+		Logger.recordOutput("Drive/DriveToPose/DistanceError", currentDistance);
+		Logger.recordOutput("Drive/DriveToPose/DistanceSetpoint",
 				driveController.getSetpoint().position);
-		Logger.recordOutput("Odometry/DriveToPoseSetpoint",
+		Logger.recordOutput("RobotState/DriveToPoseSetpoint",
 				new Pose2d(lastSetpointTranslation,
 						currentPose.getRotation()));
-		Logger.recordOutput("Odometry/DriveToPoseGoal", new Pose2d(targetPose, currentPose.getRotation()));
+		Logger.recordOutput("RobotState/DriveToPoseGoal", new Pose2d(targetPose, currentPose.getRotation()));
 		if (atGoal())
 			running = false; // If we've reached our goal, stop command.
 	}

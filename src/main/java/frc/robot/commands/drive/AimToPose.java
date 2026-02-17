@@ -73,15 +73,15 @@ public class AimToPose extends Command {
 				.rotationFromCurrentToTarget(drive.getLookAheadPose().getTranslation(),
 						poseSupplier.get().getTranslation(),
 						GeomUtil.ApproachDirection.BACK));
-		Logger.recordOutput("CurretP", thetaController.getP());
+		Logger.recordOutput("Drive/HeadingController/CurrentP", thetaController.getP());
 		Rotation2d currentRotation = drive.getLookAheadPose().getRotation();
-		Logger.recordOutput("TargetAngle", targetAngle);
-		Logger.recordOutput("currentROtation", currentRotation);
+		Logger.recordOutput("Drive/HeadingController/TargetAngle", targetAngle);
+		Logger.recordOutput("Drive/HeadingController/CurrentRotation", currentRotation);
 		RobotContainer.angleOverrider = Optional.of(new Rotation2d(targetAngle));
 		double thetaVelocity = thetaController.getSetpoint().velocity
 				+ thetaController.calculate(currentRotation.getRadians(),
 						targetAngle); //Go to target rotation using FF.
-		Logger.recordOutput("THETA", thetaVelocity);
+		Logger.recordOutput("Drive/HeadingController/ThetaVelocity", thetaVelocity);
 		PPHolonomicDriveController.overrideRotationFeedback(() -> thetaVelocity);
 		RobotContainer.angularSpeed = thetaVelocity;
 		

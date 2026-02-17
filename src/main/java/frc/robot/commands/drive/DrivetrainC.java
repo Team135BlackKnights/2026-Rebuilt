@@ -117,8 +117,8 @@ public class DrivetrainC extends Command {
 		double maxSpeed = DriveConstants.kMaxSpeedMetersPerSecond;
 
 		// Log the globals at least
-		Logger.recordOutput("Avoidance/MeasuredSpeed", measuredSpeed);
-		Logger.recordOutput("Avoidance/CommandedSpeed", commandedSpeed);
+		Logger.recordOutput("Controller/Avoidance/MeasuredSpeed", measuredSpeed);
+		Logger.recordOutput("Controller/Avoidance/CommandedSpeed", commandedSpeed);
 
 		for (TxTyPoseRecord otherRobotPose : ((Swerve) drivetrainS).getOpposingRobotPoses()) {
 			Pose3d other3 = otherRobotPose.pose();
@@ -169,9 +169,9 @@ public class DrivetrainC extends Command {
 			// clamp margin for safety
 			margin = Math.max(BASE_AVOID_MARGIN_M, Math.min(BASE_AVOID_MARGIN_M + MAX_EXTRA_MARGIN_M, margin));
 
-			Logger.recordOutput("Avoidance/PerTargetMargin", margin);
-			Logger.recordOutput("Avoidance/PerTargetCmdAlong", cmdAlong);
-			Logger.recordOutput("Avoidance/PerTargetMeasAlong", measAlong);
+			Logger.recordOutput("Controller/Avoidance/PerTargetMargin", margin);
+			Logger.recordOutput("Controller/Avoidance/PerTargetCmdAlong", cmdAlong);
+			Logger.recordOutput("Controller/Avoidance/PerTargetMeasAlong", measAlong);
 
 			double halfLen = (len * 0.5) + margin;
 			double halfWid = (wid * 0.5) + margin;
@@ -189,9 +189,9 @@ public class DrivetrainC extends Command {
 				double strength = Math.max(strengthX, strengthY);
 				double mag = strength * MAX_AVOID_SPEED;
 
-				Logger.recordOutput("Avoidance/OtherOverlapX", overlapX);
-				Logger.recordOutput("Avoidance/OtherOverlapY", overlapY);
-				Logger.recordOutput("Avoidance/OtherStrength", strength);
+				Logger.recordOutput("Controller/Avoidance/OtherOverlapX", overlapX);
+				Logger.recordOutput("Controller/Avoidance/OtherOverlapY", overlapY);
+				Logger.recordOutput("Controller/Avoidance/OtherStrength", strength);
 
 				// inward motion to consider (use max of cmd/meas)
 				double inwardAlong = Math.max(0.0, Math.max(cmdAlong, measAlong));
@@ -200,15 +200,15 @@ public class DrivetrainC extends Command {
 
 					// estimate stopping distance from current measured speed along approach
 					double stoppingDist = (measAlong * measAlong) / (2.0 * Math.max(1e-3, maxDecel));
-					Logger.recordOutput("Avoidance/StoppingDist", stoppingDist);
-					Logger.recordOutput("Avoidance/MinOverlap", minOverlap);
+					Logger.recordOutput("Controller/Avoidance/StoppingDist", stoppingDist);
+					Logger.recordOutput("Controller/Avoidance/MinOverlap", minOverlap);
 
 					double desiredAlong;
 					if (stoppingDist > minOverlap) {
 						// emergency braking (unchanged behavior)
 						double brakeVel = Math.min(maxSpeed, Math.max(0.5 * maxSpeed, measAlong));
 						desiredAlong = -brakeVel;
-						Logger.recordOutput("Avoidance/EmergencyBrake", brakeVel);
+						Logger.recordOutput("Controller/Avoidance/EmergencyBrake", brakeVel);
 					} else {
 						double cancel = Math.min(mag, inwardAlong);
 						desiredAlong = cmdAlong - cancel;
@@ -220,9 +220,9 @@ public class DrivetrainC extends Command {
 					avoidRobotX += -uxRobot * reduction;
 					avoidRobotY += -uyRobot * reduction;
 					anyActive = true;
-					Logger.recordOutput("Avoidance/OtherAppliedReduction", reduction);
+					Logger.recordOutput("Controller/Avoidance/OtherAppliedReduction", reduction);
 				}
-				Logger.recordOutput("Avoidance/OtherAge", age);
+				Logger.recordOutput("Controller/Avoidance/OtherAge", age);
 			}
 		} // end loop
 
@@ -242,10 +242,10 @@ public class DrivetrainC extends Command {
 		double newOmega = speeds.omegaRadiansPerSecond;
 
 		ChassisSpeeds out = new ChassisSpeeds(newVx, newVy, newOmega);
-		Logger.recordOutput("Avoidance/AppliedVX", avoidRobotX);
-		Logger.recordOutput("Avoidance/AppliedVY", avoidRobotY);
-		Logger.recordOutput("Avoidance/ResultVX", newVx);
-		Logger.recordOutput("Avoidance/ResultVY", newVy);
+		Logger.recordOutput("Controller/Avoidance/AppliedVX", avoidRobotX);
+		Logger.recordOutput("Controller/Avoidance/AppliedVY", avoidRobotY);
+		Logger.recordOutput("Controller/Avoidance/ResultVX", newVx);
+		Logger.recordOutput("Controller/Avoidance/ResultVY", newVy);
 
 		return out;
 	}

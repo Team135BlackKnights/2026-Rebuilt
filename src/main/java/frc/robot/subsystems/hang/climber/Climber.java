@@ -1,4 +1,4 @@
-package frc.robot.subsystems.intake.Indexer;
+package frc.robot.subsystems.hang.climber;
 
 import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
@@ -14,20 +14,16 @@ import frc.robot.subsystems.simpleMechanisms.roller.GenericRollerSystem;
 
 @Getter
 @Setter
-public class Indexer extends GenericRollerSystem<Indexer.Goal> {
+public class Climber extends GenericRollerSystem<Climber.Goal> {
     @RequiredArgsConstructor
     @Getter
     public enum Goal implements GenericRollerSystem.RollGoalSupplier {
         STOPPED(() -> 0),
-        IDLING(new LoggableTunedNumber("IdlingVoltage", 4.0, Constants.TuningConstants.isTuningIntake)),
-        INTAKING(
-                new LoggableTunedNumber("IntakingVoltage", 8.0, Constants.TuningConstants.isTuningIntake)),
-        SHOOTING(new LoggableTunedNumber("ShootingVoltage", 10.0, Constants.TuningConstants.isTuningIntake)),
-        VOMITING(new LoggableTunedNumber("VomitingVoltage",-6.0,Constants.TuningConstants.isTuningIntake)),
-        JACKHAMMER_IN(new LoggableTunedNumber("JackhammerInAmps", 20.0, Constants.TuningConstants.isTuningIntake),
-                () -> false),
-        JACKHAMMER_OUT(new LoggableTunedNumber("JackhammerOutAmps", -20.0, Constants.TuningConstants.isTuningIntake),
-                () -> false);
+        CLIMBING(
+                new LoggableTunedNumber("ClimbingVoltage", 5.0, Constants.TuningConstants.isTuningClimber)),
+        DROPPING(new LoggableTunedNumber("DroppingVoltage", -2.0, Constants.TuningConstants.isTuningClimber)),
+        FINISHING(new LoggableTunedNumber("FinishingVoltage",2.0,Constants.TuningConstants.isTuningClimber));
+
                 
         private final DoubleSupplier valueSupplier;
         private final BooleanSupplier isVoltageSupplier;
@@ -48,10 +44,10 @@ public class Indexer extends GenericRollerSystem<Indexer.Goal> {
         }
     }
 
-    private Goal goal = Goal.INTAKING; //should always intake or vomit
+    private Goal goal = Goal.STOPPED;
 
-    public Indexer(IndexerIO io) {
-        super("Intake/Indexer", io);
+    public Climber(ClimberIO io) {
+        super("Hang/Climber", io);
     }
 
     public Goal getGoal() {
@@ -65,11 +61,11 @@ public class Indexer extends GenericRollerSystem<Indexer.Goal> {
     protected Command systemCheckCommand() {
         return Commands.sequence(
                 Commands.runOnce(() -> goal = Goal.STOPPED),
-                Commands.run(() -> goal = Goal.INTAKING).withTimeout(1),
+                Commands.run(() -> goal = Goal.DROPPING).withTimeout(1),
                 Commands.runOnce(() -> {
-                    if (Math.abs(getAppliedVolts() - Goal.INTAKING.valueSupplier.getAsDouble()) < .5) {
+                    if (Math.abs(getAppliedVolts() - Goal.DROPPING.valueSupplier.getAsDouble()) < .5) {
                         addFault(
-                                "[System Check] Ejecting voltage not reached for subsystem:"
+                                "[System Check] Dropping voltage not reached for subsystem:"
                                         + getName(),
                                 false, true);
                     }

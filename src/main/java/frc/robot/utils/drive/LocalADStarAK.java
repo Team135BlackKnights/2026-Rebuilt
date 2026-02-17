@@ -40,7 +40,7 @@ public class LocalADStarAK implements Pathfinder {
 		if (!Logger.hasReplaySource()) {
 			io.updateIsNewPathAvailable();
 		}
-		Logger.processInputs("LocalADStarAK", io);
+		Logger.processInputs("Drive/LocalADStarAK", io);
 		return io.isNewPathAvailable;
 	}
 
@@ -58,7 +58,7 @@ public class LocalADStarAK implements Pathfinder {
 		if (!Logger.hasReplaySource()) {
 			io.updateCurrentPathPoints(constraints, goalEndState);
 		}
-		Logger.processInputs("LocalADStarAK", io);
+		Logger.processInputs("Drive/LocalADStarAK", io);
 		if (io.currentPathPoints.isEmpty()) {
 			return null;
 		}

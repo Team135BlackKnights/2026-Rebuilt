@@ -296,7 +296,7 @@ public class Robot extends LoggedRobot {
 			Logger.recordOutput("SystemStatus/AccumulatedCharge", accumulatedCharge);
 		}
 		// Record the current accumated charge, so we can set it to that on next boot.
-		Logger.recordOutput("FMS/isFMSAttached", DriverStation.isFMSAttached());
+		Logger.recordOutput("SystemStatus/isFMSAttached", DriverStation.isFMSAttached());
 		LoggableTunedNumber.ifChanged(hashCode(), () -> {
 			DriveConstants.pathConstraints = new PathConstraints(
 					DriveConstants.pathConstraints.maxVelocityMPS(),
@@ -313,7 +313,7 @@ public class Robot extends LoggedRobot {
 		// DataHandler.updateHandlerState();
 		// Logger.recordOutput("SystemStatus/Periodic/OrangePiMS",
 		// Math.abs(dataStartTime - System.currentTimeMillis()));
-		Logger.recordOutput("MatchState", Constants.currentMatchState.name());
+		Logger.recordOutput("SuperStructure/MatchState", Constants.currentMatchState.name());
 		isRed = DriverStation.getAlliance().isPresent()
 				? DriverStation.getAlliance().get() == DriverStation.Alliance.Red
 				: false;
@@ -332,7 +332,7 @@ public class Robot extends LoggedRobot {
 		Logger.recordOutput("SystemStatus/MemoryTotal", Runtime.getRuntime().totalMemory());
 		Logger.recordOutput("SystemStatus/MemoryFree", Runtime.getRuntime().freeMemory());
 		matchTime = DriverStation.getMatchTime();
-		Logger.recordOutput("MatchTime", matchTime);
+		Logger.recordOutput("SuperStructure/MatchTime", matchTime);
 
 		double batteryVoltage = (Constants.currentMode == Constants.Mode.SIM)
 				? SimulatedBattery.getBatteryVoltage().baseUnitMagnitude()
@@ -554,11 +554,11 @@ public class Robot extends LoggedRobot {
 		 */
 		matchTime = DriverStation.getMatchTime();
 		if (RobotContainer.angleOverrider.isPresent()) {
-			Logger.recordOutput("Odometry/AimGoal",
+			Logger.recordOutput("RobotState/AimGoal",
 					new Pose2d(RobotContainer.drivetrainS.getPose().getTranslation(),
 							RobotContainer.angleOverrider.get()));
 		} else {
-			Logger.recordOutput("Odometry/AimGoal",
+			Logger.recordOutput("RobotState/AimGoal",
 					RobotContainer.drivetrainS.getPose());
 		}
 		if (DriverStation.isFMSAttached() || isPracticeDSMode) {
@@ -622,7 +622,7 @@ public class Robot extends LoggedRobot {
 				driveCanBusStatus.BusUtilization * 100.0);
 		for (Map.Entry<String, Double> set : RobotContainer.getAllTemps()
 				.entrySet()) {
-			Logger.recordOutput("Temps/" + set.getKey(), set.getValue());
+			Logger.recordOutput("SystemStatus/Temps/" + set.getKey(), set.getValue());
 		}
 	}
 
@@ -647,7 +647,7 @@ public class Robot extends LoggedRobot {
 					matchHasEnded = true;
 				}
 			}
-			Logger.recordOutput("Scoring/SimMatchOver", matchHasEnded);
+			Logger.recordOutput("Field/Scoring/SimMatchOver", matchHasEnded);
 			// add a log for vision error
 			Logger.recordOutput("Vision/Error",
 					RobotContainer.drivetrainS.getLookAheadPose().getTranslation()

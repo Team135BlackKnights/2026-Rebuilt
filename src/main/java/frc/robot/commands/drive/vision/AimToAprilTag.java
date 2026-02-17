@@ -89,7 +89,7 @@ public class AimToAprilTag extends Command {
                 Pose3d fieldToTagPose = fieldToCameraPose.transformBy(observations[i].cameraToTarget());
                 targetPose = fieldToTagPose.toPose2d();
                 hasTarget = true;
-                Logger.recordOutput("TagPose (Vision)", fieldToTagPose);
+                Logger.recordOutput("Drive/HeadingController/TagPose (Vision)", fieldToTagPose);
                 break;
             }
         }
@@ -97,7 +97,7 @@ public class AimToAprilTag extends Command {
             if (shouldUseDefaultPoseIfNotFound) {
                 // Fall back to the known tag pose
                 targetPose = knownTagPose.toPose2d();
-                Logger.recordOutput("TagPose (Fallback)", knownTagPose);
+                Logger.recordOutput("Drive/HeadingController/TagPose (Fallback)", knownTagPose);
             } else {
                 targetPose = null;
             }
