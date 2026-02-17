@@ -149,7 +149,7 @@ public class Intake extends SubsystemChecker {
 
         // 6. Logging
         Logger.recordOutput("Intake/Goal", goal);
-        Logger.recordOutput("SuperStructure/IntakeGoal", goal);
+        Logger.recordOutput("SuperStructure/Intake/IntakeGoal", goal);
         Logger.recordOutput("Intake/SetpointAngle", currentArmSetpoint);
         Logger.recordOutput("Intake/SetpointVolts", currentRollerVolts);
         Logger.recordOutput("Intake/AtSetpoint", isAtSetpoint());

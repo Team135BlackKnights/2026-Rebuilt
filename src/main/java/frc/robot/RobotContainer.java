@@ -200,8 +200,6 @@ public class RobotContainer {
 	public static Field2d field = new Field2d();
 	public static boolean userDrive = true;
 	public static boolean withinLineTolerance = false;
-	@AutoLogOutput(key = "RobotState/miloMad")
-	public static boolean miloMad = false;
 	// Simulation
 	public static Rebuilt2026FieldSimulation fieldSimulation = null;
 	public static Command currentAuto, lastAuto = null;
