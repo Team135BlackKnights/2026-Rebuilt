@@ -209,7 +209,7 @@ public class DriveConstants {
 					/ new Translation2d(kChassisLength / 2, kChassisWidth / 2).getNorm());
 	public static class AutopilotConstants {
 			public static final APConstraints kTightAutopilotAPConstraints =
-			new APConstraints().withAcceleration(maxTranslationalAcceleration.get()).withJerk(1.5);
+			new APConstraints().withVelocity(kMaxSpeedMetersPerSecond).withAcceleration(maxTranslationalAcceleration.get()).withJerk(10);
 
 			public static final APProfile kTightProfile =
 			new APProfile(kTightAutopilotAPConstraints)
@@ -217,7 +217,7 @@ public class DriveConstants {
 				.withErrorTheta(Degrees.of(1))
 				.withBeelineRadius(Centimeters.of(10));
 			public static final APConstraints kFastAPConstraints =
-			new APConstraints().withAcceleration(maxTranslationalAcceleration.get()*2).withJerk(maxTranslationalAcceleration.get()*2);
+			new APConstraints().withVelocity(kMaxSpeedMetersPerSecond).withAcceleration(maxTranslationalAcceleration.get()*2).withJerk(maxTranslationalAcceleration.get()*2);
 
 			public static final APProfile kFastProfile =
 			new APProfile(kFastAPConstraints)
