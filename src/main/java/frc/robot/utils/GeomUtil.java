@@ -22,6 +22,21 @@ import frc.robot.utils.drive.DriveConstants;
 import frc.robot.utils.vision.VisionConstants;
 
 public class GeomUtil {
+	public static double interp(double y0, double y1, double x, double x0, double x1) {
+		if (x1 == x0)
+			return y0;
+
+		double t = (x - x0) / (x1 - x0);
+
+		// Clamp t to [0, 1]
+		if (t < 0.0)
+			t = 0.0;
+		else if (t > 1.0)
+			t = 1.0;
+
+		return y0 + (y1 - y0) * t;
+	}
+
 	/// Make sure the given speeds are ROBOT relative.
 	public static ChassisSpeeds avoidRobots(ChassisSpeeds speeds) {
 		final double MAX_AGE_SECONDS = 2.0;
@@ -353,13 +368,17 @@ public class GeomUtil {
 				? new Pose2d(apply(pose.getTranslation()), apply(pose.getRotation()))
 				: pose;
 	}
-public static Pose3d flip(Pose3d toFlip) {
-        return new Pose3d(
-                new Translation3d(FieldConstants.FIELD_WIDTH - toFlip.getX(), FieldConstants.FIELD_HEIGHT - toFlip.getY(), toFlip.getZ()),
-                toFlip.getRotation());
-    }
+
+	public static Pose3d flip(Pose3d toFlip) {
+		return new Pose3d(
+				new Translation3d(FieldConstants.FIELD_WIDTH - toFlip.getX(),
+						FieldConstants.FIELD_HEIGHT - toFlip.getY(), toFlip.getZ()),
+				toFlip.getRotation());
+	}
+
 	public static Translation3d apply(Translation3d translation, boolean forceFlip) {
-		return new Translation3d(applyX(translation.getX(), forceFlip), applyY(translation.getY(), forceFlip), translation.getZ());
+		return new Translation3d(applyX(translation.getX(), forceFlip), applyY(translation.getY(), forceFlip),
+				translation.getZ());
 	}
 
 	public static Translation2d apply(Translation2d translation, boolean forceFlip) {

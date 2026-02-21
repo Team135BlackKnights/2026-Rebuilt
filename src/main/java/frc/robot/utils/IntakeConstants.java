@@ -17,8 +17,8 @@ public class IntakeConstants {
     public static final double intakeReductionToIndexerRollers = 24.0/8.0 * 32.0/24.0; // 4.0
     public static final double frontRollersReduction = 2; //TODO
     public static final double intakeMOI = 0.0005; // kg m^2
-    public static final double armMOI = 0.0007; // kg m^2
-    public static final double frontRollersMOI = 0.0006; // kg m^2
+    public static final double armMOI = 0.395; // kg m^2
+    public static final double frontRollersMOI = 0.0021; // kg m^2
     public static final double armMinAngleRads = Math.toRadians(0.0);
     public static final double armMaxAngleRads = Math.toRadians(135.0);
     public static final double rollersDiameterMeters = Units.inchesToMeters(1.25);

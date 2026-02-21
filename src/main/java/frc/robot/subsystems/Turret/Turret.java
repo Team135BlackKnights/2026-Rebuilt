@@ -34,52 +34,32 @@ import frc.robot.utils.GeomUtil;
 
 public class Turret extends SubsystemChecker {
   // Azimuth setPID(p,i,d,ks,kv,ka,velMax,accelMax)
-  private static final LoggableTunedNumber azimuth_kP =
-      new LoggableTunedNumber("Turret/Azimuth/kP", 0.0, true);
-  private static final LoggableTunedNumber azimuth_kI =
-      new LoggableTunedNumber("Turret/Azimuth/kI", 0.0, true);
-  private static final LoggableTunedNumber azimuth_kD =
-      new LoggableTunedNumber("Turret/Azimuth/kD", 0.0, true);
-  private static final LoggableTunedNumber azimuth_kS =
-      new LoggableTunedNumber("Turret/Azimuth/kS", 0.0, true);
-  private static final LoggableTunedNumber azimuth_kV =
-      new LoggableTunedNumber("Turret/Azimuth/kV", 0.0, true);
-  private static final LoggableTunedNumber azimuth_kA =
-      new LoggableTunedNumber("Turret/Azimuth/kA", 0.0, true);
-  private static final LoggableTunedNumber azimuth_velMax =
-      new LoggableTunedNumber("Turret/Azimuth/velMaxRadPerSec", 12.0, true);
-  private static final LoggableTunedNumber azimuth_accelMax =
-      new LoggableTunedNumber("Turret/Azimuth/accelMaxRadPerSec2", 40.0, true);
+  private final LoggableTunedNumber azimuth_kP;
+  private final LoggableTunedNumber azimuth_kI;
+  private final LoggableTunedNumber azimuth_kD;
+  private final LoggableTunedNumber azimuth_kS;
+  private final LoggableTunedNumber azimuth_kV;
+  private final LoggableTunedNumber azimuth_kA;
+  private final LoggableTunedNumber azimuth_velMax;
+  private final LoggableTunedNumber azimuth_accelMax;
 
   // Flywheel setPID(p,d,ks,kv)
-  private static final LoggableTunedNumber flywheel_kP =
-      new LoggableTunedNumber("Turret/Flywheel/kP", 0.0, true);
-  private static final LoggableTunedNumber flywheel_kD =
-      new LoggableTunedNumber("Turret/Flywheel/kD", 0.0, true);
-  private static final LoggableTunedNumber flywheel_kS =
-      new LoggableTunedNumber("Turret/Flywheel/kS", 0.0, true);
-  private static final LoggableTunedNumber flywheel_kV =
-      new LoggableTunedNumber("Turret/Flywheel/kV", 0.0, true);
+  private final LoggableTunedNumber flywheel_kP;
+  private final LoggableTunedNumber flywheel_kD;
+  private final LoggableTunedNumber flywheel_kS;
+  private final LoggableTunedNumber flywheel_kV;
 
   // Hood setPID(p,d,ks,kv)
-  private static final LoggableTunedNumber hood_kP =
-      new LoggableTunedNumber("Turret/Hood/kP", 0.0, true);
-  private static final LoggableTunedNumber hood_kD =
-      new LoggableTunedNumber("Turret/Hood/kD", 0.0, true);
-  private static final LoggableTunedNumber hood_kS =
-      new LoggableTunedNumber("Turret/Hood/kS", 0.0, true);
-  private static final LoggableTunedNumber hood_kV =
-      new LoggableTunedNumber("Turret/Hood/kV", 0.0, true);
+  private final LoggableTunedNumber hood_kP;
+  private final LoggableTunedNumber hood_kD;
+  private final LoggableTunedNumber hood_kS;
+  private final LoggableTunedNumber hood_kV;
   // Other tunables
-  private static final LoggableTunedNumber aimingFlywheelSpeedRadsPerSec =
-      new LoggableTunedNumber("Turret/Aiming/FlywheelSpeedRadsPerSec", 125.0, true);
+  private final LoggableTunedNumber aimingFlywheelSpeedRadsPerSec;
 
-  private static final LoggableTunedNumber aimToleranceRads =
-      new LoggableTunedNumber("Turret/Tolerance/AimRads", Math.toRadians(1.5), true);
-  private static final LoggableTunedNumber hoodToleranceRads =
-      new LoggableTunedNumber("Turret/Tolerance/HoodRads", Math.toRadians(1.0), true);
-  private static final LoggableTunedNumber flywheelToleranceRadsPerSec =
-      new LoggableTunedNumber("Turret/Tolerance/FlywheelRadsPerSec", 10.0, true);
+  private final LoggableTunedNumber aimToleranceRads;
+  private final LoggableTunedNumber hoodToleranceRads;
+  private final LoggableTunedNumber flywheelToleranceRadsPerSec;
 
   private final AzimuthIO azimuthIO;
   private final FlywheelIO flywheelIO;
@@ -93,9 +73,12 @@ public class Turret extends SubsystemChecker {
   private final HoodIOInputsAutoLogged hoodInputs = new HoodIOInputsAutoLogged();
 
   public enum Goal {
-    AIMING,          // hub top center + pre-spin
-    SHOOTING,        // hub top center using HUB profile
-    IDLE 
+    AIMING, // hub top center + pre-spin
+    SHOOTING, // hub top center using HUB profile
+    IDLE,
+    TUNING_FLYWHEEL,
+    TUNING_AZIMUTH,
+    TUNING_HOOD
   }
 
   public enum PresetTarget {
@@ -125,6 +108,31 @@ public class Turret extends SubsystemChecker {
     this.robotToTurret = robotToTurret;
     this.name = name;
 
+    azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 0.0, true);
+    azimuth_kI = new LoggableTunedNumber(name + "/Azimuth/kI", 0.0, true);
+    azimuth_kD = new LoggableTunedNumber(name + "/Azimuth/kD", 0.0, true);
+    azimuth_kS = new LoggableTunedNumber(name + "/Azimuth/kS", 0.0, true);
+    azimuth_kV = new LoggableTunedNumber(name + "/Azimuth/kV", 0.0, true);
+    azimuth_kA = new LoggableTunedNumber(name + "/Azimuth/kA", 0.0, true);
+    azimuth_velMax = new LoggableTunedNumber(name + "/Azimuth/velMaxRadPerSec", 12.0, true);
+    azimuth_accelMax = new LoggableTunedNumber(name + "/Azimuth/accelMaxRadPerSec2", 40.0, true);
+
+    flywheel_kP = new LoggableTunedNumber(name + "/Flywheel/kP", 0.0, true);
+    flywheel_kD = new LoggableTunedNumber(name + "/Flywheel/kD", 0.0, true);
+    flywheel_kS = new LoggableTunedNumber(name + "/Flywheel/kS", 0.0, true);
+    flywheel_kV = new LoggableTunedNumber(name + "/Flywheel/kV", 0.0, true);
+
+    hood_kP = new LoggableTunedNumber(name + "/Hood/kP", 0.0, true);
+    hood_kD = new LoggableTunedNumber(name + "/Hood/kD", 0.0, true);
+    hood_kS = new LoggableTunedNumber(name + "/Hood/kS", 0.0, true);
+    hood_kV = new LoggableTunedNumber(name + "/Hood/kV", 0.0, true);
+
+    aimingFlywheelSpeedRadsPerSec = new LoggableTunedNumber(name + "/Aiming/FlywheelSpeedRadsPerSec", 125.0, true);
+
+    aimToleranceRads = new LoggableTunedNumber(name + "/Tolerance/AimRads", Math.toRadians(1.5), true);
+    hoodToleranceRads = new LoggableTunedNumber(name + "/Tolerance/HoodRads", Math.toRadians(1.0), true);
+    flywheelToleranceRadsPerSec = new LoggableTunedNumber(name + "/Tolerance/FlywheelRadsPerSec", 10.0, true);
+
     // Apply initial PIDs once
     applyAllPIDs();
 
@@ -132,9 +140,9 @@ public class Turret extends SubsystemChecker {
     target = getPresetTarget2d(PresetTarget.HUB_TOP_CENTER);
   }
 
-
   public void setGoal(Goal goal) {
-    if (goal != null) this.goal = goal;
+    if (goal != null)
+      this.goal = goal;
   }
 
   public Goal getGoal() {
@@ -142,7 +150,8 @@ public class Turret extends SubsystemChecker {
   }
 
   public void setPresetTarget(PresetTarget preset) {
-    if (preset == null) return;
+    if (preset == null)
+      return;
     this.activePreset = preset;
     this.target = getPresetTarget2d(preset);
     this.profile = getPresetTargetProfile(preset);
@@ -161,7 +170,7 @@ public class Turret extends SubsystemChecker {
     hoodIO.setPID(
         hood_kP.get(), hood_kD.get(),
         hood_kS.get(), hood_kV.get());
-          
+
   }
 
   private void updateTunablePIDs() {
@@ -207,6 +216,46 @@ public class Turret extends SubsystemChecker {
   public boolean atAimAngle() {
     return isAzimuthConnected() && Math.abs(turretAngleErrorRads()) < aimToleranceRads.get();
   }
+  public void setCharRPM(double rpm) {
+    goal = Goal.TUNING_FLYWHEEL;
+    desiredFlywheelRadsPerSec = rpm * 2.0 * Math.PI / 60.0;
+    flywheelIO.setVelocity(desiredFlywheelRadsPerSec);
+  }
+  public void setCharTurretPos(double radians) {
+    goal = Goal.TUNING_AZIMUTH;
+    desiredTurretRads = radians;
+    azimuthIO.setDesiredPosition(desiredTurretRads);
+  }
+  public void setCharHoodPos(double radians) {
+    goal = Goal.TUNING_HOOD;
+    desiredHoodRads = radians;
+    hoodIO.setPosition(desiredHoodRads);
+  }
+  public double getCharTurretPos() {
+    return azimuthInputs.turretPositionRads;
+  }
+  public double getCharHoodPos() {
+    return hoodInputs.positionRads;
+  }
+  public double getCharFlywheelRPM() {
+    return flywheelInputs.velocityRadsPerSec * 60.0 / (2.0 * Math.PI);
+  }
+  public double getCharTurretVelocity() {
+    return azimuthInputs.turretVelocityRadsPerSec;
+  }
+  public double getCharHoodVelocity() {
+    return hoodInputs.velocityRadsPerSec;
+  }
+  public double getCharFlywheelVelocity() {
+    return flywheelInputs.accelRadsPerSec2;
+  }
+  public double hoodAngle() {
+    return hoodInputs.positionRads;
+  }
+
+  public double turretAngle() {
+    return azimuthInputs.turretPositionRads;
+  }
 
   public boolean atShootSetpoints() {
     return isAzimuthConnected()
@@ -217,7 +266,6 @@ public class Turret extends SubsystemChecker {
         && Math.abs(flywheelInputs.velocityRadsPerSec - desiredFlywheelRadsPerSec) < flywheelToleranceRadsPerSec.get();
   }
 
-
   @Override
   public void periodic() {
     azimuthIO.updateInputs(azimuthInputs);
@@ -227,12 +275,11 @@ public class Turret extends SubsystemChecker {
     Logger.processInputs(name + "/Azimuth", azimuthInputs);
     Logger.processInputs(name + "/Flywheel", flywheelInputs);
     Logger.processInputs(name + "/Hood", hoodInputs);
-    updateTunablePIDs(); //way cleaner than last year lol
+    updateTunablePIDs(); // way cleaner than last year lol
 
     if (DriverStation.isDisabled()) {
       goal = Goal.IDLE;
     }
-
 
     shotCalculator.clearShootingParameters();
 
@@ -243,8 +290,8 @@ public class Turret extends SubsystemChecker {
 
     switch (goal) {
       case IDLE -> {
-        if (activePreset == PresetTarget.OVER_NEUTRAL_ZONE){
-          target = getPresetTarget2d(PresetTarget.OVER_NEUTRAL_ZONE); //update for the robot pos, since target moves
+        if (activePreset == PresetTarget.OVER_NEUTRAL_ZONE) {
+          target = getPresetTarget2d(PresetTarget.OVER_NEUTRAL_ZONE); // update for the robot pos, since target moves
         }
         desiredFlywheelRadsPerSec = 0.0;
 
@@ -256,9 +303,10 @@ public class Turret extends SubsystemChecker {
       }
 
       case AIMING -> {
-        // Use HUB profile for turret + hood, but override flywheel speed to a constant pre-spin
-        if (activePreset == PresetTarget.OVER_NEUTRAL_ZONE){
-          target = getPresetTarget2d(PresetTarget.OVER_NEUTRAL_ZONE); //update for the robot pos, since target moves
+        // Use HUB profile for turret + hood, but override flywheel speed to a constant
+        // pre-spin
+        if (activePreset == PresetTarget.OVER_NEUTRAL_ZONE) {
+          target = getPresetTarget2d(PresetTarget.OVER_NEUTRAL_ZONE); // update for the robot pos, since target moves
         }
         var params = shotCalculator.getParameters(target, robotToTurret, ShotCalculator.HUB_PROFILE);
 
@@ -272,10 +320,10 @@ public class Turret extends SubsystemChecker {
       }
 
       case SHOOTING -> {
-        if (activePreset == PresetTarget.OVER_NEUTRAL_ZONE){
-          target = getPresetTarget2d(PresetTarget.OVER_NEUTRAL_ZONE); //update for the robot pos, since target moves
+        if (activePreset == PresetTarget.OVER_NEUTRAL_ZONE) {
+          target = getPresetTarget2d(PresetTarget.OVER_NEUTRAL_ZONE); // update for the robot pos, since target moves
         }
-        var params = shotCalculator.getParameters(target, robotToTurret,profile);
+        var params = shotCalculator.getParameters(target, robotToTurret, profile);
 
         desiredTurretRads = params.turretAngle().getRadians();
         desiredHoodRads = params.hoodAngle();
@@ -285,13 +333,22 @@ public class Turret extends SubsystemChecker {
         hoodIO.setPosition(desiredHoodRads);
         flywheelIO.setVelocity(desiredFlywheelRadsPerSec);
       }
+      case TUNING_FLYWHEEL -> {
+        flywheelIO.setVelocity(desiredFlywheelRadsPerSec);
+      }
+      case TUNING_AZIMUTH -> {
+        azimuthIO.setDesiredPosition(desiredTurretRads);
+      }
+      case TUNING_HOOD -> {
+        hoodIO.setPosition(desiredHoodRads);
+      }
     }
 
     // Logging
     Logger.recordOutput(name + "/Goal", goal.toString());
-    Logger.recordOutput("SuperStructure/"+name+"/Goal", goal.toString());
-        Logger.recordOutput("SuperStructure/"+name+"/TargetName", activePreset.toString());
-    Logger.recordOutput("SuperStructure/"+name+"/TargetPos", new Pose2d(target,new Rotation2d()));
+    Logger.recordOutput("SuperStructure/" + name + "/Goal", goal.toString());
+    Logger.recordOutput("SuperStructure/" + name + "/TargetName", activePreset.toString());
+    Logger.recordOutput("SuperStructure/" + name + "/TargetPos", new Pose2d(target, new Rotation2d()));
     Logger.recordOutput(name + "/Preset", activePreset.toString());
 
     Logger.recordOutput(name + "/Targets/Target2d", target);
@@ -304,6 +361,7 @@ public class Turret extends SubsystemChecker {
     Logger.recordOutput(name + "/AtAimAngle", atAimAngle());
     Logger.recordOutput(name + "/AtShootSetpoints", atShootSetpoints());
   }
+
   private static Translation2d getPresetTarget2d(PresetTarget preset) {
     return switch (preset) {
       case HUB_TOP_CENTER -> {
@@ -324,13 +382,14 @@ public class Turret extends SubsystemChecker {
         Translation2d center = new Translation2d((a.getX() + b.getX()) * 0.5, (a.getY() + b.getY()) * 0.5);
         yield GeomUtil.apply(center);
       }
-      
-      case OVER_NEUTRAL_ZONE ->  {
-        //same Y, but in our area X.
+
+      case OVER_NEUTRAL_ZONE -> {
+        // same Y, but in our area X.
         yield new Translation2d(GeomUtil.applyX(3), RobotContainer.drivetrainS.getPose().getY());
       }
     };
   }
+
   private static ShotProfile getPresetTargetProfile(PresetTarget preset) {
     return switch (preset) {
       case HUB_TOP_CENTER -> ShotCalculator.HUB_PROFILE;
@@ -383,9 +442,12 @@ public class Turret extends SubsystemChecker {
   @Override
   protected Command systemCheckCommand() {
     return runOnce(() -> {
-      Logger.recordOutput(name + "/SystemCheck/AzimuthConnected", isAzimuthConnected());
-      Logger.recordOutput(name + "/SystemCheck/FlywheelConnected", isFlywheelConnected());
-      Logger.recordOutput(name + "/SystemCheck/HoodConnected", isHoodConnected());
-    });
+            // Simple check logic
+            if (isAzimuthConnected() && isFlywheelConnected() && isHoodConnected()) {
+                Logger.recordOutput(name + "/SystemCheck/Connected", "GOOD");
+            } else {
+                Logger.recordOutput(name + "/SystemCheck/Connected", "BAD");
+            }
+        }).withName(name+"SystemCheck");
   }
 }

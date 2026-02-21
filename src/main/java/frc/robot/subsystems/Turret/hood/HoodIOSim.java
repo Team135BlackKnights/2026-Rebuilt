@@ -8,7 +8,7 @@ import frc.robot.utils.advancedMechs.AdvancedMechanismConstants;
 
 public class HoodIOSim implements HoodIO {
     // Single jointed arm siom
-    private final SingleJointedArmSim sim = new SingleJointedArmSim(DCMotor.getMinion(1), AdvancedMechanismConstants.Turret.hoodEncoderToHoodArmRatio * AdvancedMechanismConstants.Turret.hoodMotorToHoodEncoderRatio, 0.05,
+    private final SingleJointedArmSim sim = new SingleJointedArmSim(DCMotor.getMinion(1), AdvancedMechanismConstants.Turret.hoodEncoderToHoodArmRatio * AdvancedMechanismConstants.Turret.hoodMotorToHoodEncoderRatio, AdvancedMechanismConstants.Turret.hoodMOI,
             Units.inchesToMeters(7), AdvancedMechanismConstants.Turret.minHoodAngle, AdvancedMechanismConstants.Turret.maxHoodAngle, false, AdvancedMechanismConstants.Turret.minHoodAngle);
     private double appliedVoltage = 0.0;
     private final String name = "HoodIOSim";

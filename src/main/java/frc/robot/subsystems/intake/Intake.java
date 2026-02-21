@@ -26,11 +26,11 @@ import lombok.Getter;
 public class Intake extends SubsystemChecker {
 
     // Tuning
-    private static final LoggableTunedNumber arm_kP = new LoggableTunedNumber("Intake/Arm/kP", 5.0,
+    private static final LoggableTunedNumber arm_kP = new LoggableTunedNumber("Intake/Arm/kP", 24,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_kI = new LoggableTunedNumber("Intake/Arm/kI", 0.0,
             TuningConstants.isTuningIntake);
-    private static final LoggableTunedNumber arm_kD = new LoggableTunedNumber("Intake/Arm/kD", 0.1,
+    private static final LoggableTunedNumber arm_kD = new LoggableTunedNumber("Intake/Arm/kD", 3,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_kS = new LoggableTunedNumber("Intake/Arm/kS", 0.0,
             TuningConstants.isTuningIntake);
@@ -39,7 +39,7 @@ public class Intake extends SubsystemChecker {
 
     // Setpoints
     private static final LoggableTunedNumber angle_stow = new LoggableTunedNumber("Intake/Setpoints/StowRads",
-            Math.PI / 2.0, TuningConstants.isTuningIntake);
+            Math.toRadians(120), TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber angle_ground = new LoggableTunedNumber("Intake/Setpoints/GroundRads", 0.0,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber time_jackhammer = new LoggableTunedNumber("Intake/JackhammerTimeSecs",
@@ -68,6 +68,7 @@ public class Intake extends SubsystemChecker {
         JACKHAMMERING_OUT, // Rapidly pulse rollers to dislodge jams (with arm down)
         JACKHAMMERING_IN, // Rapidly pulse rollers to dislodge jams (with arm up)
         SHOOTING, // Don't mess with the arm, but run the rollers at shooting speed
+        TUNING,
     }
 
     private Goal goal = Goal.START;
@@ -110,6 +111,11 @@ public class Intake extends SubsystemChecker {
         }
         // 4. State Machine Logic
         switch (goal) {
+            case TUNING -> {
+                indexer.setGoal(Indexer.Goal.STOPPED);
+                frontRollers.setGoal(FrontRollers.Goal.STOPPED);
+                currentArmSetpoint = armInputs.positionRads; // Don't move the arm
+            }
             case START -> {
                 currentArmSetpoint = angle_stow.get();
                 indexer.setGoal(Indexer.Goal.STOPPED);
@@ -160,7 +166,8 @@ public class Intake extends SubsystemChecker {
             }
 
         }
-        armIO.setPosition(currentArmSetpoint);
+        if (goal != Goal.TUNING)
+            armIO.setPosition(currentArmSetpoint);
 
         // 6. Logging
         Logger.recordOutput("Intake/Goal", goal);
@@ -182,11 +189,34 @@ public class Intake extends SubsystemChecker {
     public Goal getGoal() {
         return goal;
     }
-
+    public void runCharacterization(double volts) {
+        goal = Goal.TUNING;
+        armIO.setVoltage(volts);
+    }
+    public double getCharacterizationMeasurement() {
+        return armInputs.positionRads;
+    }
+    public double getCharVeloicty() {
+        return armInputs.velocityRadsPerSec;
+    }
     public boolean isAtSetpoint() {
         return Math.abs(armInputs.positionRads - currentArmSetpoint) < arm_tolerance.get();
     }
-
+    public double getArmAngle() {
+        return armInputs.positionRads;
+    }
+    private boolean isArmConnected() {
+        return armInputs.connected;
+    }
+    private boolean isIndexerConnected() {
+        return indexer.isConnected();
+    }
+    private boolean isFrontRollersConnected() {
+        return frontRollers.isConnected();
+    }
+    public boolean isFullyConnected() {
+        return isArmConnected() && isIndexerConnected() && isFrontRollersConnected();
+    }
     private void updateTunablePIDs() {
         if (arm_kP.hasChanged(hashCode()) || arm_kI.hasChanged(hashCode()) || arm_kD.hasChanged(hashCode())) {
             armIO.setPID(arm_kP.get(), arm_kI.get(), arm_kD.get(), arm_kS.get(), arm_kV.get());
@@ -237,7 +267,7 @@ public class Intake extends SubsystemChecker {
     protected Command systemCheckCommand() {
         return runOnce(() -> {
             // Simple check logic
-            if (armInputs.connected && indexer.isConnected() && frontRollers.isConnected()) {
+            if (isFullyConnected()) {
                 Logger.recordOutput("Intake" + "/SystemCheck/Connected", "GOOD");
             } else {
                 Logger.recordOutput("Intake" + "/SystemCheck/Connected", "BAD");

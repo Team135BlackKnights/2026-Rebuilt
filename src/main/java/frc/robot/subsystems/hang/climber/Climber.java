@@ -20,9 +20,8 @@ public class Climber extends GenericRollerSystem<Climber.Goal> {
     public enum Goal implements GenericRollerSystem.RollGoalSupplier {
         STOPPED(() -> 0),
         CLIMBING(
-                new LoggableTunedNumber("ClimbingVoltage", 5.0, Constants.TuningConstants.isTuningClimber)),
-        DROPPING(new LoggableTunedNumber("DroppingVoltage", -2.0, Constants.TuningConstants.isTuningClimber)),
-        FINISHING(new LoggableTunedNumber("FinishingVoltage",2.0,Constants.TuningConstants.isTuningClimber));
+                new LoggableTunedNumber("Climber/ClimbingVoltage", 5.0, Constants.TuningConstants.isTuningClimber)),
+        DROPPING(new LoggableTunedNumber("Climber/DroppingVoltage", -2.0, Constants.TuningConstants.isTuningClimber));
 
                 
         private final DoubleSupplier valueSupplier;

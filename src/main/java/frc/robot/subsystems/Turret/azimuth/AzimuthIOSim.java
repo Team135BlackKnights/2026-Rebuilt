@@ -55,11 +55,10 @@ public class AzimuthIOSim implements AzimuthIO {
         this.minAngleRad = minTurretAngleRad;
         this.maxAngleRad = maxTurretAngleRad;
 
-        double moi = 0.1; // <-- MOI in kg*m^2
         this.sim = new DCMotorSim(
                 LinearSystemId.createDCMotorSystem(
                         DCMotor.getKrakenX44Foc(1),
-                        moi,
+                        AdvancedMechanismConstants.Turret.azimuthMOI,
                         AdvancedMechanismConstants.Turret.motorRadPerTurretRad
                 ),
                 DCMotor.getKrakenX44Foc(1)

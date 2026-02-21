@@ -9,11 +9,14 @@ import org.littletonrobotics.junction.Logger;
 import com.ctre.phoenix6.hardware.ParentDevice;
 import com.ctre.phoenix6.hardware.TalonFX;
 
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj2.command.Command;
+import frc.robot.Constants.TuningConstants;
 import frc.robot.subsystems.SubsystemChecker;
 import frc.robot.subsystems.hang.climber.Climber;
 import frc.robot.subsystems.hang.wedgeArm.WedgeArmIO;
 import frc.robot.subsystems.hang.wedgeArm.WedgeArmIOInputsAutoLogged;
+import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.selfCheck.SelfChecking;
 import frc.robot.utils.simpleMechanisms.SimpleMechanismConstants;
 
@@ -21,10 +24,47 @@ public class Hang extends SubsystemChecker {
     private final Climber climber;
     private final WedgeArmIO wedgeArmIO;
     private final WedgeArmIOInputsAutoLogged wedgeArmInputs = new WedgeArmIOInputsAutoLogged();
+    private final LoggableTunedNumber wedgeArmkP = new LoggableTunedNumber("Hang/WedgeArm/kP", 0.5,
+            TuningConstants.isTuningClimber);
+    private final LoggableTunedNumber wedgeArmkI = new LoggableTunedNumber("Hang/WedgeArm/kI", 0.0,
+            TuningConstants.isTuningClimber);
+    private final LoggableTunedNumber wedgeArmkD = new LoggableTunedNumber("Hang/WedgeArm/kD", 0.01,
+            TuningConstants.isTuningClimber);
+    private final LoggableTunedNumber wedgeArmkS = new LoggableTunedNumber("Hang/WedgeArm/kS", 0.0,
+            TuningConstants.isTuningClimber);
+    private final LoggableTunedNumber wedgeArmkV = new LoggableTunedNumber("Hang/WedgeArm/kV", 0.0,
+            TuningConstants.isTuningClimber);
+    private final LoggableTunedNumber wedgeArmSetpoint = new LoggableTunedNumber("Hang/WedgeArm/SetpointRads",
+            Units.degreesToRadians(72), TuningConstants.isTuningClimber);
+
+    public enum WedgeArmState {
+        STOWED, EXTENDED, MOVING_UP, MOVING_DOWN
+    }
+
+    private WedgeArmState wedgeArmState = WedgeArmState.STOWED;
 
     public Hang(Climber climber, WedgeArmIO wedgeArmIO) {
         this.climber = climber;
         this.wedgeArmIO = wedgeArmIO;
+        applyAllPIDs();
+    }
+
+    private void applyAllPIDs() {
+
+        wedgeArmIO.setPID(
+                wedgeArmkP.get(), wedgeArmkI.get(), wedgeArmkD.get(),
+                wedgeArmkS.get(), wedgeArmkV.get());
+
+    }
+
+    private void updateTunablePIDs() {
+
+        LoggableTunedNumber.ifChanged(
+                hashCode(),
+                () -> wedgeArmIO.setPID(
+                        wedgeArmkP.get(), wedgeArmkI.get(), wedgeArmkD.get(),
+                        wedgeArmkS.get(), wedgeArmkV.get()),
+                wedgeArmkP, wedgeArmkI, wedgeArmkD, wedgeArmkS, wedgeArmkV);
     }
 
     @Override
@@ -32,6 +72,36 @@ public class Hang extends SubsystemChecker {
         wedgeArmIO.updateInputs(wedgeArmInputs);
         Logger.processInputs("Hang/WedgeArm", wedgeArmInputs);
         climber.periodic();
+        updateTunablePIDs();
+        // process state
+        double setWedgeAngle = 0;
+        Climber.Goal climberGoal = Climber.Goal.STOPPED;
+        switch (wedgeArmState) {
+            case STOWED:
+                setWedgeAngle = 0;
+                climberGoal = Climber.Goal.STOPPED;
+                break;
+            case EXTENDED:
+                setWedgeAngle = wedgeArmSetpoint.get();
+                climberGoal = Climber.Goal.STOPPED;
+                break;
+            case MOVING_UP:
+                setWedgeAngle = wedgeArmSetpoint.get();
+                // TODO: force lock?
+                climberGoal = Climber.Goal.CLIMBING;
+                break;
+            case MOVING_DOWN:
+                setWedgeAngle = wedgeArmSetpoint.get();
+                // TODO: force lock?
+                climberGoal = Climber.Goal.DROPPING;
+                break;
+        }
+        wedgeArmIO.setPosition(setWedgeAngle);
+        climber.setGoal(climberGoal);
+    }
+
+    public double getAngle() {
+        return wedgeArmInputs.positionRads;
     }
 
     @Override
@@ -49,6 +119,14 @@ public class Hang extends SubsystemChecker {
         return orchestra;
     }
 
+    private boolean wedgeArmConnected() {
+        return wedgeArmInputs.connected;
+    }
+
+    private boolean climberConnected() {
+        return climber.isConnected();
+    }
+
     @Override
     public double getCurrent() {
         return wedgeArmInputs.supplyCurrentAmps + climber.getCurrent();
@@ -57,7 +135,7 @@ public class Hang extends SubsystemChecker {
     @Override
     public HashMap<String, Double> getTemps() {
         HashMap<String, Double> temps = new HashMap<>();
-        temps.put("Arm", wedgeArmInputs.tempCelsius);
+        temps.put("WedgeArm", wedgeArmInputs.tempCelsius);
         temps.put("Climber", climber.getTemps().get(SimpleMechanismConstants.Climber.climberName));
         return temps;
     }
@@ -73,7 +151,7 @@ public class Hang extends SubsystemChecker {
     protected Command systemCheckCommand() {
         return runOnce(() -> {
             // Simple check logic
-            if (wedgeArmInputs.connected && climber.isConnected()) {
+            if (wedgeArmConnected() && climberConnected()) {
                 Logger.recordOutput("Hang" + "/SystemCheck/WedgeConnected", "GOOD");
             } else {
                 Logger.recordOutput("Hang" + "/SystemCheck/WedgeConnected", "BAD");

@@ -152,7 +152,7 @@ public class ShotCalculator {
 
     double lookaheadDist = target.getDistance(lookaheadPose.getTranslation());
 
-    Rotation2d turretAngle = target.minus(lookaheadPose.getTranslation()).getAngle();
+    Rotation2d turretAngle = target.minus(lookaheadPose.getTranslation()).getAngle().minus(new Rotation2d(robotAngle));
     double hoodAngle = profile.getHoodAngle(lookaheadDist).getRadians();
     double flywheelSpeed = profile.getFlywheelSpeed(lookaheadDist);
 

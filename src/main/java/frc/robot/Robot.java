@@ -38,6 +38,7 @@ import edu.wpi.first.math.MathUsageId;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.trajectory.Trajectory;
 import edu.wpi.first.net.PortForwarder;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -349,9 +350,27 @@ public class Robot extends LoggedRobot {
 
 	}
 
-	// YEARLYUPDATE: Grant explain what this does (Ur Mom -G)
 	private void updateAdvantageScopePiecesLive() {
-
+		Logger.recordOutput("RobotState/AdvantageScope/modelPose", RobotContainer.drivetrainS.getPose());
+		double armAngle = RobotContainer.intake.getArmAngle();
+		//if less than 120 deg, interp until <45 so that hopper is at 12 inches (.3048m)
+		double hopperOffset = 0;
+		if (armAngle < Math.toRadians(120)) {
+			hopperOffset = GeomUtil.interp(.3048, 0, armAngle, Math.toRadians(45), Math.toRadians(120));
+		} else {
+			hopperOffset = 0;
+		}
+		Logger.recordOutput("RobotState/AdvantageScope/model_0Pose", new Pose3d(.253, 0, 0.228, new Rotation3d(0,-armAngle,0)));//intake
+		Logger.recordOutput("RobotState/AdvantageScope/model_1Pose",
+				new Pose3d(-0.043+hopperOffset, 0, 0.284 + .235 / 2, new Rotation3d()));//hopper
+		Logger.recordOutput("RobotState/AdvantageScope/model_2Pose", new Pose3d(-.163, .227, 0.419, new Rotation3d(0,0,RobotContainer.rightTurret.turretAngle())));//rightTurret
+		Logger.recordOutput("RobotState/AdvantageScope/model_3Pose",
+				new Pose3d(-.163 - .100, .227, .419 + .06, new Rotation3d(0,RobotContainer.rightTurret.hoodAngle(),0)));//rightTurretHood
+		Logger.recordOutput("RobotState/AdvantageScope/model_4Pose", new Pose3d(-.163, -.227, .419, new Rotation3d(0,0,RobotContainer.leftTurret.turretAngle())));//leftTurret
+		Logger.recordOutput("RobotState/AdvantageScope/model_5Pose",
+				new Pose3d(-.163 - .100, -.227, .419 + .06, new Rotation3d(0,RobotContainer.leftTurret.hoodAngle(),0)));//leftTurretHood
+		Logger.recordOutput("RobotState/AdvantageScope/model_6Pose",
+				new Pose3d(-.214, .016, 0.475615, new Rotation3d(0,RobotContainer.hang.getAngle(),0)));//hang
 	}
 
 	/** This function is called once each time the robot enters Disabled mode. */
@@ -375,41 +394,43 @@ public class Robot extends LoggedRobot {
 			}
 		}
 	}
-	private void generateAuto(){
+
+	private void generateAuto() {
 		String raw = PosePlotterUtil.getAutoString();
-			if (raw != null && (!raw.equals(oldAutoString) || isRed != oldIsRed)) {
-				oldAutoString = raw;
+		if (raw != null && (!raw.equals(oldAutoString) || isRed != oldIsRed)) {
+			oldAutoString = raw;
 
-				var planOpt = PosePlotterUtil.tryGetPlan();
-				if (planOpt.isPresent()) {
-					TouchboardAutoPlan plan = planOpt.get();
+			var planOpt = PosePlotterUtil.tryGetPlan();
+			if (planOpt.isPresent()) {
+				TouchboardAutoPlan plan = planOpt.get();
 
-					// startPose from JSON (fallback if missing)
-					Pose2d startingPose;
-					if (plan.startPose != null) {
-						startingPose = new Pose2d(
-								plan.startPose.x,
-								GeomUtil.applyY(plan.startPose.y,true),
-								new Rotation2d());
-					} else {
-						startingPose = new Pose2d(4.398, 0.475, new Rotation2d());
-					}
-					startingPose = GeomUtil.apply(startingPose, false);
-					RobotContainer.startingPoseCache = startingPose;
-					RobotContainer.drivetrainS.resetPose(startingPose);
-
-					if (Constants.currentMode == frc.robot.Constants.Mode.SIM) {
-						RobotContainer.fieldSimulation.getMainDriveSimulation()
-								.setSimulationWorldPose(startingPose);
-					}
-
-					PosePlotterUtil.calculateAuto(plan, () -> RobotContainer.touchboardAutoFactory.build(plan));
-					hasCalculatedAuto = true;
+				// startPose from JSON (fallback if missing)
+				Pose2d startingPose;
+				if (plan.startPose != null) {
+					startingPose = new Pose2d(
+							plan.startPose.x,
+							GeomUtil.applyY(plan.startPose.y, true),
+							new Rotation2d());
 				} else {
-					System.out.println("[disabledPeriodic] No valid Touchboard plan JSON (keeping last auto).");
+					startingPose = new Pose2d(4.398, 0.475, new Rotation2d());
 				}
+				startingPose = GeomUtil.apply(startingPose, false);
+				RobotContainer.startingPoseCache = startingPose;
+				RobotContainer.drivetrainS.resetPose(startingPose);
+
+				if (Constants.currentMode == frc.robot.Constants.Mode.SIM) {
+					RobotContainer.fieldSimulation.getMainDriveSimulation()
+							.setSimulationWorldPose(startingPose);
+				}
+
+				PosePlotterUtil.calculateAuto(plan, () -> RobotContainer.touchboardAutoFactory.build(plan));
+				hasCalculatedAuto = true;
+			} else {
+				System.out.println("[disabledPeriodic] No valid Touchboard plan JSON (keeping last auto).");
 			}
+		}
 	}
+
 	@Override
 	public void disabledPeriodic() {
 		isRed = DriverStation.getAlliance().isPresent()
@@ -418,7 +439,7 @@ public class Robot extends LoggedRobot {
 
 		if (!autoHasStarted) {
 			generateAuto();
-					//reset to starting pose
+			// reset to starting pose
 			if (RobotContainer.startingPoseCache != null) {
 				RobotContainer.drivetrainS.resetPose(RobotContainer.startingPoseCache);
 				if (Constants.currentMode == frc.robot.Constants.Mode.SIM) {

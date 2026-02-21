@@ -130,7 +130,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         );
 
         positionControl.Position = Units.radiansToRotations(motorTargetRad);
-        //talon.setControl(positionControl);
+        talon.setControl(positionControl);
     }
 
     @Override
@@ -140,7 +140,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
     @Override
     public void runVolts(double volts) {
-       // talon.setControl(voltageOut.withOutput(volts));
+        talon.setControl(voltageOut.withOutput(volts));
     }
     @Override
     public void setBrakeMode(boolean brake) {

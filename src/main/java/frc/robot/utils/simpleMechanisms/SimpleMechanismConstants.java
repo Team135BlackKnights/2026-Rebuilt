@@ -25,7 +25,7 @@ public class SimpleMechanismConstants {
         public static final DCMotor climbMotor = DCMotor.getKrakenX44Foc(1);
         public static final double wedgeReduction = 1; // TODO
         public static final double climbMOI = 0.0005; // kg m^2 TODO
-        public static final double wedgeMOI = 0.0007; // kg m^2 TODO
+        public static final double wedgeMOI = 0.095; // kg m^2 TODO
         public static final double wedgeMinAngleRads = Math.toRadians(0.0);
         public static final double wedgeMaxAngleRads = Math.toRadians(100.0); // actually around 72, but yk
         public static final double climbRollersDiameterMeters = Units.inchesToMeters(2);

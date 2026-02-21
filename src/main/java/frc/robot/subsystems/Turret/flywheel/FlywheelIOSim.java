@@ -7,9 +7,9 @@ import edu.wpi.first.wpilibj.simulation.FlywheelSim;
 import frc.robot.utils.advancedMechs.AdvancedMechanismConstants;
 
 public class FlywheelIOSim implements FlywheelIO {
-  private static final DCMotor motorModel = DCMotor.getKrakenX60(1);
+  private static final DCMotor motorModel = AdvancedMechanismConstants.Turret.flywheelMotor;
   private static final FlywheelSim sim =
-      new FlywheelSim(LinearSystemId.createFlywheelSystem(motorModel, .025, AdvancedMechanismConstants.Turret.flywheelRatio), motorModel);
+      new FlywheelSim(LinearSystemId.createFlywheelSystem(motorModel, AdvancedMechanismConstants.Turret.flywheelMOI, AdvancedMechanismConstants.Turret.flywheelRatio), motorModel);
 
   private PIDController controller = new PIDController(10, 0, 0, 0.02);
   private double currentOutput = 0.0;
@@ -20,8 +20,6 @@ public class FlywheelIOSim implements FlywheelIO {
 
   @Override
   public void updateInputs(FlywheelIOInputs inputs) {
-    currentOutputAsVolt = motorModel.getVoltage(currentOutput, sim.getAngularVelocityRadPerSec());
-    appliedVolts = currentOutputAsVolt;
 
     sim.setInputVoltage(MathUtil.clamp(appliedVolts, -12.0, 12.0));
     sim.update(.02);
@@ -38,7 +36,7 @@ public class FlywheelIOSim implements FlywheelIO {
     @Override
     public void setVelocity(double velocityRadsPerSec) {
         double pidOutput = controller.calculate(sim.getAngularVelocityRadPerSec(), velocityRadsPerSec);
-        currentOutput = pidOutput;
+        appliedVolts = MathUtil.clamp(pidOutput, -12.0, 12.0);;
     }
     @Override
     public void runVolts(double volts) {

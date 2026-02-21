@@ -7,7 +7,8 @@ import frc.robot.utils.IntakeConstants;
 public class ArmIOSim implements ArmIO {
     // Single jointed arm siom
     private final SingleJointedArmSim sim = new SingleJointedArmSim(IntakeConstants.intakeArmMotor, IntakeConstants.intakeArmReduction, IntakeConstants.armMOI,
-            Units.inchesToMeters(7),IntakeConstants.armMinAngleRads, IntakeConstants.armMaxAngleRads, false, IntakeConstants.armMinAngleRads);
+            Units.inchesToMeters(7),IntakeConstants.armMinAngleRads, IntakeConstants.armMaxAngleRads
+            , false, IntakeConstants.armMaxAngleRads);
     private double appliedVoltage = 0.0;
     private final String name = "HoodIOSim";
     private PIDController controller = new PIDController(0, 0, 0, 0.02);
