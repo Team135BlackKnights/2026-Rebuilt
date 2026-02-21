@@ -1,0 +1,251 @@
+{
+  "hubs": [
+    {
+      "x": -8,
+      "y": -8,
+      "width": 1936,
+      "height": 1048,
+      "state": {
+        "sidebar": {
+          "width": 359,
+          "expanded": [
+            "/AdvantageKit/RealOutputs/FieldSimulation",
+            "/AdvantageKit/RealOutputs/Drive/SwerveStates",
+            "/AdvantageKit/Turret",
+            "/AdvantageKit/LeftTurret/Azimuth",
+            "/AdvantageKit/LeftTurret/Flywheel",
+            "/AdvantageKit/LeftTurret/Hood",
+            "/AdvantageKit/RealOutputs/RightTurret/Targets",
+            "/AdvantageKit/RealOutputs/RightTurret/Targets/Hub2d",
+            "/AdvantageKit/RealOutputs/LeftTurret/Errors",
+            "/AdvantageKit/RealOutputs/Superstructure",
+            "/AdvantageKit/Vision/CameraFrontRightCam",
+            "/photonvision/FrontLeftCam",
+            "/AdvantageKit/RealOutputs/Vision/Summary",
+            "/AdvantageKit/RealOutputs/Vision/BackLeftCam/CamPose",
+            "/AdvantageKit/RealOutputs/Vision/BackLeftCam/CamPose/translation",
+            "/AdvantageKit/RealOutputs/Vision/BackLeftCam/RobotPoses/0",
+            "/AdvantageKit/RealOutputs/ntake",
+            "/AdvantageKit/RealOutputs/SuperStructure/Climber",
+            "/AdvantageKit/RealOutputs/SuperStructure/LeftTurret",
+            "/AdvantageKit/RealOutputs/SuperStructure/RightTurret",
+            "/AdvantageKit/RealOutputs/RightTurret/Targets/Target2d",
+            "/AdvantageKit/RealOutputs/Odometry",
+            "/AdvantageKit/RealOutputs/Odometry/Trajectory/0",
+            "/AdvantageKit/RealOutputs/Odometry/Trajectory/0/translation",
+            "/AdvantageKit/RealOutputs/RobotState/EstimatedPose",
+            "/AdvantageKit/RealOutputs/RobotState/autoPath",
+            "/AdvantageKit/RealOutputs/RobotState/ActiveAutopilotTarget",
+            "/AdvantageKit/LocalADStarAK",
+            "/RealOutputs",
+            "/RealOutputs/SuperStructure",
+            "/RealOutputs/SuperStructure/LeftTurret",
+            "/RealOutputs/RobotState",
+            "/RealOutputs/SuperStructure/RightTurret",
+            "/RealOutputs/Field",
+            "/TunableNumbers/AutoPilot",
+            "/AdvantageKit/RealOutputs/Vision/BackLeftCam/RobotPoses/0/rotation",
+            "/AdvantageKit/RealOutputs/Vision/BackLeftCam/RobotPoses/0/rotation/q",
+            "/AdvantageKit/RealOutputs/Auto/Candidate1",
+            "/AdvantageKit/RealOutputs/Auto/Candidate2",
+            "/AdvantageKit/RealOutputs/Auto/SafeStopPose",
+            "/AdvantageKit/RealOutputs/Auto/Candidate40",
+            "/AdvantageKit/RealOutputs/Vision/BackRightCam/CamPose",
+            "/AdvantageKit/RealOutputs/Vision/BackRightCam/CamPose/translation",
+            "/AdvantageKit/RealOutputs/Vision/IntakeCam/CamPose",
+            "/AdvantageKit/RealOutputs/Vision/IntakeCam/CamPose/translation",
+            "/AdvantageKit/RealOutputs/Vision/IntakeCam/CamPose/rotation",
+            "/AdvantageKit/RealOutputs/AimToObject",
+            "/AdvantageKit/RealOutputs/Vision/Simulated",
+            "/AdvantageKit/RealOutputs/Vision/Simulated/ClosestObjDetect",
+            "/AdvantageKit/RightTurret/Azimuth",
+            "/AdvantageKit/RightTurret/Hood",
+            "/TunableNumbers/LeftTurret/Aiming",
+            "/TunableNumbers/LeftTurret/Azimuth",
+            "/AdvantageKit/Intake/Arm",
+            "/AdvantageKit/RealOutputs",
+            "/TunableNumbers/Intake/Setpoints",
+            "/AdvantageKit/RealOutputs/LeftTurret/Setpoints",
+            "/TunableNumbers/RightTurret/Azimuth",
+            "/AdvantageKit/RealOutputs/RightTurret/Setpoints",
+            "/TunableNumbers/Intake/Arm",
+            "/TunableNumbers/LeftTurret/Flywheel",
+            "/TunableNumbers",
+            "/AdvantageKit"
+          ]
+        },
+        "tabs": {
+          "selected": 1,
+          "tabs": [
+            {
+              "type": 0,
+              "title": "",
+              "controller": null,
+              "controllerUUID": "5yvw2r8jx96kdsxhriyw1et5bjumsjqt",
+              "renderer": "",
+              "controlsHeight": 0
+            },
+            {
+              "type": 3,
+              "title": "3D Field",
+              "controller": {
+                "sources": [
+                  {
+                    "type": "robot",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/Field/Robot",
+                    "logType": "Pose2d",
+                    "visible": true,
+                    "options": {
+                      "model": "135 Keplar"
+                    }
+                  },
+                  {
+                    "type": "component",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/RobotState/AdvantageScope/model_0Pose",
+                    "logType": "Pose3d",
+                    "visible": true,
+                    "options": {}
+                  },
+                  {
+                    "type": "component",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/RobotState/AdvantageScope/model_1Pose",
+                    "logType": "Pose3d",
+                    "visible": true,
+                    "options": {}
+                  },
+                  {
+                    "type": "component",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/RobotState/AdvantageScope/model_2Pose",
+                    "logType": "Pose3d",
+                    "visible": true,
+                    "options": {}
+                  },
+                  {
+                    "type": "component",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/RobotState/AdvantageScope/model_3Pose",
+                    "logType": "Pose3d",
+                    "visible": true,
+                    "options": {}
+                  },
+                  {
+                    "type": "component",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/RobotState/AdvantageScope/model_4Pose",
+                    "logType": "Pose3d",
+                    "visible": true,
+                    "options": {}
+                  },
+                  {
+                    "type": "component",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/RobotState/AdvantageScope/model_5Pose",
+                    "logType": "Pose3d",
+                    "visible": true,
+                    "options": {}
+                  },
+                  {
+                    "type": "component",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/RobotState/AdvantageScope/model_6Pose",
+                    "logType": "Pose3d",
+                    "visible": true,
+                    "options": {}
+                  },
+                  {
+                    "type": "robot",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/RobotState/AdvantageScope/modelPose",
+                    "logType": "Pose2d",
+                    "visible": true,
+                    "options": {
+                      "model": "135 Keplar"
+                    }
+                  },
+                  {
+                    "type": "component",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/RobotState/AdvantageScope/model_0Pose",
+                    "logType": "Pose3d",
+                    "visible": true,
+                    "options": {}
+                  },
+                  {
+                    "type": "component",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/RobotState/AdvantageScope/model_1Pose",
+                    "logType": "Pose3d",
+                    "visible": true,
+                    "options": {}
+                  },
+                  {
+                    "type": "component",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/RobotState/AdvantageScope/model_2Pose",
+                    "logType": "Pose3d",
+                    "visible": true,
+                    "options": {}
+                  },
+                  {
+                    "type": "component",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/RobotState/AdvantageScope/model_3Pose",
+                    "logType": "Pose3d",
+                    "visible": true,
+                    "options": {}
+                  },
+                  {
+                    "type": "component",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/RobotState/AdvantageScope/model_4Pose",
+                    "logType": "Pose3d",
+                    "visible": true,
+                    "options": {}
+                  },
+                  {
+                    "type": "component",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/RobotState/AdvantageScope/model_5Pose",
+                    "logType": "Pose3d",
+                    "visible": true,
+                    "options": {}
+                  },
+                  {
+                    "type": "component",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/RobotState/AdvantageScope/model_6Pose",
+                    "logType": "Pose3d",
+                    "visible": true,
+                    "options": {}
+                  }
+                ],
+                "game": "FRC:2026 Field"
+              },
+              "controllerUUID": "rhbfn71s5pkcokoqg1dixvtxm2vhkgmd",
+              "renderer": {
+                "cameraIndex": -2,
+                "orbitFov": 50,
+                "cameraPosition": [
+                  1.3492765498807124,
+                  1.6338029388323483,
+                  1.4483476591553615
+                ],
+                "cameraTarget": [
+                  0.08658126593755348,
+                  0.28802089195020025,
+                  0.32876649703356364
+                ]
+              },
+              "controlsHeight": 100
+            },
+            {
+              "type": 8,
+              "title": "Joysticks",
+              "controller": [
+                "Xbox Controller (White)",
+                "None",
+                "None",
+                "None",
+                "None",
+                "None"
+              ],
+              "controllerUUID": "sv4orhtn1xvxqdg49nqzh1w5y8hm2lii",
+              "renderer": null,
+              "controlsHeight": 85
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "satellites": [],
+  "version": "26.0.0"
+}
