@@ -73,14 +73,14 @@ public class AzimuthIOSim implements AzimuthIO {
             // If we have a turret target, compute a motor target from current "absolute encoders" + motor position.
             desiredTurretRad = MathUtil.clamp(desiredTurretRad, minAngleRad, maxAngleRad);
 
-            desiredMotorRad = TurretMathematics.TurretMath.motorSetpointForTurretAngle(
-                    bigAbs,
-                    smallAbs,
+            /*desiredMotorRad = TurretMathematics.TurretMath.motorSetpointForTurretAngle(
+                    bigAbs.getRadians(),
+                    smallAbs.getRadians(),
                     motorPosRad,
                     desiredTurretRad,
                     minAngleRad,
                     maxAngleRad
-            );
+            );*/
 
             double motorError = desiredMotorRad - motorPosRad;
             double motorVelError = 0.0 - motorVelRadPerSec;
@@ -123,7 +123,7 @@ public class AzimuthIOSim implements AzimuthIO {
         inputs.supplyCurrentAmps = currentDrawAmps; // close enough for sim
         inputs.torqueCurrentAmps = currentDrawAmps;
         inputs.tempCelsius = 25.0;
-        inputs.turretPositionRads = TurretMathematics.TurretMath.turretAngleFromEncoders(bigAbs, smallAbs);
+        //inputs.turretPositionRads = TurretMathematics.TurretMath.turretAngleFromEncoders(bigAbs.getRadians(), smallAbs.getRadians());
         inputs.turretVelocityRadsPerSec = turretVelRadPerSec;
     }
 

@@ -5,7 +5,7 @@ import edu.wpi.first.wpilibj.simulation.SingleJointedArmSim;
 import frc.robot.utils.IntakeConstants;
 
 public class ArmIOSim implements ArmIO {
-    // Single jointed arm siom
+    // Single jointed arm siomE
     private final SingleJointedArmSim sim = new SingleJointedArmSim(IntakeConstants.intakeArmMotor, IntakeConstants.intakeArmReduction, IntakeConstants.armMOI,
             Units.inchesToMeters(7),IntakeConstants.armMinAngleRads, IntakeConstants.armMaxAngleRads
             , false, IntakeConstants.armMaxAngleRads);
@@ -43,7 +43,8 @@ public class ArmIOSim implements ArmIO {
         double i,
         double d,
         double ks,
-        double kv) {
+        double kv,
+        double kg) {
         controller.setP(p);
         controller.setI(i);
         controller.setD(d);

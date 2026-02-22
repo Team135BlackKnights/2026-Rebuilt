@@ -943,12 +943,14 @@ public class RobotContainer {
 				.onTrue(new InstantCommand(() -> {
 					System.out.println("Zeroing Gyro");
 					drivetrainS.zeroHeading();
+					intake.zero();
 					// drivetrainS.resetPose(GeomUtil.apply(startingPose.get(), false));
 				}));
 		selectButtonDrive
 				.onTrue(new InstantCommand(() -> {
 					System.out.println("Stowing Intake/Stopping Turrets");
 					intake.setGoal(Goal.STOW);
+					
 					leftTurret.setGoal(Turret.Goal.IDLE);
 					rightTurret.setGoal(Turret.Goal.IDLE);
 				}));

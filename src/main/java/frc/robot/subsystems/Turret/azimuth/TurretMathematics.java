@@ -1,187 +1,185 @@
 package frc.robot.subsystems.Turret.azimuth;
 
-import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.util.Units;
 import frc.robot.utils.advancedMechs.AdvancedMechanismConstants;
 
 public class TurretMathematics {
-    public final class TurretMath {
+  public static final class TurretMath {
 
-        private static final double enc1ToEnc2Ratio = AdvancedMechanismConstants.Turret.enc1GearTeeth / AdvancedMechanismConstants.Turret.enc2GearTeeth;
-        private static final double gearGreatestCommonDivisor = greatestCommonDivisor(AdvancedMechanismConstants.Turret.enc1GearTeeth, AdvancedMechanismConstants.Turret.enc2GearTeeth);
-        private static final int enc1CyclesForPeriod = (int) (AdvancedMechanismConstants.Turret.enc2GearTeeth / gearGreatestCommonDivisor);
+    private static final double TWO_PI = 2.0 * Math.PI;
 
-        private static final double twoPi = 2.0 * Math.PI;
-        private static final double turretRatio = (double) AdvancedMechanismConstants.Turret.turretTeeth / AdvancedMechanismConstants.Turret.idlerTeeth;
+    private static final double TURRET_RATIO =
+        (double) AdvancedMechanismConstants.Turret.turretTeeth
+            / (double) AdvancedMechanismConstants.Turret.idlerTeeth; // 77/10
 
-        private static final double combinedRatio = turretRatio * enc1ToEnc2Ratio;
+    private static final double ENC1_TO_ENC2_RATIO =
+        (double) AdvancedMechanismConstants.Turret.enc1GearTeeth
+            / (double) AdvancedMechanismConstants.Turret.enc2GearTeeth; // 36/34
 
-        // Repeat period of the encoder-pair solution (in turret radians)
-        private static final double turretPeriod =
-                twoPi * (AdvancedMechanismConstants.Turret.idlerTeeth / (double) AdvancedMechanismConstants.Turret.turretTeeth) * enc1CyclesForPeriod;
+    private static final double ENC1_MOD_SPAN = TWO_PI / TURRET_RATIO; // turret radians per enc1 wrap
 
-        private static final double enc1ModSpan = twoPi / turretRatio;
+    // With 36/34 -> gcd=2 -> 17 enc1 cycles for repeat
+    private static final double GCD = greatestCommonDivisor(
+        AdvancedMechanismConstants.Turret.enc1GearTeeth,
+        AdvancedMechanismConstants.Turret.enc2GearTeeth);
+    private static final int ENC1_CYCLES_FOR_PERIOD =
+        (int) Math.round(AdvancedMechanismConstants.Turret.enc2GearTeeth / GCD);
 
-        private static final int maxIterations = (int) Math.ceil(turretPeriod / enc1ModSpan) + 2;
+    private static final double TURRET_PERIOD = ENC1_CYCLES_FOR_PERIOD * ENC1_MOD_SPAN; // ~13.866 rad
+    private static final int MAX_ITERATIONS =
+        (int) Math.ceil(TURRET_PERIOD / ENC1_MOD_SPAN) + 4;
 
-        private TurretMath() {}
+    private TurretMath() {}
+public static double motorSetpointForTurretAngle(
+    double turretRep,
+    double motorPositionRad,
+    double desiredTurretAngleRad,
+    double minTurretAngleRad,
+    double maxTurretAngleRad
+) {
+    // Clamp target to mechanical limits
+    double desired = MathUtil.clamp(desiredTurretAngleRad, minTurretAngleRad, maxTurretAngleRad);
 
-        public static double turretAngleFromEncoders(Rotation2d enc1Angle, Rotation2d enc2Angle) {
-            return turretAngleFromEncoders(enc1Angle, enc2Angle, 0.00436); // 0.25 degrees in radians
-        }
-
-        public static double turretAngleFromEncoders(
-                Rotation2d enc1Angle,
-                Rotation2d enc2Angle,
-                double tolerance
-        ) {
-            double baseSolution = mod(-enc1Angle.getRadians() / turretRatio, enc1ModSpan);
-
-            for (int k = 0; k < maxIterations; k++) {
-                double candidate = baseSolution + k * enc1ModSpan;
-                if (candidate > turretPeriod + tolerance) {
-                    break;
-                }
-
-                double predictedEnc2 = wrapToTwoPi(combinedRatio * candidate);
-                double error = Math.abs(wrapToPi(predictedEnc2 - enc2Angle.getRadians()));
-
-                if (error <= tolerance) {
-                    // Shift from [0, turretPeriod) to AROUND 0 for nicer behavior
-                    if (candidate > turretPeriod / 2.0) {
-                        candidate -= turretPeriod;
-                    }
-                    return candidate;
-                }
-            }
-
-            return 0;
-        }
-
-        /**
-         * Given two absolute encoders (wrapped), the motor continuous position, and a desired turret angle
-         * (assumed already unwrapped/true), return the motor position setpoint (continuous radians).
-         *
-         * @param enc1Angle absolute encoder 1 (Rotation2d)
-         * @param enc2Angle absolute encoder 2 (Rotation2d)
-         * @param motorPositionRad continuous motor position in radians (-inf..inf)
-         * @param desiredTurretAngleRad desired turret angle in radians (continuous/unwrapped)
-         * @param motorRadPerTurretRad motor radians per 1 turret radian (INCLUDE SIGN)
-         * @param minTurretAngleRad mechanical min turret angle (radians)
-         * @param maxTurretAngleRad mechanical max turret angle (radians)
-         * @return motor setpoint position in radians (continuous)
-         */
-        public static double motorSetpointForTurretAngle(
-                Rotation2d enc1Angle,
-                Rotation2d enc2Angle,
-                double motorPositionRad,
-                double desiredTurretAngleRad,
-                double minTurretAngleRad,
-                double maxTurretAngleRad
-        ) {
-            return motorSetpointForTurretAngle(
-                    turretAngleFromEncoders(enc1Angle, enc2Angle),
-                    motorPositionRad, desiredTurretAngleRad,
-                    minTurretAngleRad, maxTurretAngleRad
-                    
-            );
-        }
-
-        public static double motorSetpointForTurretAngle(
-                double turretRep,
-                double motorPositionRad,
-                double desiredTurretAngleRad,
-                double minTurretAngleRad,
-                double maxTurretAngleRad
-        ) {
-
-            double desired = clamp(desiredTurretAngleRad, minTurretAngleRad, maxTurretAngleRad);
-
-            // Continuous turret estimate from motor (requires motor was zeroed consistently)
-            double turretFromMotor = motorPositionRad / AdvancedMechanismConstants.Turret.motorRadPerTurretRad;
-
-            // Pick the correct equivalent of turretRep that:
-            //  - is closest to turretFromMotor
-            //  - and is within [min, max] if possible
-            double turretAbs = closestEquivalentWithinLimits(
-                    turretRep,
-                    turretFromMotor,
-                    turretPeriod,
-                    minTurretAngleRad,
-                    maxTurretAngleRad
-            );
-
-            // Compute motor setpoint to move turretAbs -> desired
-            double turretDelta = desired - turretAbs;
-            return motorPositionRad + turretDelta * AdvancedMechanismConstants.Turret.motorRadPerTurretRad;
-        }
-
-        /** Choose (angleRep + k*period) closest to reference, preferring values inside [min,max]. */
-        private static double closestEquivalentWithinLimits(
-                double angleRep,
-                double reference,
-                double period,
-                double min,
-                double max
-        ) {
-            long k0 = Math.round((reference - angleRep) / period);
-
-            double best = Double.NaN;
-            double bestErr = Double.POSITIVE_INFINITY;
-
-            // Check a small neighborhood around the best k. Range < period => typically only one valid.
-            for (long k = k0 - 2; k <= k0 + 2; k++) {
-                double candidate = angleRep + k * period;
-                if (candidate < min - 1e-6 || candidate > max + 1e-6) {
-                    continue;
-                }
-                double err = Math.abs(candidate - reference);
-                if (err < bestErr) {
-                    bestErr = err;
-                    best = candidate;
-                }
-            }
-
-            // If nothing lands inside limits (e.g., limits not configured / mismatch), fall back to closest.
-            if (Double.isNaN(best)) {
-                return angleRep + k0 * period;
-            }
-            return best;
-        }
-
-        private static double wrapToTwoPi(double angleRad) {
-            double wrapped = angleRad % twoPi;
-            return wrapped < 0 ? wrapped + twoPi : wrapped;
-        }
-
-        private static double wrapToPi(double angleRad) {
-            double wrapped = (angleRad + Math.PI) % twoPi;
-            if (wrapped < 0) {
-                wrapped += twoPi;
-            }
-            return wrapped - Math.PI;
-        }
-
-        private static double mod(double value, double modulus) {
-            double result = value % modulus;
-            return result < 0 ? result + modulus : result;
-        }
-
-        private static double clamp(double x, double min, double max) {
-            return Math.max(min, Math.min(max, x));
-        }
-
-        private static double greatestCommonDivisor(double a, double b) {
-            final double EPS = 1e-10;
-            a = Math.abs(a);
-            b = Math.abs(b);
-            if (a < EPS) return b;
-            if (b < EPS) return a;
-            while (b > EPS) {
-                double temp = b;
-                b = a % b;
-                a = temp;
-            }
-            return a;
-        }
+    // If the turret estimate is invalid, HOLD motor position (do not jump).
+    // (Your IO code should be holding lastTurretAngleRads anyway.)
+    if (Double.isNaN(turretRep)) {
+        return motorPositionRad;
     }
+
+    double turretNow = MathUtil.clamp(turretRep, minTurretAngleRad, maxTurretAngleRad);
+
+    double turretDelta = desired - turretNow;
+
+    return motorPositionRad + turretDelta * AdvancedMechanismConstants.Turret.motorRadPerTurretRad;
+}
+    public static double turretAngleFromEncodersRad(double enc1Rad0to2pi, double enc2Rad0to2pi, double tolRad) {
+      return turretAngleFromEncodersRad(enc1Rad0to2pi, enc2Rad0to2pi, 0.0, tolRad);
+    }
+
+    /**
+     * Phase-aware solve: uses a reference turret angle to infer encoder phases (offsets) and then
+     * chooses the candidate closest to that reference.
+     *
+     * @param enc1Rad0to2pi wrapped 0..2π absolute
+     * @param enc2Rad0to2pi wrapped 0..2π absolute
+     * @param referenceTurretRad continuous-ish reference (motor-delta based is ideal)
+     * @param tolRad tolerance
+     */
+    public static double turretAngleFromEncodersRad(
+        double enc1Rad0to2pi,
+        double enc2Rad0to2pi,
+        double referenceTurretRad,
+        double tolRad
+    ) {
+      final double enc1 = wrapToTwoPi(enc1Rad0to2pi);
+      final double enc2 = wrapToTwoPi(enc2Rad0to2pi);
+
+      // Center reference into (-period/2, +period/2] so distance comparisons are stable
+      final double ref = centerToPeriod(referenceTurretRad, TURRET_PERIOD);
+
+      // Try both enc2 signs (because two meshes usually makes enc2 same direction as turret,
+      // but SensorDirection / mounting can flip it)
+      Candidate best = null;
+
+      for (int enc2Sign : new int[] { +1, -1 }) {
+        final double combined = enc2Sign * (TURRET_RATIO * ENC1_TO_ENC2_RATIO);
+
+        // Estimate phases from reference:
+        // enc1 ≈ wrap(-TURRET_RATIO*t + phi1) -> phi1 ≈ wrap(enc1 + TURRET_RATIO*ref)
+        final double phi1 = wrapToTwoPi(enc1 + TURRET_RATIO * ref);
+
+        // enc2 ≈ wrap(combined*t + phi2) -> phi2 ≈ wrap(enc2 - combined*ref)
+        final double phi2 = wrapToTwoPi(enc2 - combined * ref);
+
+        // Base turret candidate from enc1 using inferred phase
+        // -TURRET_RATIO*t + phi1 = enc1 + 2πm -> t = (phi1 - enc1 + 2πm)/TURRET_RATIO
+        final double base = mod((phi1 - enc1) / TURRET_RATIO, ENC1_MOD_SPAN);
+
+        Candidate c = solveCandidates(base, enc2, phi2, combined, ref, tolRad);
+        if (c != null && (best == null || c.cost < best.cost)) best = c;
+      }
+
+      return (best == null) ? Double.NaN : best.turretRad;
+    }
+
+    private static Candidate solveCandidates(
+        double base,
+        double enc2,
+        double phi2,
+        double combined,
+        double ref,
+        double tolRad
+    ) {
+      double bestTurret = Double.NaN;
+      double bestErr = Double.POSITIVE_INFINITY;
+      double bestDist = Double.POSITIVE_INFINITY;
+
+      for (int k = 0; k < MAX_ITERATIONS; k++) {
+        double candidate = base + k * ENC1_MOD_SPAN;
+        if (candidate > TURRET_PERIOD + tolRad) break;
+
+        // shift to around 0
+        double t = (candidate > TURRET_PERIOD / 2.0) ? candidate - TURRET_PERIOD : candidate;
+
+        double pred2 = wrapToTwoPi(combined * t + phi2);
+        double err2 = Math.abs(wrapToPi(pred2 - enc2));
+
+        if (err2 <= tolRad) {
+          double dist = Math.abs(t - ref);
+          if (dist < bestDist - 1e-12 || (Math.abs(dist - bestDist) <= 1e-12 && err2 < bestErr)) {
+            bestDist = dist;
+            bestErr = err2;
+            bestTurret = t;
+          }
+        }
+      }
+
+      if (Double.isNaN(bestTurret)) return null;
+      return new Candidate(bestTurret, bestDist * 10.0 + bestErr);
+    }
+
+    private static final class Candidate {
+      final double turretRad;
+      final double cost;
+      Candidate(double turretRad, double cost) { this.turretRad = turretRad; this.cost = cost; }
+    }
+
+    private static double wrapToTwoPi(double a) {
+      double w = a % TWO_PI;
+      return w < 0 ? w + TWO_PI : w;
+    }
+
+    private static double wrapToPi(double a) {
+      double w = (a + Math.PI) % TWO_PI;
+      if (w < 0) w += TWO_PI;
+      return w - Math.PI;
+    }
+
+    private static double mod(double v, double m) {
+      double r = v % m;
+      return r < 0 ? r + m : r;
+    }
+
+    private static double centerToPeriod(double x, double period) {
+      double y = x % period;
+      if (y <= -period / 2.0) y += period;
+      if (y > period / 2.0) y -= period;
+      return y;
+    }
+
+    private static double greatestCommonDivisor(double a, double b) {
+      final double EPS = 1e-10;
+      a = Math.abs(a);
+      b = Math.abs(b);
+      if (a < EPS) return b;
+      if (b < EPS) return a;
+      while (b > EPS) {
+        double t = b;
+        b = a % b;
+        a = t;
+      }
+      return a;
+    }
+  }
 }

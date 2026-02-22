@@ -21,7 +21,9 @@ public interface ArmIO {
     default void setPosition(double positionRads) {}
     default void setVoltage(double volts) {}
     default void stop() {}
-    default void setPID(double p, double i, double d, double ks, double kv) {}
+    default void zero(){}
+    default void configureMotionMagic(double cruiseRadPerSec, double accelRadPerSec2, double jerkRadPerSec3) {}
+    default void setPID(double p, double i, double d, double ks, double kv, double kg) {}
     default void setCurrentLimit(double amps) {}
     default void setBrakeMode(boolean brake) {}
 

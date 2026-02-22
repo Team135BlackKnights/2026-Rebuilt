@@ -26,17 +26,26 @@ import lombok.Getter;
 public class Intake extends SubsystemChecker {
 
     // Tuning
-    private static final LoggableTunedNumber arm_kP = new LoggableTunedNumber("Intake/Arm/kP", 24,
+    private static final LoggableTunedNumber arm_kP = new LoggableTunedNumber("Intake/Arm/kP", 2,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_kI = new LoggableTunedNumber("Intake/Arm/kI", 0.0,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_kD = new LoggableTunedNumber("Intake/Arm/kD", 3,
             TuningConstants.isTuningIntake);
-    private static final LoggableTunedNumber arm_kS = new LoggableTunedNumber("Intake/Arm/kS", 0.0,
+    private static final LoggableTunedNumber arm_kS = new LoggableTunedNumber("Intake/Arm/kS", 0.2,
             TuningConstants.isTuningIntake);
-    private static final LoggableTunedNumber arm_kV = new LoggableTunedNumber("Intake/Arm/kV", 0.0,
+    private static final LoggableTunedNumber arm_kV = new LoggableTunedNumber("Intake/Arm/kV", 0.2,
             TuningConstants.isTuningIntake);
 
+    private static final LoggableTunedNumber arm_kG = new LoggableTunedNumber("Intake/Arm/kG", 4,
+            TuningConstants.isTuningIntake);
+
+    private static final LoggableTunedNumber arm_motionSpeed = new LoggableTunedNumber("Intake/Arm/MotionCruiseRadPerSec",999,
+            TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber arm_motionAccel = new LoggableTunedNumber
+            ("Intake/Arm/MotionAccelRadPerSec2", 999, TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber arm_motionJerk = new LoggableTunedNumber
+            ("Intake/Arm/MotionJerkRadPerSec3", 999, TuningConstants.isTuningIntake);
     // Setpoints
     private static final LoggableTunedNumber angle_stow = new LoggableTunedNumber("Intake/Setpoints/StowRads",
             Math.toRadians(120), TuningConstants.isTuningIntake);
@@ -114,7 +123,6 @@ public class Intake extends SubsystemChecker {
             case TUNING -> {
                 indexer.setGoal(Indexer.Goal.STOPPED);
                 frontRollers.setGoal(FrontRollers.Goal.STOPPED);
-                currentArmSetpoint = armInputs.positionRads; // Don't move the arm
             }
             case START -> {
                 currentArmSetpoint = angle_stow.get();
@@ -185,7 +193,9 @@ public class Intake extends SubsystemChecker {
             intakeDeployed = false;
         }
     }
-
+    public void zero(){
+        armIO.zero();
+    }
     public Goal getGoal() {
         return goal;
     }
@@ -218,8 +228,11 @@ public class Intake extends SubsystemChecker {
         return isArmConnected() && isIndexerConnected() && isFrontRollersConnected();
     }
     private void updateTunablePIDs() {
-        if (arm_kP.hasChanged(hashCode()) || arm_kI.hasChanged(hashCode()) || arm_kD.hasChanged(hashCode())) {
-            armIO.setPID(arm_kP.get(), arm_kI.get(), arm_kD.get(), arm_kS.get(), arm_kV.get());
+        if (arm_kP.hasChanged(hashCode()) || arm_kI.hasChanged(hashCode()) || arm_kD.hasChanged(hashCode()) || arm_kS.hasChanged(hashCode()) || arm_kV.hasChanged(hashCode()) || arm_kG.hasChanged(hashCode())) {
+            armIO.setPID(arm_kP.get(), arm_kI.get(), arm_kD.get(), arm_kS.get(), arm_kV.get(), arm_kG.get());
+        }
+        if (arm_motionSpeed.hasChanged(hashCode()) || arm_motionAccel.hasChanged(hashCode()) || arm_motionJerk.hasChanged(hashCode())) {
+            armIO.configureMotionMagic(arm_motionSpeed.get(), arm_motionAccel.get(), arm_motionJerk.get());
         }
     }
 

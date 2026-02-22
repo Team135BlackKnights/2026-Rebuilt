@@ -6,12 +6,17 @@ import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.MotionMagicDutyCycle;
+import com.ctre.phoenix6.controls.MotionMagicTorqueCurrentFOC;
+import com.ctre.phoenix6.controls.PositionDutyCycle;
 import com.ctre.phoenix6.controls.PositionTorqueCurrentFOC;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.GravityTypeValue;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
@@ -24,7 +29,7 @@ public class ArmIOKrakenFOC implements ArmIO {
     private final TalonFX motor;
     private final double reduction;
     private final String name;
-    private final PositionTorqueCurrentFOC control = new PositionTorqueCurrentFOC(0.0);
+    private final PositionDutyCycle control = new PositionDutyCycle(0.0);
     private final VoltageOut voltageControl = new VoltageOut(0.0);
     private final TalonFXConfiguration config = new TalonFXConfiguration();
     private final StatusSignal<Angle> position;
@@ -34,7 +39,7 @@ public class ArmIOKrakenFOC implements ArmIO {
     private final StatusSignal<Current> torqueCurrent;
     private final StatusSignal<Temperature> tempCelsius;
 
-    public ArmIOKrakenFOC(CANBus bus,int motorID, String name, int currentLimitAmps, boolean invert, boolean brake,
+    public ArmIOKrakenFOC(CANBus bus, int motorID, String name, int currentLimitAmps, boolean invert, boolean brake,
             double reduction) {
         this.motor = new TalonFX(motorID, bus);
         this.reduction = reduction;
@@ -45,8 +50,13 @@ public class ArmIOKrakenFOC implements ArmIO {
         config.CurrentLimits.SupplyCurrentLimit = currentLimitAmps;
         config.TorqueCurrent.PeakForwardTorqueCurrent = currentLimitAmps;
         config.TorqueCurrent.PeakReverseTorqueCurrent = -currentLimitAmps;
+        config.SoftwareLimitSwitch.ForwardSoftLimitEnable = false;
+        config.SoftwareLimitSwitch.ReverseSoftLimitEnable = false;
+        config.MotorOutput.PeakForwardDutyCycle = 1.0;
+        config.MotorOutput.PeakReverseDutyCycle = -1.0;
         config.CurrentLimits.SupplyCurrentLimitEnable = false;
         config.CurrentLimits.StatorCurrentLimitEnable = false;
+        config.Feedback.SensorToMechanismRatio = reduction;
         motor.getConfigurator().apply(config);
 
         position = motor.getPosition();
@@ -58,13 +68,33 @@ public class ArmIOKrakenFOC implements ArmIO {
         BaseStatusSignal.setUpdateFrequencyForAll(
                 50.0, position, velocity, appliedVoltage, supplyCurrent, torqueCurrent, tempCelsius);
 
-        motor.optimizeBusUtilization(0, 1.0);
+        motor.optimizeBusUtilization(50, 1.0);
+        zero();
     }
 
+    private static double ARM_ZERO_OFFSET_RAD = 0.0;
+public void configureMotionMagic(double cruiseRadPerSec, double accelRadPerSec2, double jerkRadPerSec3) {
+        double cruiseRps = Units.radiansToRotations(cruiseRadPerSec);
+        double accelRps2 = Units.radiansToRotations(accelRadPerSec2);
+        double jerkRps3  = Units.radiansToRotations(jerkRadPerSec3);
+
+        config.MotionMagic.MotionMagicCruiseVelocity = cruiseRps;
+        config.MotionMagic.MotionMagicAcceleration = accelRps2;
+
+        config.MotionMagic.MotionMagicJerk = jerkRps3;
+
+        motor.getConfigurator().apply(config);
+    }
     @Override
-    public void setPosition(double positionRads) {
-        control.withPosition(positionRads * reduction);
-        motor.setControl(control);
+    public void zero(){
+        ARM_ZERO_OFFSET_RAD = Units.rotationsToRadians(position.getValueAsDouble());
+    }
+    @Override
+    public void setPosition(double armPosRad) {
+        double armPosRadWithOffset = armPosRad + ARM_ZERO_OFFSET_RAD;
+
+        double motorRot = Units.radiansToRotations(armPosRadWithOffset);
+        motor.setControl(control.withPosition(motorRot));
     }
 
     @Override
@@ -74,14 +104,16 @@ public class ArmIOKrakenFOC implements ArmIO {
 
     }
 
-    public void updateInputs(ArmIOInputsAutoLogged inputs) {
+    @Override
+    public void updateInputs(ArmIOInputs inputs) {
         inputs.connected = BaseStatusSignal.refreshAll(
 
                 position, velocity, appliedVoltage, supplyCurrent, torqueCurrent, tempCelsius)
                 .isOK();
         inputs.name = name;
-        inputs.positionRads = position.getValueAsDouble() / reduction;
-        inputs.velocityRadsPerSec = velocity.getValueAsDouble() / reduction;
+        inputs.positionRads = Units.rotationsToRadians(position.getValueAsDouble()) - ARM_ZERO_OFFSET_RAD;
+        ;
+        inputs.velocityRadsPerSec = Units.rotationsToRadians(velocity.getValueAsDouble());
         inputs.appliedVoltage = appliedVoltage.getValueAsDouble();
         inputs.supplyCurrentAmps = supplyCurrent.getValueAsDouble();
         inputs.torqueCurrentAmps = torqueCurrent.getValueAsDouble();
@@ -94,12 +126,15 @@ public class ArmIOKrakenFOC implements ArmIO {
     }
 
     @Override
-    public void setPID(double p, double i, double d, double ks, double kv) {
+    public void setPID(double p, double i, double d, double ks, double kv, double kG) {
         config.Slot0.kP = p;
         config.Slot0.kI = i;
         config.Slot0.kD = d;
         config.Slot0.kS = ks;
         config.Slot0.kV = kv;
+        config.Slot0.GravityArmPositionOffset = -Units.radiansToRotations(ARM_ZERO_OFFSET_RAD);
+        config.Slot0.GravityType = GravityTypeValue.Arm_Cosine;
+        config.Slot0.kG = kG;
         motor.getConfigurator().apply(config);
     }
 
