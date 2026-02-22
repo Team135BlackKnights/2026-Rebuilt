@@ -36,6 +36,8 @@ import com.ctre.phoenix6.signals.MagnetHealthValue;
 import com.ctre.phoenix6.signals.MotorAlignmentValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.ctre.phoenix6.signals.SensorDirectionValue;
+
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.controller.ArmFeedforward;
 import edu.wpi.first.math.controller.ElevatorFeedforward;
@@ -67,6 +69,9 @@ import edu.wpi.first.wpilibj.simulation.RoboRioSim;
 import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine.Config;
 import java.util.Optional;
 import java.util.OptionalDouble;
+
+import frc.robot.Constants;
+import frc.robot.Constants.FRCMatchState;
 import frc.robot.utils.YAMS.SmartMotorControllerConfig.ControlMode;
 import frc.robot.utils.YAMS.SmartMotorControllerConfig.MotorMode;
 
@@ -174,6 +179,7 @@ public class TalonFXWrapper extends SmartMotorController
    * {@link DCMotorSim} for the {@link TalonFX}.
    */
   private       Optional<DCMotorSim>          m_dcmotorSim        = Optional.empty();
+  private Voltage actualVoltage = Volts.of(0);
 
   /**
    * Create the {@link TalonFX} wrapper
@@ -263,12 +269,11 @@ public class TalonFXWrapper extends SmartMotorController
     {
       var talonFXSim = m_talonfx.getSimState();
 
-      // set the supply voltage of the TalonFX
-      talonFXSim.setSupplyVoltage(m_simSupplier.get().getMechanismSupplyVoltage());
+
+      talonFXSim.setSupplyVoltage(13.5);
 
       // get the motor voltage of the TalonFX
-      var motorVoltage = talonFXSim.getMotorVoltageMeasure();
-
+      var motorVoltage = Constants.currentMatchState == FRCMatchState.DISABLED ? Volts.of(0) : actualVoltage;
       m_simSupplier.ifPresent(simSupplier -> {
         simSupplier.setMechanismStatorVoltage(motorVoltage); // dcmotorSim.setInputVoltage(motorVoltage)
         simSupplier.updateSimState(); // dcmotorSim.update(0.020)
@@ -948,7 +953,8 @@ public class TalonFXWrapper extends SmartMotorController
   @Override
   public void setVoltage(Voltage voltage)
   {
-    m_talonfx.setVoltage(voltage.in(Volts));
+    actualVoltage = Volts.of(MathUtil.clamp(voltage.in(Volts), -13.5, 13.5));
+    m_talonfx.setVoltage(actualVoltage.in(Volts));
   }
 
   @Override

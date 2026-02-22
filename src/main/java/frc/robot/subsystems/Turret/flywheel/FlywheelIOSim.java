@@ -47,7 +47,7 @@ public class FlywheelIOSim implements FlywheelIO {
         config = new SmartMotorControllerConfig()
                 .withControlMode(ControlMode.CLOSED_LOOP)
         .withClosedLoopController(0.2, 0, 0, DegreesPerSecond.of(0), DegreesPerSecondPerSecond.of(0))
-        .withSimClosedLoopController(0.2, 0, 0, DegreesPerSecond.of(0), DegreesPerSecondPerSecond.of(0))
+        .withSimClosedLoopController(0.2, 0, 0, DegreesPerSecond.of(999), DegreesPerSecondPerSecond.of(999))
         .withFeedforward(new SimpleMotorFeedforward(0, 0.02, 0))
         .withSimFeedforward(new SimpleMotorFeedforward(0, 0.02, 0))
         .withGearing(new MechanismGearing(GearBox.fromReductionStages(reduction)))

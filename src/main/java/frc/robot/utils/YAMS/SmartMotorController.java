@@ -442,7 +442,8 @@ public abstract class SmartMotorController
       double finalVelocity = velocity;
       double finalSetpoint = setpoint;
       m_pid.ifPresent(pidController -> {
-        pidOutputVoltage.set(pidController.calculate(finalVelocity, finalSetpoint));});
+        pidOutputVoltage.set(pidController.calculate(finalVelocity, finalSetpoint));
+});
       m_lqr.ifPresent(lqrController ->
                       {
                         if (m_config.getLinearClosedLoopControllerUse())

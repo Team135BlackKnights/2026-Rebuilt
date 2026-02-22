@@ -40,6 +40,8 @@ import com.ctre.phoenix6.signals.MotorArrangementValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.ctre.phoenix6.signals.SensorDirectionValue;
 import com.ctre.phoenix6.signals.SensorPhaseValue;
+
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.controller.ArmFeedforward;
 import edu.wpi.first.math.controller.ElevatorFeedforward;
@@ -180,7 +182,7 @@ public class TalonFXSWrapper extends SmartMotorController
    * {@link DCMotorSim} for the {@link TalonFXS}.
    */
   private       Optional<DCMotorSim>          m_dcmotorSim        = Optional.empty();
-
+  private Voltage actualVoltage = Volts.of(0);
   /**
    * Create the {@link TalonFXS} wrapper
    *
@@ -310,7 +312,7 @@ public class TalonFXSWrapper extends SmartMotorController
       talonFXSim.setSupplyVoltage(m_simSupplier.get().getMechanismSupplyVoltage()); // RoboRioSim.getVInVoltage()
 
       // get the motor voltage of the TalonFX
-      var motorVoltage = talonFXSim.getMotorVoltageMeasure();
+      var motorVoltage = actualVoltage;
 
       m_simSupplier.ifPresent(simSupplier -> {
         simSupplier.setMechanismStatorVoltage(motorVoltage); // dcmotorSim.setInputVoltage(motorVoltage)
@@ -971,7 +973,8 @@ public class TalonFXSWrapper extends SmartMotorController
   @Override
   public void setVoltage(Voltage voltage)
   {
-    m_talonfxs.setVoltage(voltage.in(Volts));
+    actualVoltage = Volts.of(MathUtil.clamp(voltage.in(Volts), -13.5, 13.5));
+    m_talonfxs.setVoltage(actualVoltage.in(Volts));
   }
 
   @Override

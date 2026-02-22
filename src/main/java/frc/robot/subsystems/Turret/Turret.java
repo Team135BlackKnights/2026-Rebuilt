@@ -119,10 +119,10 @@ public class Turret extends SubsystemChecker {
     azimuth_velMax = new LoggableTunedNumber(name + "/Azimuth/velMaxRadPerSec", 12.0, true);
     azimuth_accelMax = new LoggableTunedNumber(name + "/Azimuth/accelMaxRadPerSec2", 40.0, true);
 
-    flywheel_kP = new LoggableTunedNumber(name + "/Flywheel/kP", 0.0, true);
+    flywheel_kP = new LoggableTunedNumber(name + "/Flywheel/kP", 3, true);
     flywheel_kD = new LoggableTunedNumber(name + "/Flywheel/kD", 0.0, true);
     flywheel_kS = new LoggableTunedNumber(name + "/Flywheel/kS", 0.0, true);
-    flywheel_kV = new LoggableTunedNumber(name + "/Flywheel/kV", 0.0, true);
+    flywheel_kV = new LoggableTunedNumber(name + "/Flywheel/kV", 0.098, true);
     flywheel_kA = new LoggableTunedNumber(name + "/Flywheel/kA", 0.0, true);
     flywheel_ramp = new LoggableTunedNumber(name + "/Flywheel/Ramp", 0.25, true);
 
