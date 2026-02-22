@@ -1,7 +1,13 @@
 package frc.robot.subsystems.Turret.azimuth;
 
+import static edu.wpi.first.units.Units.Radians;
+import static edu.wpi.first.units.Units.Rotations;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
+
+import org.littletonrobotics.junction.Logger;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
@@ -22,6 +28,8 @@ import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
+import frc.robot.subsystems.Turret.azimuth.EasyCRT.EasyCRT;
+import frc.robot.subsystems.Turret.azimuth.EasyCRT.EasyCRTConfig;
 import frc.robot.utils.advancedMechs.AdvancedMechanismConstants;
 import frc.robot.utils.selfCheck.SelfChecking;
 import frc.robot.utils.selfCheck.drive.SelfCheckingCANCoder;
@@ -55,6 +63,11 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
     private double lastTurretAngleRads = 0.0;
 
+    private final EasyCRT easyCrt;
+
+    private final double encoder1Ratio;
+    private final double encoder2Ratio;
+
     private final double minAngle;
     private final double maxAngle;
 
@@ -71,6 +84,12 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         this.name = name;
         this.minAngle = minTurretAngle;
         this.maxAngle = maxTurretAngle;
+
+        double turretToIdlerRatio = (double) AdvancedMechanismConstants.Turret.turretTeeth
+                / (double) AdvancedMechanismConstants.Turret.idlerTeeth;
+        this.encoder1Ratio = -turretToIdlerRatio; // big encoder spins opposite turret
+        this.encoder2Ratio = turretToIdlerRatio
+                * (AdvancedMechanismConstants.Turret.enc1GearTeeth / AdvancedMechanismConstants.Turret.enc2GearTeeth);
 
         this.talon = new TalonFX(ID, bus);
         this.canCoderBig = new CANcoder(canCoderBigID, bus);
@@ -115,6 +134,18 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
                 50, motorRots, motorVelocityRotsPerSec, appliedVoltage, supplyCurrent, torqueCurrent, tempCelsius);
 
         talon.optimizeBusUtilization(0, 1.0);
+
+        // Allow CRT to resolve across wraps; motion commands still clamp to
+        // minAngle/maxAngle.
+        EasyCRTConfig crtConfig = new EasyCRTConfig(
+                () -> bigAbsRots.getValue(),
+                () -> smallAbsRots.getValue())
+                .withEncoderRatios(encoder1Ratio, encoder2Ratio)
+                .withMechanismRange(Rotations.of(minTurretAngle / (2.0 * Math.PI)-.75),
+                        Rotations.of(maxTurretAngle / (2.0 * Math.PI)-.75))
+                .withMatchTolerance(Rotations.of(Units.degreesToRadians(5.0) / (2.0 * Math.PI)));
+
+        this.easyCrt = new EasyCRT(crtConfig);
     }
 
     @Override
@@ -143,46 +174,51 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         inputs.tempCelsius = tempCelsius.getValueAsDouble();
 
         double motorPosRad = inputs.motorPositionRads;
-// Continuous reference from motor DELTA since last lock (works even if motor "zero" is arbitrary)
-double turretRef = haveLock
-    ? turretRadAtLock + (motorPosRad - motorPosRadAtLock) / AdvancedMechanismConstants.Turret.motorRadPerTurretRad
-    : 0.0;
+        // Continuous reference from motor DELTA since last lock (works even if motor
+        // "zero" is arbitrary)
+        double turretRef = haveLock
+                ? turretRadAtLock
+                        + (motorPosRad - motorPosRadAtLock) / AdvancedMechanismConstants.Turret.motorRadPerTurretRad
+                : 0.0;
 
-// Phase-aware solve (this is the big fix)
-double solved = TurretMathematics.TurretMath.turretAngleFromEncodersRad(
-    bigRads, smallRads,
-    turretRef,
-    Units.degreesToRadians(5.0)
-);
+        Optional<Angle> solvedAngle = easyCrt.getAngleOptional();
+        Logger.recordOutput(name + "/Turret/SolveStatus", easyCrt.getLastStatus());
+        Logger.recordOutput(name + "/Turret/SolveAngle", solvedAngle.isPresent() ? solvedAngle.get().in(Radians) : Double.NaN);
+        if (solvedAngle.isPresent()) {
+            double solvedRad = solvedAngle.get().in(Radians);
+            lastTurretAngleRads = solvedRad;
+            // lock the motor reference to this solved angle
+            haveLock = true;
+            turretRadAtLock = solvedRad;
+            motorPosRadAtLock = motorPosRad;
+        } else if (haveLock) {
+            lastTurretAngleRads = turretRef;
+        } else {
+            lastTurretAngleRads = 0.0;
+        }
 
-if (!Double.isNaN(solved)) {
-  lastTurretAngleRads = solved;
-  // lock the motor reference to this solved angle
-  haveLock = true;
-  turretRadAtLock = solved;
-  motorPosRadAtLock = motorPosRad;
-} else if (haveLock) {
-  // if encoders briefly don't match, coast on motor delta
-  lastTurretAngleRads = turretRef;
+        inputs.turretPositionRads = lastTurretAngleRads;
+
+        inputs.turretVelocityRadsPerSec = Units.rotationsToRadians(motorVelocityRotsPerSec.getValueAsDouble())
+                / AdvancedMechanismConstants.Turret.motorRadPerTurretRad;
+    }
+
+@Override
+public void setDesiredPosition(double turretRads) {
+    final double TWO_PI = 2.0 * Math.PI;
+    double lower = maxAngle - TWO_PI;
+    double upper = maxAngle;
+    double wrappedCmd = MathUtil.inputModulus(turretRads, lower, upper);
+
+    double desiredTurret = MathUtil.clamp(wrappedCmd, minAngle, maxAngle);
+
+    double motorPosRad = Units.rotationsToRadians(motorRots.getValueAsDouble());
+    double motorTargetRad = motorPosRad
+        + (desiredTurret - lastTurretAngleRads) * AdvancedMechanismConstants.Turret.motorRadPerTurretRad;
+
+    positionControl.Position = Units.radiansToRotations(motorTargetRad);
+    talon.setControl(positionControl);
 }
-
-inputs.turretPositionRads = lastTurretAngleRads;
-
-        inputs.turretVelocityRadsPerSec = 0.0; // TODO
-    }
-
-    @Override
-    public void setDesiredPosition(double turretRads) {
-        double desiredTurret = MathUtil.clamp(turretRads, minAngle, maxAngle);
-        double motorPosRad = Units.rotationsToRadians(motorRots.getValueAsDouble());
-
-        double motorTargetRad = TurretMathematics.TurretMath.motorSetpointForTurretAngle(
-                lastTurretAngleRads, motorPosRad, desiredTurret, minAngle, maxAngle);
-
-        positionControl.Position = Units.radiansToRotations(motorTargetRad);
-        talon.setControl(positionControl);
-    }
-
     @Override
     public void stop() {
         talon.setControl(voltageOut.withOutput(0));

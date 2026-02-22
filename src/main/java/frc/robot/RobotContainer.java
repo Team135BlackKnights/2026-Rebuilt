@@ -704,10 +704,10 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.kickerRatio,
 
 						AdvancedMechanismConstants.Turret.kickupMOI));
-				leftTurret = new Turret(new AzimuthIOSim(-Math.PI, Math.PI), new FlywheelIOSim(), new HoodIOSim(),
+				leftTurret = new Turret(new AzimuthIOSim(AdvancedMechanismConstants.Turret.minTurretAngle, AdvancedMechanismConstants.Turret.maxTurretAngle), new FlywheelIOSim(), new HoodIOSim(),
 
 						AdvancedMechanismConstants.Turret.robotToLeftTurretHoleCenter, "LeftTurret");
-				rightTurret = new Turret(new AzimuthIOSim(-Math.PI, Math.PI), new FlywheelIOSim(), new HoodIOSim(),
+				rightTurret = new Turret(new AzimuthIOSim(AdvancedMechanismConstants.Turret.minTurretAngle, AdvancedMechanismConstants.Turret.maxTurretAngle), new FlywheelIOSim(), new HoodIOSim(),
 
 						AdvancedMechanismConstants.Turret.robotToRightTurretHoleCenter, "RightTurret");
 				/*
