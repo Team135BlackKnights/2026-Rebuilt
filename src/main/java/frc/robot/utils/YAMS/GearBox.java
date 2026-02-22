@@ -1,4 +1,6 @@
-package frc.robot.subsystems.Turret.azimuth.EasyCRT;
+package frc.robot.utils.YAMS;
+
+
 
 /**
  * GearBox class to calculate input and output conversion factors and check if the current configuration is supported.
@@ -38,7 +40,7 @@ public class GearBox
       String stage = reductionStage[i];
       if (!stage.contains(":"))
       {
-        throw new IllegalArgumentException("Invalid stage format: " + stage);
+        throw new IllegalArgumentException("Invalid stage given: " + stage);
       }
       String[] parts = stage.split(":");
       double   in    = Double.parseDouble(parts[0]);

@@ -31,7 +31,11 @@ public class AdvancedMechanismConstants {
                 public static final double flywheelMOI = 0.0048; // kg m^2
                 public static final double hoodMOI = 0.0101; // kg m^2
                 public static final double kickupMOI = 0.0005; // kg m^2
+                public static final double flywheelMaxRPM = 5700;
                 public static final boolean invertKickup = false;
+                public static final boolean invertFlywheel = false;
+                public static final boolean invertHood = false;
+                public static final boolean invertAzimuth = true;
 
                 // Left Turret
                 public static final int leftAzimuthID = 22;

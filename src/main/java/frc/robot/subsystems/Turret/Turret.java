@@ -48,6 +48,8 @@ public class Turret extends SubsystemChecker {
   private final LoggableTunedNumber flywheel_kD;
   private final LoggableTunedNumber flywheel_kS;
   private final LoggableTunedNumber flywheel_kV;
+  private final LoggableTunedNumber flywheel_kA;
+  private final LoggableTunedNumber flywheel_ramp;
 
   // Hood setPID(p,d,ks,kv)
   private final LoggableTunedNumber hood_kP;
@@ -121,6 +123,8 @@ public class Turret extends SubsystemChecker {
     flywheel_kD = new LoggableTunedNumber(name + "/Flywheel/kD", 0.0, true);
     flywheel_kS = new LoggableTunedNumber(name + "/Flywheel/kS", 0.0, true);
     flywheel_kV = new LoggableTunedNumber(name + "/Flywheel/kV", 0.0, true);
+    flywheel_kA = new LoggableTunedNumber(name + "/Flywheel/kA", 0.0, true);
+    flywheel_ramp = new LoggableTunedNumber(name + "/Flywheel/Ramp", 0.25, true);
 
     hood_kP = new LoggableTunedNumber(name + "/Hood/kP", 0.0, true);
     hood_kD = new LoggableTunedNumber(name + "/Hood/kD", 0.0, true);
@@ -165,8 +169,8 @@ public class Turret extends SubsystemChecker {
 
     flywheelIO.setPID(
         flywheel_kP.get(), flywheel_kD.get(),
-        flywheel_kS.get(), flywheel_kV.get());
-
+        flywheel_kS.get(), flywheel_kV.get(), flywheel_kA.get());
+    flywheelIO.setRamp(flywheel_ramp.get());
     hoodIO.setPID(
         hood_kP.get(), hood_kD.get(),
         hood_kS.get(), hood_kV.get());
@@ -186,9 +190,13 @@ public class Turret extends SubsystemChecker {
         hashCode(),
         () -> flywheelIO.setPID(
             flywheel_kP.get(), flywheel_kD.get(),
-            flywheel_kS.get(), flywheel_kV.get()),
-        flywheel_kP, flywheel_kD, flywheel_kS, flywheel_kV);
+            flywheel_kS.get(), flywheel_kV.get(), flywheel_kA.get()),
+        flywheel_kP, flywheel_kD, flywheel_kS, flywheel_kV, flywheel_kA);
 
+    LoggableTunedNumber.ifChanged(
+        hashCode(),
+        () -> flywheelIO.setRamp(flywheel_ramp.get()),
+        flywheel_ramp);
     LoggableTunedNumber.ifChanged(
         hashCode(),
         () -> hoodIO.setPID(

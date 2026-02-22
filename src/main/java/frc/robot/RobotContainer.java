@@ -531,7 +531,10 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.leftFlywheelID,
 						AdvancedMechanismConstants.Turret.leftName,
 						AdvancedMechanismConstants.Turret.currentLimitFlywheel,
-						AdvancedMechanismConstants.Turret.flywheelRatio);
+						AdvancedMechanismConstants.Turret.flywheelRatio,
+						AdvancedMechanismConstants.Turret.invertFlywheel,
+						AdvancedMechanismConstants.Turret.flywheelMaxRPM,
+						AdvancedMechanismConstants.Turret.flywheelMOI);
 				HoodIO hoodIOLeftTurret = new HoodIOKrakenFOC(
 						Robot.rioCanBus,
 						AdvancedMechanismConstants.Turret.leftHoodID,
@@ -565,7 +568,10 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.rightFlywheelID,
 						AdvancedMechanismConstants.Turret.rightName,
 						AdvancedMechanismConstants.Turret.currentLimitFlywheel,
-						AdvancedMechanismConstants.Turret.flywheelRatio);
+						AdvancedMechanismConstants.Turret.flywheelRatio,
+						AdvancedMechanismConstants.Turret.invertFlywheel,
+						AdvancedMechanismConstants.Turret.flywheelMaxRPM,
+						AdvancedMechanismConstants.Turret.flywheelMOI);
 				HoodIO hoodIORightTurret = new HoodIOKrakenFOC(
 						Robot.rioCanBus,
 						AdvancedMechanismConstants.Turret.rightHoodID,
@@ -704,10 +710,34 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.kickerRatio,
 
 						AdvancedMechanismConstants.Turret.kickupMOI));
-				leftTurret = new Turret(new AzimuthIOSim(AdvancedMechanismConstants.Turret.minTurretAngle, AdvancedMechanismConstants.Turret.maxTurretAngle), new FlywheelIOSim(), new HoodIOSim(),
+				leftTurret = new Turret(
+						new AzimuthIOSim(AdvancedMechanismConstants.Turret.minTurretAngle,
+								AdvancedMechanismConstants.Turret.maxTurretAngle),
+						new FlywheelIOSim(
+						Robot.rioCanBus,
+						AdvancedMechanismConstants.Turret.leftFlywheelID,
+						AdvancedMechanismConstants.Turret.leftName,
+						AdvancedMechanismConstants.Turret.currentLimitFlywheel,
+						AdvancedMechanismConstants.Turret.flywheelRatio,
+						AdvancedMechanismConstants.Turret.invertFlywheel,
+						AdvancedMechanismConstants.Turret.flywheelMaxRPM,
+						AdvancedMechanismConstants.Turret.flywheelMOI
+						), new HoodIOSim(),
 
 						AdvancedMechanismConstants.Turret.robotToLeftTurretHoleCenter, "LeftTurret");
-				rightTurret = new Turret(new AzimuthIOSim(AdvancedMechanismConstants.Turret.minTurretAngle, AdvancedMechanismConstants.Turret.maxTurretAngle), new FlywheelIOSim(), new HoodIOSim(),
+				rightTurret = new Turret(
+						new AzimuthIOSim(AdvancedMechanismConstants.Turret.minTurretAngle,
+								AdvancedMechanismConstants.Turret.maxTurretAngle),
+						new FlywheelIOSim(
+						Robot.rioCanBus,
+						AdvancedMechanismConstants.Turret.rightFlywheelID,
+						AdvancedMechanismConstants.Turret.rightName,
+						AdvancedMechanismConstants.Turret.currentLimitFlywheel,
+						AdvancedMechanismConstants.Turret.flywheelRatio,
+						AdvancedMechanismConstants.Turret.invertFlywheel,
+						AdvancedMechanismConstants.Turret.flywheelMaxRPM,
+						AdvancedMechanismConstants.Turret.flywheelMOI
+						), new HoodIOSim(),
 
 						AdvancedMechanismConstants.Turret.robotToRightTurretHoleCenter, "RightTurret");
 				/*
@@ -850,10 +880,13 @@ public class RobotContainer {
 						.finallyDo(drivetrainS::endCharacterization)
 						.withName("Drive FeedForward Characterization"));
 
-		//autos for tuning
-		autoChooser.addOption("Intake PID Char", 
-				new RoughPIDCharacterization(intake,(volts) -> intake.runCharacterization(volts), intake::getCharacterizationMeasurement, intake::getCharVeloicty, IntakeConstants.armMinAngleRads,IntakeConstants.armMaxAngleRads,Units.degreesToRadians(10),Units.degreesToRadians(120),3,5)
-				.withName("Intake PID Characterization"));
+		// autos for tuning
+		autoChooser.addOption("Intake PID Char",
+				new RoughPIDCharacterization(intake, (volts) -> intake.runCharacterization(volts),
+						intake::getCharacterizationMeasurement, intake::getCharVeloicty,
+						IntakeConstants.armMinAngleRads, IntakeConstants.armMaxAngleRads, Units.degreesToRadians(10),
+						Units.degreesToRadians(120), 3, 5)
+						.withName("Intake PID Characterization"));
 		SmartDashboard.putData(field);
 
 		// Configure the trigger bindings
@@ -950,7 +983,7 @@ public class RobotContainer {
 				.onTrue(new InstantCommand(() -> {
 					System.out.println("Stowing Intake/Stopping Turrets");
 					intake.setGoal(Goal.STOW);
-					
+
 					leftTurret.setGoal(Turret.Goal.IDLE);
 					rightTurret.setGoal(Turret.Goal.IDLE);
 				}));
@@ -958,16 +991,15 @@ public class RobotContainer {
 		leftStickButtonDrive.onFalse(Commands.runOnce(() -> drivetrainS.stopModules(), drivetrainS));
 		rightStickButtonDrive.onTrue(new OrchestraC("megolovania").withName("Play Megolovania"));
 		// Climber controls
-		aButtonDrive.whileTrue(Commands.run(() ->{
-			//flywheel go to 5000 rpm
-				leftTurret.setCharRPM(5000);
-				leftTurret.setCharTurretPos(2);
+		aButtonDrive.whileTrue(Commands.run(() -> {
+			// flywheel go to 5000 rpm
+			leftTurret.setCharRPM(5000);
+			leftTurret.setCharTurretPos(2);
 		})); // Prepare Climb
-		bButtonDrive.whileTrue(Commands.run(() ->{
+		bButtonDrive.whileTrue(Commands.run(() -> {
 			leftTurret.setCharRPM(3000);
 			leftTurret.setCharTurretPos(0);
-		}
-		)); // Climb Sequence
+		})); // Climb Sequence
 		yButtonDrive.toggleOnTrue(Commands.none()); // Emergency Stop Climb
 		// Intake controls
 		leftBumperDrive.and(rightTriggerDriveFull.negate()).whileTrue(
@@ -1027,14 +1059,21 @@ public class RobotContainer {
 		povLeft.onTrue(targetBothLeftTrench);
 		povRight.onTrue(targetBothRightTrench);
 		// Automatic Turret Controls
-		/*manualTurretControl.negate().and(inScoreArea).whileTrue(targetHubBoth);
-		manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.negate()).and(beforeRightTrench)
-				.whileTrue(targetBothRightTrench);
-		manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.negate()).and(beyondLeftTrench)
-				.whileTrue(targetBothLeftTrench);
-		manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.negate())
-				.and(beyondLeftTrench.negate()).and(beforeRightTrench.negate()).whileTrue(targetSplitTrenches);
-		manualTurretControl.negate().and(inOpponentArea).whileTrue(targetBothOverNeutral);*/
+		/*
+		 * manualTurretControl.negate().and(inScoreArea).whileTrue(targetHubBoth);
+		 * manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.
+		 * negate()).and(beforeRightTrench)
+		 * .whileTrue(targetBothRightTrench);
+		 * manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.
+		 * negate()).and(beyondLeftTrench)
+		 * .whileTrue(targetBothLeftTrench);
+		 * manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.
+		 * negate())
+		 * .and(beyondLeftTrench.negate()).and(beforeRightTrench.negate()).whileTrue(
+		 * targetSplitTrenches);
+		 * manualTurretControl.negate().and(inOpponentArea).whileTrue(
+		 * targetBothOverNeutral);
+		 */
 
 		// - If in score area AND not manually holding POV: aim both turrets at hub
 		/*

@@ -1,4 +1,7 @@
-package frc.robot.subsystems.Turret.azimuth.EasyCRT;
+package frc.robot.utils.YAMS;
+
+import java.util.Optional;
+
 /**
  * Mechanism gearing for conversions from the motor output to the mechanism output.
  */
@@ -9,6 +12,10 @@ public class MechanismGearing
    * Mechanism gearbox attached to the motor.
    */
   private final GearBox            gearBox;
+  /**
+   * Mechanism sprockets attached to the gearbox.
+   */
+  private       Optional<Sprocket> sprockets = Optional.empty();
 
   /**
    * Construct a {@link MechanismGearing} with a reduction ratio.
@@ -31,13 +38,25 @@ public class MechanismGearing
   }
 
   /**
-   * Initialize the {@link MechanismGearing} with a {@link GearBox}
+   * Initialize the {@link MechanismGearing} with only a {@link GearBox} attached to the mechanism motor.
    *
-   * @param gearBox   {@link GearBox} attached to the motor.
+   * @param gearBox {@link GearBox} of the Mechanism.
    */
   public MechanismGearing(GearBox gearBox)
   {
     this.gearBox = gearBox;
+  }
+
+  /**
+   * Initialize the {@link MechanismGearing} with a {@link GearBox} and {@link Sprocket}
+   *
+   * @param gearBox   {@link GearBox} attached to the motor.
+   * @param sprockets {@link Sprocket} attached to the gearbox.
+   */
+  public MechanismGearing(GearBox gearBox, Sprocket sprockets)
+  {
+    this.gearBox = gearBox;
+    this.sprockets = Optional.of(sprockets);
   }
 
   /**
@@ -48,6 +67,10 @@ public class MechanismGearing
   public double getRotorToMechanismRatio()
   {
     double ratio = gearBox.getInputToOutputConversionFactor();
+    if (sprockets.isPresent())
+    {
+      ratio *= sprockets.get().getInputToOutputConversionFactor();
+    }
     return ratio;
   }
 
@@ -59,6 +82,10 @@ public class MechanismGearing
   public double getMechanismToRotorRatio()
   {
     double ratio = gearBox.getOutputToInputConversionFactor();
+    if (sprockets.isPresent())
+    {
+      ratio *= sprockets.get().getOutputToInputConversionFactor();
+    }
     return ratio;
   }
 

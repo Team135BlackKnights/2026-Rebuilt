@@ -1,52 +1,83 @@
 package frc.robot.subsystems.Turret.flywheel;
 
+import static edu.wpi.first.units.Units.Amps;
+import static edu.wpi.first.units.Units.DegreesPerSecond;
+import static edu.wpi.first.units.Units.DegreesPerSecondPerSecond;
+import static edu.wpi.first.units.Units.Inches;
+import static edu.wpi.first.units.Units.KilogramSquareMeters;
+import static edu.wpi.first.units.Units.MetersPerSecond;
+import static edu.wpi.first.units.Units.RPM;
+import static edu.wpi.first.units.Units.Seconds;
+import static edu.wpi.first.units.Units.Volts;
+
 import java.util.ArrayList;
 import java.util.List;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusSignal;
-import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.VelocityTorqueCurrentFOC;
-import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
 
-import com.ctre.phoenix6.signals.NeutralModeValue;
 
+import edu.wpi.first.math.controller.SimpleMotorFeedforward;
+import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.AngularAcceleration;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
+import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
+import frc.robot.utils.YAMS.GearBox;
+import frc.robot.utils.YAMS.MechanismGearing;
+import frc.robot.utils.YAMS.SmartMotorController;
+import frc.robot.utils.YAMS.SmartMotorControllerConfig;
+import frc.robot.utils.YAMS.TalonFXWrapper;
+import frc.robot.utils.YAMS.mechanisms.FlyWheelConfig;
+import frc.robot.utils.YAMS.mechanisms.Containers.FlyWheel;
+import frc.robot.utils.YAMS.SmartMotorControllerConfig.ControlMode;
+import frc.robot.utils.YAMS.SmartMotorControllerConfig.MotorMode;
 import frc.robot.utils.selfCheck.SelfChecking;
 import frc.robot.utils.selfCheck.drive.SelfCheckingTalonFX;
 
 public class FlywheelIOKrakenFOC implements FlywheelIO {
+    private final SmartMotorControllerConfig config;
     private final TalonFX talon;
-    private final TalonFXConfiguration config;
+    private final SmartMotorController talonController;
+    private final FlyWheelConfig shooterConfig;
+    private final FlyWheel shooter;
     private final StatusSignal<AngularAcceleration> accel;
     private final StatusSignal<AngularVelocity> velocity;
     private final StatusSignal<Voltage> appliedVoltage;
     private final StatusSignal<Current> supplyCurrent;
     private final StatusSignal<Current> torqueCurrent;
     private final StatusSignal<Temperature> tempCelsius;
-
-    private final VoltageOut voltageOut = new VoltageOut(0.0).withEnableFOC(true).withUpdateFreqHz(0);
-    private final VelocityTorqueCurrentFOC velocityControl = new VelocityTorqueCurrentFOC(0.0);
     private final double reduction;
     private final String name;
 
     public FlywheelIOKrakenFOC(
-            CANBus bus, int ID, String name, int currentLimitAmps,double reduction) {
+            CANBus bus, int ID, String name, int currentLimitAmps, double reduction, boolean invert, double maxRPM, double moi) {
         this.reduction = reduction;
         this.name = name;
         this.talon = new TalonFX(ID, bus);
-        config = new TalonFXConfiguration();
-        config.MotorOutput.NeutralMode = NeutralModeValue.Coast;
-        config.CurrentLimits.SupplyCurrentLimit = currentLimitAmps;
-        config.CurrentLimits.SupplyCurrentLimitEnable = true;
-        talon.getConfigurator().apply(config);
+        config = new SmartMotorControllerConfig()
+            .withControlMode(ControlMode.CLOSED_LOOP)
+            .withClosedLoopController(0, 0, 0, DegreesPerSecond.of(0), DegreesPerSecondPerSecond.of(0))
+            .withSimClosedLoopController(0, 0, 0, DegreesPerSecond.of(0), DegreesPerSecondPerSecond.of(0))
+            .withFeedforward(new SimpleMotorFeedforward(0, 0, 0))
+            .withSimFeedforward(new SimpleMotorFeedforward(0, 0, 0))
+            .withGearing(new MechanismGearing(GearBox.fromReductionStages(1)))
+            .withMotorInverted(invert)
+            .withIdleMode(MotorMode.COAST)
+            .withStatorCurrentLimit(Amps.of(currentLimitAmps))
+            .withClosedLoopRampRate(Seconds.of(0.25))
+            .withOpenLoopRampRate(Seconds.of(0.25));
+        talonController = new TalonFXWrapper(talon, DCMotor.getKrakenX44Foc(1), config);
+        shooterConfig = new FlyWheelConfig(talonController)
+            .withMOI(KilogramSquareMeters.of(moi))
+            .withDiameter(Inches.of(4))
+            .withUpperSoftLimit(RPM.of(maxRPM));
+        shooter = new FlyWheel(shooterConfig);
         accel = talon.getAcceleration();
         velocity = talon.getVelocity();
         appliedVoltage = talon.getMotorVoltage();
@@ -76,26 +107,24 @@ public class FlywheelIOKrakenFOC implements FlywheelIO {
     @Override
     public void setVelocity(double velocityRadsPerSec) {
         double motorVelocityRadsPerSec = velocityRadsPerSec * reduction;
-        velocityControl.withVelocity(Units.radiansToRotations(motorVelocityRadsPerSec));
-        talon.setControl(velocityControl);
+        LinearVelocity linearSpeed = MetersPerSecond.of(motorVelocityRadsPerSec *Units.inchesToMeters(2));
+        shooter.setMeasurementVelocitySetpoint(linearSpeed);
+
     }
 
     @Override
     public void setCurrentLimit(double amps) {
-        config.CurrentLimits.SupplyCurrentLimit = amps;
-        talon.getConfigurator().apply(config);
+        talonController.setSupplyCurrentLimit(Amps.of(amps));
     }
-    
+
     @Override
     public void setBrakeMode(boolean brake) {
-        config.MotorOutput.NeutralMode = brake ? NeutralModeValue.Brake : NeutralModeValue.Coast;
-        talon.getConfigurator().apply(config);
+        talonController.setIdleMode(brake ? MotorMode.BRAKE : MotorMode.COAST);
     }
 
     @Override
     public void runVolts(double volts) {
-        voltageOut.withOutput(volts);
-        talon.setControl(voltageOut);
+        shooter.setVoltage(Volts.of(volts));
     }
 
     @Override
@@ -104,14 +133,15 @@ public class FlywheelIOKrakenFOC implements FlywheelIO {
     }
 
     @Override
-    public void setPID(double p, double d, double ks, double kv) {
-        config.Slot0.kP = p;
-        config.Slot0.kD = d;
-        config.Slot0.kS = ks;
-        config.Slot0.kV = kv;
-        talon.getConfigurator().apply(config);
+    public void setPID(double p, double d, double ks, double kv, double ka) {
+        talonController.setFeedback(p, 0, d);
+        talonController.setFeedforward(ks, kv, ka, 0);
     }
-
+@Override
+    public void setRamp(double closedLoopRampSecs){
+        talonController.setClosedLoopRampRate(Seconds.of(closedLoopRampSecs));
+        talonController.setOpenLoopRampRate(Seconds.of(closedLoopRampSecs)); 
+    }
     @Override
     public List<SelfChecking> getSelfCheckingHardware() {
         List<SelfChecking> hardware = new ArrayList<SelfChecking>();

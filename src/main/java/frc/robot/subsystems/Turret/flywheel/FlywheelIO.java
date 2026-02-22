@@ -26,10 +26,12 @@ public interface FlywheelIO {
       double p,
       double d,
       double ks,
-      double kv) {}
+      double kv,
+      double ka) {}
   default void updateInputs(FlywheelIOInputs inputs) {}
   default void setBrakeMode(boolean brake) {}
   default void setCurrentLimit(double amps) {}
+  default void setRamp(double closedLoopRampSecs) {}
   default List<SelfChecking> getSelfCheckingHardware() {
     return new ArrayList<SelfChecking>();
   }

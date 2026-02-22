@@ -3,6 +3,9 @@ import static edu.wpi.first.units.Units.Rotations;
 
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.wpilibj.RobotBase;
+import frc.robot.utils.YAMS.GearBox;
+import frc.robot.utils.YAMS.MechanismGearing;
+
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Objects;

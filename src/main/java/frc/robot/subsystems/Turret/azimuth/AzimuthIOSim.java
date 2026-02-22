@@ -82,6 +82,7 @@ public class AzimuthIOSim implements AzimuthIO {
                 () -> {
                     return Radians.of(COMBINED_RATIO * turretAngleRad);
                 })
+                
                 .withEncoderRatios(encoder1Ratio, encoder2Ratio)
                 .withMechanismRange(
                         Rotations.of(minAngleRad / (2.0 * Math.PI - .75)),
