@@ -31,7 +31,6 @@ public class AzimuthIOSim implements AzimuthIO {
     private final DCMotorSim sim;
 
     private double turretAngleRad;
-    private double lastTurretAngleRad;
     private double turretVelRadPerSec = 0.0;
     private double motorPosRad = 0.0;
     private double motorVelRadPerSec = 0.0;
@@ -85,8 +84,8 @@ public class AzimuthIOSim implements AzimuthIO {
                 })
                 .withEncoderRatios(encoder1Ratio, encoder2Ratio)
                 .withMechanismRange(
-                        Rotations.of(minAngleRad / (2.0 * Math.PI-.75)),
-                        Rotations.of(maxAngleRad / (2.0 * Math.PI-.75)))
+                        Rotations.of(minAngleRad / (2.0 * Math.PI - .75)),
+                        Rotations.of(maxAngleRad / (2.0 * Math.PI - .75)))
                 .withMatchTolerance(Rotations.of(Math.toRadians(5.0) / (2.0 * Math.PI)));
 
         this.easyCrt = new EasyCRT(crtConfig);
@@ -112,18 +111,19 @@ public class AzimuthIOSim implements AzimuthIO {
         double simVal = sim.getAngularPositionRad();
         turretAngleRad = simVal;
         turretVelRadPerSec = sim.getAngularVelocityRadPerSec();
-        
-        lastTurretAngleRad = turretAngleRad;
 
         motorPosRad = turretAngleRad * AdvancedMechanismConstants.Turret.motorRadPerTurretRad;
         motorVelRadPerSec = turretVelRadPerSec * AdvancedMechanismConstants.Turret.motorRadPerTurretRad;
 
         // enc1 (big) consistent with baseSolution = mod(-enc1/turretRatio,
-        // 2pi/turretRatio)
-        double bigRad = -turretAngleRad * TURRET_RATIO;
+        // 2pi/turretRatio). Add small simulated noise to emulate sensor jitter.
+        double noiseBig = (Math.random() - 0.5) * Math.toRadians(30); // ±15 deg
+        double noiseSmall = (Math.random() - 0.5) * Math.toRadians(30); // ±15 deg
+
+        double bigRad = -turretAngleRad * TURRET_RATIO + noiseBig;
 
         // enc2 consistent with predictedEnc2 = wrapToTwoPi(combinedRatio * turretAngle)
-        double smallRad = COMBINED_RATIO * turretAngleRad;
+        double smallRad = COMBINED_RATIO * turretAngleRad + noiseSmall;
         currentDrawAmps = sim.getCurrentDrawAmps();
 
         inputs.motorConnected = true;
