@@ -250,8 +250,6 @@ public abstract class SmartMotorController
    */
   public void startClosedLoopController()
   {
-    System.out.println("Starting closed loop controller for " + (m_config.getTelemetryName().isPresent() ? m_config.getTelemetryName().get()
-                                                                                                 : "Unnamed smart motor"));
     if (m_closedLoopControllerThread != null && m_config.getMotorControllerMode() == ControlMode.CLOSED_LOOP)
     {
       m_pid.ifPresent(PIDController::reset);
@@ -403,7 +401,8 @@ public abstract class SmartMotorController
       double finalMeasured        = measured;
       double finalSetpoint        = setpoint;
       double finalVelocityProfile = velocityProfile;
-      m_pid.ifPresent(pidController -> pidOutputVoltage.set(pidController.calculate(finalMeasured, finalSetpoint)));
+      m_pid.ifPresent(pidController -> {pidOutputVoltage.set(pidController.calculate(finalMeasured, finalSetpoint));
+      });
       m_lqr.ifPresent(lqrController ->
                       {
                         if (m_config.getLinearClosedLoopControllerUse())

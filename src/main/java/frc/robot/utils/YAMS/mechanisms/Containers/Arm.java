@@ -9,7 +9,6 @@ import edu.wpi.first.math.filter.Debouncer.DebounceType;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.units.measure.Angle;
-import edu.wpi.first.units.measure.Distance;
 import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.wpilibj.RobotBase;
 import edu.wpi.first.wpilibj.simulation.BatterySim;
@@ -93,7 +92,7 @@ public class Arm extends SmartPositionalMechanism
                                                   config.getLength().get().in(Meters),
                                                   config.getLowerHardLimit().get().in(Radians),
                                                   config.getUpperHardLimit().get().in(Radians),
-                                                  true,
+                                                  false,
                                                   config.getStartingAngle().orElse(Rotations.zero()).in(Radians),
                                                   0.002 / 4096.0,
                                                   0.0));// Add noise with a std-dev of 1 tick
@@ -155,6 +154,7 @@ public class Arm extends SmartPositionalMechanism
       SmartDashboard.putData(getName() + "/mechanism", m_mechanismWindow);
       m_smc.setupSimulation();
     }
+    m_smc.startClosedLoopController();
   }
 
   @Override
@@ -175,7 +175,7 @@ public class Arm extends SmartPositionalMechanism
       {
         m_smc.setEncoderPosition(m_config.getUpperHardLimit().get());
       }
-      RoboRioSim.setVInVoltage(BatterySim.calculateDefaultBatteryLoadedVoltage(m_sim.get().getCurrentDrawAmps()));
+      RoboRioSim.setVInVoltage(13.5);
       visualizationUpdate();
     }
   }
@@ -444,9 +444,8 @@ public class Arm extends SmartPositionalMechanism
   }
 
   @Override
-  @Deprecated
-  public void setMeasurementPositionSetpoint(Distance distance)
+  public void setMechanismPositionSetpoint(Angle angle)
   {
-    throw new RuntimeException("Unimplemented");
+     m_smc.setPosition(angle);
   }
 }

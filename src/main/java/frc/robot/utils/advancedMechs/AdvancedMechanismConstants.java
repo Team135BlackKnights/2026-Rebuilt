@@ -19,7 +19,7 @@ public class AdvancedMechanismConstants {
                 public static final double motorRadPerTurretRad = 36.0 / 10.0 * 77.0 / 10.0;// motor to turret ratio
                 public static final double flywheelRatio = 1.0 / 1.0;
                 public static final double hoodMotorToHoodEncoderRatio = 50.0 / 12.0;
-                public static final double hoodEncoderToHoodArmRatio = 14.0 / 12.0;
+                public static final double hoodEncoderToHoodArmRatio = 19.0 / 15.0;
                 public static final double kickerRatio = 5.0 / 1.0;
                 public static final double enc1GearTeeth = 36;
                 public static final double enc2GearTeeth = 34;

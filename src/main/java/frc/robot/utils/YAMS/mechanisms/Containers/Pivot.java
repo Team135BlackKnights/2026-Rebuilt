@@ -134,6 +134,7 @@ public class Pivot extends SmartPositionalMechanism
       SmartDashboard.putData(getName() + "/mechanism",
                              m_mechanismWindow);
     }
+    m_smc.startClosedLoopController();
   }
 
   /**
@@ -422,9 +423,8 @@ public class Pivot extends SmartPositionalMechanism
   }
 
   @Override
-  @Deprecated
-  public void setMeasurementPositionSetpoint(Distance distance)
+  public void setMechanismPositionSetpoint(Angle angle)
   {
-    throw new RuntimeException("Unimplemented");
+    m_smc.setPosition(angle);
   }
 }

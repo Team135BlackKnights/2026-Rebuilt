@@ -453,14 +453,14 @@ public class TalonFXWrapper extends SmartMotorController
       switch (m_positionReq.getName())
       {
         case "MotionMagicExpoVoltage":
-          m_talonfx.setControl(m_expoPositionReq.withPosition(angle));
+          m_talonfx.setControl(m_expoPositionReq.withPosition(angle).withEnableFOC(true));
           break;
         case "MotionMagicVoltage":
-          m_talonfx.setControl(m_trapPositionReq.withPosition(angle));
+          m_talonfx.setControl(m_trapPositionReq.withPosition(angle).withEnableFOC(true));
           break;
         case "PositionVoltage":
         default:
-          m_talonfx.setControl(m_simplePositionReq.withPosition(angle));
+          m_talonfx.setControl(m_simplePositionReq.withPosition(angle).withEnableFOC(true));
           break;
       }
       m_looseFollowers.ifPresent(smcs -> {for (var f : smcs) {f.setPosition(angle);}});
@@ -489,11 +489,11 @@ public class TalonFXWrapper extends SmartMotorController
       switch (m_velocityReq.getName())
       {
         case "MotionMagicVelocityVoltage":
-          m_talonfx.setControl(m_trapVelocityReq.withVelocity(angularVelocity));
+          m_talonfx.setControl(m_trapVelocityReq.withVelocity(angularVelocity).withEnableFOC(true));
           break;
         case "VelocityVoltage":
         default:
-          m_talonfx.setControl(m_simpleVelocityReq.withVelocity(angularVelocity));
+          m_talonfx.setControl(m_simpleVelocityReq.withVelocity(angularVelocity).withEnableFOC(true));
           break;
       }
       m_looseFollowers.ifPresent(smcs -> {for (var f : smcs) {f.setVelocity(angularVelocity);}});

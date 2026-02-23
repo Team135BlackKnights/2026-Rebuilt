@@ -993,12 +993,14 @@ public class RobotContainer {
 		// Climber controls
 		aButtonDrive.whileTrue(Commands.run(() -> {
 			// flywheel go to 5000 rpm
-			leftTurret.setCharRPM(5000);
-			leftTurret.setCharTurretPos(2);
+			//leftTurret.setCharRPM(5000);
+			//leftTurret.setCharTurretPos(2);
+			leftTurret.setCharHoodPos(Units.degreesToRadians(45));
 		})); // Prepare Climb
 		bButtonDrive.whileTrue(Commands.run(() -> {
-			leftTurret.setCharRPM(3000);
-			leftTurret.setCharTurretPos(0);
+			//leftTurret.setCharRPM(3000);
+			//leftTurret.setCharTurretPos(0);
+			leftTurret.setCharHoodPos(Units.degreesToRadians(15));
 		})); // Climb Sequence
 		yButtonDrive.toggleOnTrue(Commands.none()); // Emergency Stop Climb
 		// Intake controls

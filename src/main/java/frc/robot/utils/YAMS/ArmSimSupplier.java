@@ -53,7 +53,7 @@ public class ArmSimSupplier implements SimSupplier
   {
     if (!isInputFed())
     {
-      sim.setInputVoltage(motorDutyCycleSupplier.get() * RoboRioSim.getVInVoltage());
+      sim.setInputVoltage(motorDutyCycleSupplier.get() * 13.5);
     }
     if (!simUpdated)
     {
