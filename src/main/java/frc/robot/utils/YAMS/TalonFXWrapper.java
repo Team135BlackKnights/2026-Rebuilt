@@ -25,6 +25,7 @@ import com.ctre.phoenix6.controls.MotionMagicVelocityVoltage;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.PositionVoltage;
 import com.ctre.phoenix6.controls.VelocityVoltage;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.CANdi;
 import com.ctre.phoenix6.hardware.TalonFX;
@@ -98,27 +99,31 @@ public class TalonFXWrapper extends SmartMotorController
    */
   private final int                           m_controlReqSlot    = 0;
   /**
+   * Software-Controlled PID control request
+   */
+  private final VoltageOut m_softwareControlledReq =  new VoltageOut(0).withEnableFOC(true);
+  /**
    * Velocity control request
    */
-  private final VelocityVoltage               m_simpleVelocityReq = new VelocityVoltage(0).withSlot(m_controlReqSlot);
+  private final VelocityVoltage               m_simpleVelocityReq = new VelocityVoltage(0).withSlot(m_controlReqSlot).withUpdateFreqHz(250).withEnableFOC(true);
   /**
    * Position control request.
    */
-  private final PositionVoltage               m_simplePositionReq = new PositionVoltage(0).withSlot(m_controlReqSlot);
+  private final PositionVoltage               m_simplePositionReq = new PositionVoltage(0).withSlot(m_controlReqSlot).withUpdateFreqHz(250).withEnableFOC(true);
   /**
    * Position with trapezoidal profiling request.
    */
-  private final MotionMagicVoltage            m_trapPositionReq   = new MotionMagicVoltage(0).withSlot(m_controlReqSlot);
+  private final MotionMagicVoltage            m_trapPositionReq   = new MotionMagicVoltage(0).withSlot(m_controlReqSlot).withUpdateFreqHz(250).withEnableFOC(true);
   /**
    * Velocity with trapezoidal profiling request.
    */
   private final MotionMagicVelocityVoltage    m_trapVelocityReq   = new MotionMagicVelocityVoltage(0).withSlot(
-      m_controlReqSlot);
+      m_controlReqSlot).withUpdateFreqHz(250).withEnableFOC(true);
   /**
    * Position with exponential profiling request.
    */
   private final MotionMagicExpoVoltage        m_expoPositionReq   = new MotionMagicExpoVoltage(0).withSlot(
-      m_controlReqSlot);
+      m_controlReqSlot).withUpdateFreqHz(250).withEnableFOC(true);
   /**
    * Position control request to use.
    */
@@ -458,17 +463,18 @@ public class TalonFXWrapper extends SmartMotorController
       switch (m_positionReq.getName())
       {
         case "MotionMagicExpoVoltage":
-          m_talonfx.setControl(m_expoPositionReq.withPosition(angle).withEnableFOC(true));
+          m_talonfx.setControl(m_expoPositionReq.withPosition(angle));
           break;
         case "MotionMagicVoltage":
-          m_talonfx.setControl(m_trapPositionReq.withPosition(angle).withEnableFOC(true));
+          m_talonfx.setControl(m_trapPositionReq.withPosition(angle));
           break;
         case "PositionVoltage":
         default:
-          m_talonfx.setControl(m_simplePositionReq.withPosition(angle).withEnableFOC(true));
+          m_talonfx.setControl(m_simplePositionReq.withPosition(angle));
           break;
       }
       m_looseFollowers.ifPresent(smcs -> {for (var f : smcs) {f.setPosition(angle);}});
+      //m_simSupplier.ifPresent(simSupplier -> simSupplier.setMechanismPosition(angle));
     }
   }
 
@@ -494,15 +500,15 @@ public class TalonFXWrapper extends SmartMotorController
       switch (m_velocityReq.getName())
       {
         case "MotionMagicVelocityVoltage":
-          m_talonfx.setControl(m_trapVelocityReq.withVelocity(angularVelocity).withEnableFOC(true));
+          m_talonfx.setControl(m_trapVelocityReq.withVelocity(angularVelocity));
           break;
         case "VelocityVoltage":
         default:
-          m_talonfx.setControl(m_simpleVelocityReq.withVelocity(angularVelocity).withEnableFOC(true));
+          m_talonfx.setControl(m_simpleVelocityReq.withVelocity(angularVelocity));
           break;
       }
       m_looseFollowers.ifPresent(smcs -> {for (var f : smcs) {f.setVelocity(angularVelocity);}});
-//      m_simSupplier.ifPresent(simSupplier -> simSupplier.setMechanismVelocity(angularVelocity));
+     //m_simSupplier.ifPresent(simSupplier -> simSupplier.setMechanismVelocity(angularVelocity));
     }
   }
 
@@ -960,11 +966,12 @@ public class TalonFXWrapper extends SmartMotorController
   public void setVoltage(Voltage voltage)
   {
     m_simCommandVoltage = Volts.of(MathUtil.clamp(voltage.in(Volts), -13.5, 13.5));
-    m_talonfx.setVoltage(m_simCommandVoltage.in(Volts));
+    m_talonfx.setControl(m_softwareControlledReq.withOutput(m_simCommandVoltage));
   }
 
   private boolean usesSoftwareClosedLoopVoltageControl()
   {
+    //currently always on? perhaps try returning false?
     return m_config.getMotorControllerMode() == ControlMode.CLOSED_LOOP &&
            (m_pid.isPresent() || m_lqr.isPresent());
   }

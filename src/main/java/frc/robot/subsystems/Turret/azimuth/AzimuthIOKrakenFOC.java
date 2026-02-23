@@ -85,7 +85,9 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
             String name,
             int currentLimitAmps,
             double minTurretAngle,
-            double maxTurretAngle) {
+            double maxTurretAngle,
+            double encoder1Offset,
+            double encoder2Offset) {
 
         this.name = name;
         this.minAngle = minTurretAngle;
@@ -107,8 +109,8 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         encoder1Config.MagnetSensor.AbsoluteSensorDiscontinuityPoint = 0.5;
         encoder2Config.MagnetSensor.AbsoluteSensorDiscontinuityPoint = 0.5;
 
-        encoder1Config.MagnetSensor.MagnetOffset = -.404541;
-        encoder2Config.MagnetSensor.MagnetOffset = 0.088867;
+        encoder1Config.MagnetSensor.MagnetOffset = encoder1Offset;
+        encoder2Config.MagnetSensor.MagnetOffset = encoder2Offset;
 
         encoder1Config.MagnetSensor.SensorDirection = SensorDirectionValue.Clockwise_Positive;
         encoder2Config.MagnetSensor.SensorDirection = SensorDirectionValue.Clockwise_Positive;
@@ -271,12 +273,14 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
     @Override
     public void setPID(
-            double p, double i, double d, double ks, double kv, double ka, double velocityMax, double accelerationMax) {
+            double p, double i, double d, double ks, double kv, double ka, double velocityMax, double accelerationMax, double rampRate) {
         motorController.setFeedback(p, i, d);
         motorController.setFeedforward(ks, kv, ka, 0.0);
         motorController.setMotionProfileMaxVelocity(RadiansPerSecond.of(velocityMax));
         motorController.setMotionProfileMaxAcceleration(RadiansPerSecondPerSecond.of(accelerationMax));
-    }
+        motorController.setClosedLoopRampRate(Seconds.of(rampRate));
+        motorController.setOpenLoopRampRate(Seconds.of(rampRate));
+            }
 
     @Override
     public List<SelfChecking> getSelfCheckingHardware() {

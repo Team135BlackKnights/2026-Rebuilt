@@ -47,7 +47,9 @@ public class AdvancedMechanismConstants {
                 public static final int leftKickupID = 28;
                 public static final String leftName = "LeftTurret";
                 public static final Transform2d robotToLeftTurretHoleCenter = new Transform2d(-.163, -.227, new Rotation2d());
-
+                public static final double leftAzimuthBigEncoderOffset = -0.404541;
+                public static final double leftAzimuthSmallEncoderOffset = .088867;
+                public static final double leftHoodEncoderOffset = 0.0;
                 // Right Turret
                 public static final int rightAzimuthID = 29;
                 public static final int rightAzimuthBigEncoderID = 30;
@@ -58,6 +60,8 @@ public class AdvancedMechanismConstants {
                 public static final int rightKickupID = 35;
                 public static final String rightName = "RightTurret";
                 public static final Transform2d robotToRightTurretHoleCenter = new Transform2d(-.163, .227, new Rotation2d());
-
+                public static final double rightAzimuthBigEncoderOffset = 0.0;
+                public static final double rightAzimuthSmallEncoderOffset = 0.0;
+                public static final double rightHoodEncoderOffset = 0.0;
         }
 }

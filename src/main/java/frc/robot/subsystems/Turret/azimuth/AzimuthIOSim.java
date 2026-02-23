@@ -299,11 +299,13 @@ public class AzimuthIOSim implements AzimuthIO {
 
     @Override
     public void setPID(
-            double p, double i, double d, double ks, double kv, double ka, double velocityMax, double accelerationMax) {
+            double p, double i, double d, double ks, double kv, double ka, double velocityMax, double accelerationMax, double rampRate) {
         motorController.setFeedback(p, i, d);
         motorController.setFeedforward(ks, kv, ka, 0.0);
         motorController.setMotionProfileMaxVelocity(RadiansPerSecond.of(velocityMax));
         motorController.setMotionProfileMaxAcceleration(RadiansPerSecondPerSecond.of(accelerationMax));
+                motorController.setClosedLoopRampRate(Seconds.of(rampRate));
+        motorController.setOpenLoopRampRate(Seconds.of(rampRate));
     }
 
     @Override

@@ -31,7 +31,7 @@ public interface AzimuthIO {
     default void setDesiredPosition(double positionRads) {}
     default void stop() {}
     default void runVolts(double volts) {}
-    default void setPID(double p, double i, double d, double ks, double kv, double ka, double velocityMax, double accelerationMax) {}
+    default void setPID(double p, double i, double d, double ks, double kv, double ka, double velocityMax, double accelerationMax, double rampRate) {}
     default void setBrakeMode(boolean brake) {}
     default void setCurrentLimit(double amps) {}
     default List<SelfChecking> getSelfCheckingHardware() {

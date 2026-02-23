@@ -524,7 +524,10 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.leftName,
 						AdvancedMechanismConstants.Turret.currentLimitAzimuth,
 						AdvancedMechanismConstants.Turret.minTurretAngle,
-						AdvancedMechanismConstants.Turret.maxTurretAngle);
+						AdvancedMechanismConstants.Turret.maxTurretAngle,
+						AdvancedMechanismConstants.Turret.leftAzimuthBigEncoderOffset,
+						AdvancedMechanismConstants.Turret.leftAzimuthSmallEncoderOffset
+						);
 
 				FlywheelIO flywheelIOLeftTurret = new FlywheelIOKrakenFOC(
 						Robot.rioCanBus,
@@ -544,7 +547,8 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.hoodMotorToHoodEncoderRatio,
 						AdvancedMechanismConstants.Turret.hoodEncoderToHoodArmRatio,
 						AdvancedMechanismConstants.Turret.minHoodAngle,
-						AdvancedMechanismConstants.Turret.maxHoodAngle);
+						AdvancedMechanismConstants.Turret.maxHoodAngle,
+						AdvancedMechanismConstants.Turret.leftHoodEncoderOffset);
 
 				leftTurret = new Turret(azimuthIOLeftTurret, flywheelIOLeftTurret,
 						hoodIOLeftTurret,
@@ -562,7 +566,9 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.rightName,
 						AdvancedMechanismConstants.Turret.currentLimitAzimuth,
 								-AdvancedMechanismConstants.Turret.maxTurretAngle,
-								-AdvancedMechanismConstants.Turret.minTurretAngle);
+								-AdvancedMechanismConstants.Turret.minTurretAngle,
+								AdvancedMechanismConstants.Turret.rightAzimuthBigEncoderOffset,
+								AdvancedMechanismConstants.Turret.rightAzimuthSmallEncoderOffset);
 				FlywheelIO flywheelIORightTurret = new FlywheelIOKrakenFOC(
 						Robot.rioCanBus,
 						AdvancedMechanismConstants.Turret.rightFlywheelID,
@@ -581,7 +587,8 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.hoodMotorToHoodEncoderRatio,
 						AdvancedMechanismConstants.Turret.hoodEncoderToHoodArmRatio,
 						AdvancedMechanismConstants.Turret.minHoodAngle,
-						AdvancedMechanismConstants.Turret.maxHoodAngle);
+						AdvancedMechanismConstants.Turret.maxHoodAngle,
+						AdvancedMechanismConstants.Turret.rightHoodEncoderOffset);
 				rightTurret = new Turret(azimuthIORightTurret, flywheelIORightTurret, hoodIORightTurret,
 						AdvancedMechanismConstants.Turret.robotToRightTurretHoleCenter, "RightTurret");
 				break;

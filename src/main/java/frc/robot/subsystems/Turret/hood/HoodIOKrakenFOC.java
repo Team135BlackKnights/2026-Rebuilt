@@ -65,7 +65,8 @@ public class HoodIOKrakenFOC implements HoodIO {
             double rotorToEncoder,
             double encoderToArm,
             double minAngleRads,
-            double maxAngleRads) {
+            double maxAngleRads,
+            double encoderOffset) {
 
         this.name = name;
         this.minAngleRads = minAngleRads;
@@ -95,6 +96,7 @@ public class HoodIOKrakenFOC implements HoodIO {
                 .withExternalEncoderInverted(false)
                 .withExternalEncoderGearing(encoderToArm)
                 .withUseExternalFeedbackEncoder(true)
+                .withExternalEncoderZeroOffset(Radians.of(encoderOffset))
 
                 .withMotorInverted(false)
                 .withIdleMode(MotorMode.BRAKE)

@@ -42,6 +42,7 @@ public class Turret extends SubsystemChecker {
   private final LoggableTunedNumber azimuth_kA;
   private final LoggableTunedNumber azimuth_velMax;
   private final LoggableTunedNumber azimuth_accelMax;
+  private final LoggableTunedNumber azimuth_ramp;
 
   // Flywheel setPID(p,d,ks,kv)
   private final LoggableTunedNumber flywheel_kP;
@@ -118,6 +119,7 @@ public class Turret extends SubsystemChecker {
     azimuth_kA = new LoggableTunedNumber(name + "/Azimuth/kA", 0.0, true);
     azimuth_velMax = new LoggableTunedNumber(name + "/Azimuth/velMaxRadPerSec", 18.0, true);
     azimuth_accelMax = new LoggableTunedNumber(name + "/Azimuth/accelMaxRadPerSec2", 40.0, true);
+    azimuth_ramp = new LoggableTunedNumber(name + "/Azimuth/ramp", 0.25, true);
 
     flywheel_kP = new LoggableTunedNumber(name + "/Flywheel/kP", 3, true);
     flywheel_kD = new LoggableTunedNumber(name + "/Flywheel/kD", 0.0, true);
@@ -165,7 +167,7 @@ public class Turret extends SubsystemChecker {
     azimuthIO.setPID(
         azimuth_kP.get(), azimuth_kI.get(), azimuth_kD.get(),
         azimuth_kS.get(), azimuth_kV.get(), azimuth_kA.get(),
-        azimuth_velMax.get(), azimuth_accelMax.get());
+        azimuth_velMax.get(), azimuth_accelMax.get(), azimuth_ramp.get());
 
     flywheelIO.setPID(
         flywheel_kP.get(), flywheel_kD.get(),
@@ -183,8 +185,8 @@ public class Turret extends SubsystemChecker {
         () -> azimuthIO.setPID(
             azimuth_kP.get(), azimuth_kI.get(), azimuth_kD.get(),
             azimuth_kS.get(), azimuth_kV.get(), azimuth_kA.get(),
-            azimuth_velMax.get(), azimuth_accelMax.get()),
-        azimuth_kP, azimuth_kI, azimuth_kD, azimuth_kS, azimuth_kV, azimuth_kA, azimuth_velMax, azimuth_accelMax);
+            azimuth_velMax.get(), azimuth_accelMax.get(), azimuth_ramp.get()),
+        azimuth_kP, azimuth_kI, azimuth_kD, azimuth_kS, azimuth_kV, azimuth_kA, azimuth_velMax, azimuth_accelMax, azimuth_ramp);
 
     LoggableTunedNumber.ifChanged(
         hashCode(),
