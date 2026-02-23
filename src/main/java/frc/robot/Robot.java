@@ -39,7 +39,9 @@ import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
+import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.trajectory.Trajectory;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.net.PortForwarder;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.IterativeRobotBase;
@@ -363,12 +365,15 @@ public class Robot extends LoggedRobot {
 		Logger.recordOutput("RobotState/AdvantageScope/model_0Pose", new Pose3d(.253, 0, 0.228, new Rotation3d(0,-armAngle,0)));//intake
 		Logger.recordOutput("RobotState/AdvantageScope/model_1Pose",
 				new Pose3d(-0.043+hopperOffset, 0, 0.284 + .235 / 2, new Rotation3d()));//hopper
-		Logger.recordOutput("RobotState/AdvantageScope/model_2Pose", new Pose3d(-.163, .227, 0.419, new Rotation3d(0,0,RobotContainer.rightTurret.turretAngle())));//rightTurret
+		Pose3d model_2Pose = new Pose3d(-.163, .227, 0.419, new Rotation3d(0,0,RobotContainer.rightTurret.turretAngle()));
+				Logger.recordOutput("RobotState/AdvantageScope/model_2Pose", model_2Pose);//rightTurret
+		
 		Logger.recordOutput("RobotState/AdvantageScope/model_3Pose",
-				new Pose3d(-.163 - .100, .227, .419 + .06, new Rotation3d(0,RobotContainer.rightTurret.hoodAngle(),0)));//rightTurretHood
-		Logger.recordOutput("RobotState/AdvantageScope/model_4Pose", new Pose3d(-.163, -.227, .419, new Rotation3d(0,0,RobotContainer.leftTurret.turretAngle())));//leftTurret
+				model_2Pose.plus(new Transform3d(.100,0,.06, new Rotation3d(0,RobotContainer.rightTurret.hoodAngle()-Units.degreesToRadians(12),0))));//rightTurretHood
+		Pose3d model_4Pose = new Pose3d(-.163, -.227, .419, new Rotation3d(0,0,RobotContainer.leftTurret.turretAngle()));
+				Logger.recordOutput("RobotState/AdvantageScope/model_4Pose", model_4Pose);//leftTurret
 		Logger.recordOutput("RobotState/AdvantageScope/model_5Pose",
-				new Pose3d(-.163 - .100, -.227, .419 + .06, new Rotation3d(0,RobotContainer.leftTurret.hoodAngle(),0)));//leftTurretHood
+				model_4Pose.plus(new Transform3d(.100,0,.06, new Rotation3d(0,RobotContainer.leftTurret.hoodAngle()-Units.degreesToRadians(12),0))));//leftTurretHood
 		Logger.recordOutput("RobotState/AdvantageScope/model_6Pose",
 				new Pose3d(-.214, .016, 0.475615, new Rotation3d(0,RobotContainer.hang.getAngle(),0)));//hang
 	}

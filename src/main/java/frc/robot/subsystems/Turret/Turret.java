@@ -126,8 +126,8 @@ public class Turret extends SubsystemChecker {
     flywheel_kA = new LoggableTunedNumber(name + "/Flywheel/kA", 0.0, true);
     flywheel_ramp = new LoggableTunedNumber(name + "/Flywheel/Ramp", 0.25, true);
 
-    hood_kP = new LoggableTunedNumber(name + "/Hood/kP", 0.0, true);
-    hood_kD = new LoggableTunedNumber(name + "/Hood/kD", 0.0, true);
+    hood_kP = new LoggableTunedNumber(name + "/Hood/kP", 15, true);
+    hood_kD = new LoggableTunedNumber(name + "/Hood/kD", 1.5, true);
     hood_kS = new LoggableTunedNumber(name + "/Hood/kS", 0.0, true);
     hood_kV = new LoggableTunedNumber(name + "/Hood/kV", 0.0, true);
 
