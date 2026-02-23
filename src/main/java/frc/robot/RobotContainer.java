@@ -711,7 +711,14 @@ public class RobotContainer {
 
 						AdvancedMechanismConstants.Turret.kickupMOI));
 				leftTurret = new Turret(
-						new AzimuthIOSim(AdvancedMechanismConstants.Turret.minTurretAngle,
+						new AzimuthIOSim(
+								Robot.rioCanBus,
+								AdvancedMechanismConstants.Turret.leftAzimuthID,
+								AdvancedMechanismConstants.Turret.leftAzimuthBigEncoderID,
+								AdvancedMechanismConstants.Turret.leftAzimuthSmallEncoderID,
+								AdvancedMechanismConstants.Turret.leftName + "Azimuth",
+								AdvancedMechanismConstants.Turret.currentLimitAzimuth,
+								AdvancedMechanismConstants.Turret.minTurretAngle,
 								AdvancedMechanismConstants.Turret.maxTurretAngle),
 						new FlywheelIOSim(
 						Robot.rioCanBus,
@@ -730,7 +737,14 @@ public class RobotContainer {
 
 						AdvancedMechanismConstants.Turret.robotToLeftTurretHoleCenter, "LeftTurret");
 				rightTurret = new Turret(
-						new AzimuthIOSim(AdvancedMechanismConstants.Turret.minTurretAngle,
+						new AzimuthIOSim(
+								Robot.rioCanBus,
+								AdvancedMechanismConstants.Turret.rightAzimuthID,
+								AdvancedMechanismConstants.Turret.rightAzimuthBigEncoderID,
+								AdvancedMechanismConstants.Turret.rightAzimuthSmallEncoderID,
+								AdvancedMechanismConstants.Turret.rightName + "Azimuth",
+								AdvancedMechanismConstants.Turret.currentLimitAzimuth,
+								AdvancedMechanismConstants.Turret.minTurretAngle,
 								AdvancedMechanismConstants.Turret.maxTurretAngle),
 						new FlywheelIOSim(
 						Robot.rioCanBus,
