@@ -179,7 +179,10 @@ public class TalonFXWrapper extends SmartMotorController
    * {@link DCMotorSim} for the {@link TalonFX}.
    */
   private       Optional<DCMotorSim>          m_dcmotorSim        = Optional.empty();
-  private Voltage actualVoltage = Volts.of(0);
+  /**
+   * Signed voltage command used by software-closed-loop simulation updates.
+   */
+  private       Voltage                        m_simCommandVoltage = Volts.of(0);
 
   /**
    * Create the {@link TalonFX} wrapper
@@ -272,8 +275,10 @@ public class TalonFXWrapper extends SmartMotorController
 
       talonFXSim.setSupplyVoltage(13.5);
 
-      // get the motor voltage of the TalonFX
-      var motorVoltage = Constants.currentMatchState == FRCMatchState.DISABLED ? Volts.of(0) : actualVoltage;
+      // Software-closed-loop owns voltage commands directly, while hardware-closed-loop reads from Talon output.
+      var motorVoltage = Constants.currentMatchState == FRCMatchState.DISABLED
+          ? Volts.of(0)
+          : (usesSoftwareClosedLoopVoltageControl() ? m_simCommandVoltage : m_outputVoltage.refresh().getValue());
       m_simSupplier.ifPresent(simSupplier -> {
         simSupplier.setMechanismStatorVoltage(motorVoltage); // dcmotorSim.setInputVoltage(motorVoltage)
         simSupplier.updateSimState(); // dcmotorSim.update(0.020)
@@ -448,7 +453,7 @@ public class TalonFXWrapper extends SmartMotorController
   {
     setpointVelocity = Optional.empty();
     setpointPosition = Optional.ofNullable(angle);
-    if (angle != null && m_lqr.isEmpty())
+    if (angle != null && !usesSoftwareClosedLoopVoltageControl())
     {
       switch (m_positionReq.getName())
       {
@@ -484,7 +489,7 @@ public class TalonFXWrapper extends SmartMotorController
   {
     setpointPosition = Optional.empty();
     setpointVelocity = Optional.ofNullable(angularVelocity);
-    if (angularVelocity != null && m_lqr.isEmpty())
+    if (angularVelocity != null && !usesSoftwareClosedLoopVoltageControl())
     {
       switch (m_velocityReq.getName())
       {
@@ -511,6 +516,7 @@ public class TalonFXWrapper extends SmartMotorController
   public void setDutyCycle(double dutyCycle)
   {
     m_talonfx.set(dutyCycle);
+    m_simCommandVoltage = Volts.of(MathUtil.clamp(dutyCycle, -1, 1) * 13.5);
     //m_simSupplier.ifPresent(simSupplier -> simSupplier.setMechanismStatorDutyCycle(dutyCycle));
   }
 
@@ -953,8 +959,14 @@ public class TalonFXWrapper extends SmartMotorController
   @Override
   public void setVoltage(Voltage voltage)
   {
-    actualVoltage = Volts.of(MathUtil.clamp(voltage.in(Volts), -13.5, 13.5));
-    m_talonfx.setVoltage(actualVoltage.in(Volts));
+    m_simCommandVoltage = Volts.of(MathUtil.clamp(voltage.in(Volts), -13.5, 13.5));
+    m_talonfx.setVoltage(m_simCommandVoltage.in(Volts));
+  }
+
+  private boolean usesSoftwareClosedLoopVoltageControl()
+  {
+    return m_config.getMotorControllerMode() == ControlMode.CLOSED_LOOP &&
+           (m_pid.isPresent() || m_lqr.isPresent());
   }
 
   @Override

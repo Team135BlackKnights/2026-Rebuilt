@@ -343,9 +343,7 @@ public class Pivot extends SmartPositionalMechanism
   {
     if (m_dcmotorSim.isPresent() && m_smc.getSimSupplier().isPresent())
     {
-      m_smc.getSimSupplier().get().updateSimState();
       m_smc.simIterate();
-      m_smc.getSimSupplier().get().starveUpdateSim();
       if (m_config.getLowerHardLimit().isPresent() && m_dcmotorSim.get().getAngularVelocityRadPerSec() < 0 &&
           m_smc.getMechanismPosition().lt(m_config.getLowerHardLimit().get()))
       {

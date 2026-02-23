@@ -162,9 +162,7 @@ public class Arm extends SmartPositionalMechanism
   {
     if (m_sim.isPresent() && m_smc.getSimSupplier().isPresent())
     {
-      m_smc.getSimSupplier().get().updateSimState();
       m_smc.simIterate();
-      m_smc.getSimSupplier().get().starveUpdateSim();
       if (m_config.getLowerHardLimit().isPresent() && m_sim.get().getVelocityRadPerSec() < 0 &&
           m_smc.getMechanismPosition().lt(m_config.getLowerHardLimit().get()))
       {

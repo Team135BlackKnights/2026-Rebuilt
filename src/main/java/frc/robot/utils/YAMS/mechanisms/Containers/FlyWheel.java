@@ -414,9 +414,7 @@ public class FlyWheel extends SmartVelocityMechanism
   {
     if (m_dcmotorSim.isPresent() && m_smc.getSimSupplier().isPresent())
     {
-      m_smc.getSimSupplier().get().updateSimState();
       m_smc.simIterate();
-      m_smc.getSimSupplier().get().starveUpdateSim();
 
       RoboRioSim.setVInVoltage(BatterySim.calculateDefaultBatteryLoadedVoltage(0));
       visualizationUpdate();
