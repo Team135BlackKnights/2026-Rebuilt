@@ -28,7 +28,7 @@ import frc.robot.utils.YAMS.mechanisms.Containers.Arm;
 import frc.robot.utils.advancedMechs.AdvancedMechanismConstants;
 
 public class HoodIOSim implements HoodIO {
-  private final String name = "HoodIOSim";
+  private final String name;
 
   private final SmartMotorControllerConfig motorConfig;
   private final SmartMotorController motor;
@@ -38,7 +38,8 @@ public class HoodIOSim implements HoodIO {
   private final double minAngleRads = AdvancedMechanismConstants.Turret.minHoodAngle;
   private final double maxAngleRads = AdvancedMechanismConstants.Turret.maxHoodAngle;
 
-  public HoodIOSim() {
+  public HoodIOSim(CANBus bus, int motorID, String name) {
+    this.name = name;
     // Matches your old SingleJointedArmSim gearing term:
     final double rotorPerMechanism =
         AdvancedMechanismConstants.Turret.hoodEncoderToHoodArmRatio
@@ -62,7 +63,7 @@ public class HoodIOSim implements HoodIO {
             .withOpenLoopRampRate(Seconds.of(0.25));
 
     // Dummy CANBus + device ID for sim
-    TalonFXS talon = new TalonFXS(0, new CANBus("rio"));
+    TalonFXS talon = new TalonFXS(motorID, bus);
     motor = new TalonFXSWrapper(talon, DCMotor.getMinion(1), motorConfig);
 
     hoodConfig =
@@ -73,6 +74,10 @@ public class HoodIOSim implements HoodIO {
             .withStartingPosition(Radians.of(minAngleRads));
 
     hood = new Arm(hoodConfig);
+  }
+
+  public HoodIOSim() {
+    this(new CANBus("rio"), 0, "HoodIOSim");
   }
 
   @Override

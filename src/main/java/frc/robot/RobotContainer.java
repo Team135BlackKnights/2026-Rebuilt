@@ -722,7 +722,11 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.invertFlywheel,
 						AdvancedMechanismConstants.Turret.flywheelMaxRPM,
 						AdvancedMechanismConstants.Turret.flywheelMOI
-						), new HoodIOSim(),
+						),
+						new HoodIOSim(
+								Robot.rioCanBus,
+								AdvancedMechanismConstants.Turret.leftHoodID,
+								AdvancedMechanismConstants.Turret.leftName + "Hood"),
 
 						AdvancedMechanismConstants.Turret.robotToLeftTurretHoleCenter, "LeftTurret");
 				rightTurret = new Turret(
@@ -737,7 +741,11 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.invertFlywheel,
 						AdvancedMechanismConstants.Turret.flywheelMaxRPM,
 						AdvancedMechanismConstants.Turret.flywheelMOI
-						), new HoodIOSim(),
+						),
+						new HoodIOSim(
+								Robot.rioCanBus,
+								AdvancedMechanismConstants.Turret.rightHoodID,
+								AdvancedMechanismConstants.Turret.rightName + "Hood"),
 
 						AdvancedMechanismConstants.Turret.robotToRightTurretHoleCenter, "RightTurret");
 				/*
