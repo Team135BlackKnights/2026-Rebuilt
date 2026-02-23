@@ -14,6 +14,8 @@ import frc.robot.utils.YAMS.MechanismGearing;
 import frc.robot.utils.YAMS.SmartMotorController;
 import frc.robot.utils.YAMS.Sprocket;
 
+import static edu.wpi.first.units.Units.Volts;
+
 import java.util.Optional;
 import java.util.function.Supplier;
 
@@ -151,6 +153,10 @@ public abstract class SmartMechanism
     return Commands.startRun(m_smc::stopClosedLoopController, () -> m_smc.setVoltage(volts))
                    .finallyDo(m_smc::startClosedLoopController)
                    .withName(" SetVoltage");
+  }
+  public void setVolts(double volts){
+    m_smc.stopClosedLoopController();
+    m_smc.setVoltage(Volts.of(volts));
   }
 
   /**

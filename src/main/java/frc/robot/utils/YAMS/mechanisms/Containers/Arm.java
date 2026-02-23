@@ -11,7 +11,6 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.LinearVelocity;
 import edu.wpi.first.wpilibj.RobotBase;
-import edu.wpi.first.wpilibj.simulation.BatterySim;
 import edu.wpi.first.wpilibj.simulation.RoboRioSim;
 import edu.wpi.first.wpilibj.simulation.SingleJointedArmSim;
 import edu.wpi.first.wpilibj.smartdashboard.Mechanism2d;
@@ -92,7 +91,7 @@ public class Arm extends SmartPositionalMechanism
                                                   config.getLength().get().in(Meters),
                                                   config.getLowerHardLimit().get().in(Radians),
                                                   config.getUpperHardLimit().get().in(Radians),
-                                                  false,
+                                                  config.getGravity(),
                                                   config.getStartingAngle().orElse(Rotations.zero()).in(Radians),
                                                   0.002 / 4096.0,
                                                   0.0));// Add noise with a std-dev of 1 tick

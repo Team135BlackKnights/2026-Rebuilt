@@ -561,8 +561,8 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.rightAzimuthSmallEncoderID,
 						AdvancedMechanismConstants.Turret.rightName,
 						AdvancedMechanismConstants.Turret.currentLimitAzimuth,
-						AdvancedMechanismConstants.Turret.minTurretAngle,
-						AdvancedMechanismConstants.Turret.maxTurretAngle);
+								-AdvancedMechanismConstants.Turret.maxTurretAngle,
+								-AdvancedMechanismConstants.Turret.minTurretAngle);
 				FlywheelIO flywheelIORightTurret = new FlywheelIOKrakenFOC(
 						Robot.rioCanBus,
 						AdvancedMechanismConstants.Turret.rightFlywheelID,
@@ -744,8 +744,8 @@ public class RobotContainer {
 								AdvancedMechanismConstants.Turret.rightAzimuthSmallEncoderID,
 								AdvancedMechanismConstants.Turret.rightName + "Azimuth",
 								AdvancedMechanismConstants.Turret.currentLimitAzimuth,
-								AdvancedMechanismConstants.Turret.minTurretAngle,
-								AdvancedMechanismConstants.Turret.maxTurretAngle),
+								-AdvancedMechanismConstants.Turret.maxTurretAngle,
+								-AdvancedMechanismConstants.Turret.minTurretAngle),
 						new FlywheelIOSim(
 						Robot.rioCanBus,
 						AdvancedMechanismConstants.Turret.rightFlywheelID,
@@ -905,10 +905,14 @@ public class RobotContainer {
 		// autos for tuning
 		autoChooser.addOption("Intake PID Char",
 				new RoughPIDCharacterization(intake, (volts) -> intake.runCharacterization(volts),
-						intake::getCharacterizationMeasurement, intake::getCharVeloicty,
+						intake::getCharacterizationMeasurement, intake::getCharVelocity,
 						IntakeConstants.armMinAngleRads, IntakeConstants.armMaxAngleRads, Units.degreesToRadians(10),
-						Units.degreesToRadians(120), 3, 5)
+						Units.degreesToRadians(120), 5, 20).beforeStarting(Commands.waitSeconds(3))
 						.withName("Intake PID Characterization"));
+		autoChooser.addOption("Intake FeedForward Characterization", 
+				new FeedForwardCharacterization(intake, (volts) -> intake.runCharacterization(volts),
+						intake::getCharacterizationMeasurement, () -> false).beforeStarting(Commands.waitSeconds(3))
+						.withName("Intake FeedForward Characterization"));
 		SmartDashboard.putData(field);
 
 		// Configure the trigger bindings
@@ -941,8 +945,8 @@ public class RobotContainer {
 		Command shootTurrets = buildShootTurretsCommand();
 
 		var targetSplitTrenches = Commands.runOnce(() -> {
-			leftTurret.setPresetTarget(Turret.PresetTarget.LEFT_TRENCH_CENTER);
-			rightTurret.setPresetTarget(Turret.PresetTarget.RIGHT_TRENCH_CENTER);
+			leftTurret.setPresetTarget(Turret.PresetTarget.RIGHT_TRENCH_CENTER);
+			rightTurret.setPresetTarget(Turret.PresetTarget.LEFT_TRENCH_CENTER);
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
 		}, leftTurret, rightTurret);
@@ -1017,12 +1021,12 @@ public class RobotContainer {
 			// flywheel go to 5000 rpm
 			//leftTurret.setCharRPM(5000);
 			//leftTurret.setCharTurretPos(2);
-			leftTurret.setCharHoodPos(Units.degreesToRadians(45));
+			intake.setGoal(Goal.STOW);
 		})); // Prepare Climb
 		bButtonDrive.whileTrue(Commands.run(() -> {
 			//leftTurret.setCharRPM(3000);
 			//leftTurret.setCharTurretPos(0);
-			leftTurret.setCharHoodPos(Units.degreesToRadians(15));
+			intake.setGoal(Goal.INTAKE_GROUND);
 		})); // Climb Sequence
 		yButtonDrive.toggleOnTrue(Commands.none()); // Emergency Stop Climb
 		// Intake controls
@@ -1082,22 +1086,22 @@ public class RobotContainer {
 		povDown.onTrue(targetSplitTrenches);
 		povLeft.onTrue(targetBothLeftTrench);
 		povRight.onTrue(targetBothRightTrench);
-		// Automatic Turret Controls
-		/*
-		 * manualTurretControl.negate().and(inScoreArea).whileTrue(targetHubBoth);
-		 * manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.
-		 * negate()).and(beforeRightTrench)
-		 * .whileTrue(targetBothRightTrench);
-		 * manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.
-		 * negate()).and(beyondLeftTrench)
-		 * .whileTrue(targetBothLeftTrench);
-		 * manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.
-		 * negate())
-		 * .and(beyondLeftTrench.negate()).and(beforeRightTrench.negate()).whileTrue(
-		 * targetSplitTrenches);
-		 * manualTurretControl.negate().and(inOpponentArea).whileTrue(
-		 * targetBothOverNeutral);
-		 */
+		//Automatic Turret Controls
+		
+		 manualTurretControl.negate().and(inScoreArea).whileTrue(targetHubBoth);
+		 manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.
+		 negate()).and(beforeRightTrench)
+		 .whileTrue(targetBothRightTrench);
+		 manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.
+		 negate()).and(beyondLeftTrench)
+		 .whileTrue(targetBothLeftTrench);
+		 manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.
+		 negate())
+		 .and(beyondLeftTrench.negate()).and(beforeRightTrench.negate()).whileTrue(
+		 targetSplitTrenches);
+		 manualTurretControl.negate().and(inOpponentArea).whileTrue(
+		 targetBothOverNeutral);
+		 
 
 		// - If in score area AND not manually holding POV: aim both turrets at hub
 		/*

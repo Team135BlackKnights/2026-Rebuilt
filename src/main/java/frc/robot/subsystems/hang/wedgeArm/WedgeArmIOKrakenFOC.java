@@ -1,91 +1,127 @@
 package frc.robot.subsystems.hang.wedgeArm;
 
+import static edu.wpi.first.units.Units.Amps;
+import static edu.wpi.first.units.Units.DegreesPerSecond;
+import static edu.wpi.first.units.Units.DegreesPerSecondPerSecond;
+import static edu.wpi.first.units.Units.Inches;
+import static edu.wpi.first.units.Units.KilogramSquareMeters;
+import static edu.wpi.first.units.Units.Radians;
+import static edu.wpi.first.units.Units.RadiansPerSecond;
+import static edu.wpi.first.units.Units.Seconds;
+import static edu.wpi.first.units.Units.Volts;
+
 import java.util.List;
 
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusSignal;
-import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.controls.PositionTorqueCurrentFOC;
-import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.signals.InvertedValue;
-import com.ctre.phoenix6.signals.NeutralModeValue;
 
-import edu.wpi.first.units.measure.Angle;
-import edu.wpi.first.units.measure.AngularVelocity;
+import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.controller.ArmFeedforward;
+import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
+import frc.robot.utils.YAMS.GearBox;
+import frc.robot.utils.YAMS.MechanismGearing;
+import frc.robot.utils.YAMS.SmartMotorController;
+import frc.robot.utils.YAMS.SmartMotorControllerConfig;
+import frc.robot.utils.YAMS.TalonFXWrapper;
+import frc.robot.utils.YAMS.SmartMotorControllerConfig.ControlMode;
+import frc.robot.utils.YAMS.SmartMotorControllerConfig.MotorMode;
+import frc.robot.utils.YAMS.mechanisms.ArmConfig;
+import frc.robot.utils.YAMS.mechanisms.Containers.Arm;
 import frc.robot.utils.selfCheck.SelfChecking;
 import frc.robot.utils.selfCheck.drive.SelfCheckingTalonFX;
+import frc.robot.utils.simpleMechanisms.SimpleMechanismConstants;
 
 public class WedgeArmIOKrakenFOC implements WedgeArmIO {
-    private final TalonFX motor;
-    private final double reduction;
-    private final String name;
-    private final PositionTorqueCurrentFOC control = new PositionTorqueCurrentFOC(0.0);
-    private final VoltageOut voltageControl = new VoltageOut(0.0);
-    private final TalonFXConfiguration config = new TalonFXConfiguration();
-    private final StatusSignal<Angle> position;
-    private final StatusSignal<AngularVelocity> velocity;
-    private final StatusSignal<Voltage> appliedVoltage;
-    private final StatusSignal<Current> supplyCurrent;
-    private final StatusSignal<Current> torqueCurrent;
-    private final StatusSignal<Temperature> tempCelsius;
+    protected final String name;
 
-    public WedgeArmIOKrakenFOC(CANBus bus,int motorID, String name, int currentLimitAmps, boolean invert, boolean brake,
+    protected final TalonFX talon;
+    protected final SmartMotorControllerConfig motorConfig;
+    protected final SmartMotorController motor;
+    protected final ArmConfig wedgeArmConfig;
+    protected final Arm wedgeArm;
+
+    protected final double minAngleRads = SimpleMechanismConstants.Climber.wedgeMinAngleRads;
+    protected final double maxAngleRads = SimpleMechanismConstants.Climber.wedgeMaxAngleRads;
+
+    protected final StatusSignal<Voltage> appliedVoltage;
+    protected final StatusSignal<Current> supplyCurrent;
+    protected final StatusSignal<Current> torqueCurrent;
+    protected final StatusSignal<Temperature> tempCelsius;
+
+    public WedgeArmIOKrakenFOC(
+            CANBus bus,
+            int motorID,
+            String name,
+            int currentLimitAmps,
+            boolean invert,
+            boolean brake,
             double reduction) {
-        this.motor = new TalonFX(motorID, bus);
-        this.reduction = reduction;
         this.name = name;
-        config.MotorOutput.Inverted = invert ? InvertedValue.Clockwise_Positive
-                : InvertedValue.CounterClockwise_Positive;
-        config.MotorOutput.NeutralMode = brake ? NeutralModeValue.Brake : NeutralModeValue.Coast;
-        config.CurrentLimits.SupplyCurrentLimit = currentLimitAmps;
-        config.TorqueCurrent.PeakForwardTorqueCurrent = currentLimitAmps;
-        config.TorqueCurrent.PeakReverseTorqueCurrent = -currentLimitAmps;
-        config.CurrentLimits.SupplyCurrentLimitEnable = false;
-        config.CurrentLimits.StatorCurrentLimitEnable = false;
-        motor.getConfigurator().apply(config);
 
-        position = motor.getPosition();
-        velocity = motor.getVelocity();
-        appliedVoltage = motor.getMotorVoltage();
-        supplyCurrent = motor.getSupplyCurrent();
-        torqueCurrent = motor.getTorqueCurrent();
-        tempCelsius = motor.getDeviceTemp();
+        talon = new TalonFX(motorID, bus);
+
+        motorConfig = new SmartMotorControllerConfig()
+                .withControlMode(ControlMode.CLOSED_LOOP)
+                .withClosedLoopController(
+                        0.0, 0.0, 0.0, DegreesPerSecond.of(360), DegreesPerSecondPerSecond.of(720))
+                .withSimClosedLoopController(
+                        0.0, 0.0, 0.0, DegreesPerSecond.of(360), DegreesPerSecondPerSecond.of(720))
+                .withFeedforward(new ArmFeedforward(0.0, 0.0, 0.0, 0.0))
+                .withSimFeedforward(new ArmFeedforward(0.0, 0.0, 0.0, 0.0))
+                .withGearing(new MechanismGearing(GearBox.fromReductionStages(reduction)))
+                .withMotorInverted(invert)
+                .withIdleMode(brake ? MotorMode.BRAKE : MotorMode.COAST)
+                .withStatorCurrentLimit(Amps.of(currentLimitAmps))
+                .withSupplyCurrentLimit(Amps.of(currentLimitAmps))
+                .withClosedLoopRampRate(Seconds.of(0.0))
+                .withOpenLoopRampRate(Seconds.of(0.0));
+
+        motor = new TalonFXWrapper(talon, DCMotor.getKrakenX44Foc(1), motorConfig);
+
+        wedgeArmConfig = new ArmConfig(motor)
+                .withLength(Inches.of(7))
+                .withMOI(KilogramSquareMeters.of(SimpleMechanismConstants.Climber.wedgeMOI))
+                .withHardLimit(Radians.of(minAngleRads), Radians.of(maxAngleRads))
+                .withStartingPosition(Radians.of(minAngleRads));
+        wedgeArm = new Arm(wedgeArmConfig);
+
+        appliedVoltage = talon.getMotorVoltage();
+        supplyCurrent = talon.getSupplyCurrent();
+        torqueCurrent = talon.getTorqueCurrent();
+        tempCelsius = talon.getDeviceTemp();
+
         BaseStatusSignal.setUpdateFrequencyForAll(
-                50.0, position, velocity, appliedVoltage, supplyCurrent, torqueCurrent, tempCelsius);
-
-        motor.optimizeBusUtilization(0, 1.0);
+                50.0, appliedVoltage, supplyCurrent, torqueCurrent, tempCelsius);
+        talon.optimizeBusUtilization(0, 1.0);
     }
 
     @Override
-    public void setPosition(double positionRads) {
-        control.withPosition(positionRads * reduction);
-        motor.setControl(control);
-    }
-
-    @Override
-    public void setVoltage(double volts) {
-        voltageControl.withOutput(volts);
-        motor.setControl(voltageControl);
-
-    }
-
-    public void updateInputs(WedgeArmIOInputsAutoLogged inputs) {
-        inputs.connected = BaseStatusSignal.refreshAll(
-
-                position, velocity, appliedVoltage, supplyCurrent, torqueCurrent, tempCelsius)
+    public void updateInputs(WedgeArmIOInputs inputs) {
+        inputs.connected = BaseStatusSignal.refreshAll(appliedVoltage, supplyCurrent, torqueCurrent, tempCelsius)
                 .isOK();
         inputs.name = name;
-        inputs.positionRads = position.getValueAsDouble() / reduction;
-        inputs.velocityRadsPerSec = velocity.getValueAsDouble() / reduction;
+        inputs.positionRads = wedgeArm.getAngle().in(Radians);
+        inputs.velocityRadsPerSec = motor.getMechanismVelocity().in(RadiansPerSecond);
         inputs.appliedVoltage = appliedVoltage.getValueAsDouble();
         inputs.supplyCurrentAmps = supplyCurrent.getValueAsDouble();
         inputs.torqueCurrentAmps = torqueCurrent.getValueAsDouble();
         inputs.tempCelsius = tempCelsius.getValueAsDouble();
+    }
+
+    @Override
+    public void setPosition(double positionRads) {
+        double clamped = MathUtil.clamp(positionRads, minAngleRads, maxAngleRads);
+        wedgeArm.setMechanismPositionSetpoint(Radians.of(clamped));
+    }
+
+    @Override
+    public void setVoltage(double volts) {
+        wedgeArm.setVoltage(Volts.of(volts));
     }
 
     @Override
@@ -95,31 +131,23 @@ public class WedgeArmIOKrakenFOC implements WedgeArmIO {
 
     @Override
     public void setPID(double p, double i, double d, double ks, double kv) {
-        config.Slot0.kP = p;
-        config.Slot0.kI = i;
-        config.Slot0.kD = d;
-        config.Slot0.kS = ks;
-        config.Slot0.kV = kv;
-        motor.getConfigurator().apply(config);
+        motor.setFeedback(p, i, d);
+        motor.setFeedforward(ks, kv, 0.0, 0.0);
     }
 
     @Override
     public void setCurrentLimit(double amps) {
-        config.CurrentLimits.SupplyCurrentLimit = amps;
-        config.TorqueCurrent.PeakForwardTorqueCurrent = amps;
-        config.TorqueCurrent.PeakReverseTorqueCurrent = -amps;
-        motor.getConfigurator().apply(config);
+        motor.setSupplyCurrentLimit(Amps.of(amps));
+        motor.setStatorCurrentLimit(Amps.of(amps));
     }
 
     @Override
     public void setBrakeMode(boolean brake) {
-        config.MotorOutput.NeutralMode = brake ? NeutralModeValue.Brake : NeutralModeValue.Coast;
-        motor.getConfigurator().apply(config);
+        motor.setIdleMode(brake ? MotorMode.BRAKE : MotorMode.COAST);
     }
 
     @Override
     public List<SelfChecking> getSelfCheckingHardware() {
-        return List.of(new SelfCheckingTalonFX(name, motor));
+        return List.of(new SelfCheckingTalonFX(name, talon));
     }
-
 }

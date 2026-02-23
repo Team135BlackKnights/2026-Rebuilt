@@ -236,8 +236,6 @@ public abstract class SmartMotorController
    */
   public void stopClosedLoopController()
   {
-    System.out.println("Stopping closed loop controller for " + (m_config.getTelemetryName().isPresent() ? m_config.getTelemetryName().get()
-                                                                                                 : "Unnamed smart motor"));
     if (m_closedLoopControllerThread != null)
     {
       m_closedLoopControllerThread.stop();

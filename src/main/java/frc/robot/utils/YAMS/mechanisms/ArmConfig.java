@@ -61,6 +61,10 @@ public class ArmConfig
    */
   private   OptionalDouble                 moi                     = OptionalDouble.empty();
   /**
+   * Whether to apply gravity in simulation or not.
+   */
+  private   boolean                        gravity                 = false;
+  /**
    * Sim color value
    */
   private   Color8Bit                      simColor                = new Color8Bit(Color.kOrange);
@@ -117,6 +121,7 @@ public class ArmConfig
     length = cfg.length;
     weight = cfg.weight;
     moi = cfg.moi;
+    gravity = cfg.gravity;
     simColor = cfg.simColor;
     mechanismPositionConfig = cfg.mechanismPositionConfig;
     startingPosition = cfg.startingPosition;
@@ -198,7 +203,11 @@ public class ArmConfig
     this.moi = OptionalDouble.of(MOI.in(KilogramSquareMeters));
     return this;
   }
-
+  public ArmConfig withGravity(boolean gravity)
+  {
+    this.gravity = gravity;
+    return this;
+  }
   /**
    * Configure the {@link yams.mechanisms.positional.Arm}s length for simulation.
    *
@@ -381,7 +390,10 @@ public class ArmConfig
     }
     throw new IllegalArgumentException("Arm length and weight or MOI must be set!");
   }
-
+  public boolean getGravity()
+  {
+    return gravity;
+  }
   /**
    * Get the Upper hard limit of the {@link yams.mechanisms.positional.Arm}.
    *

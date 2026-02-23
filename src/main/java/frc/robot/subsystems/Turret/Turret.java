@@ -110,13 +110,13 @@ public class Turret extends SubsystemChecker {
     this.robotToTurret = robotToTurret;
     this.name = name;
 
-    azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 0.0, true);
+    azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 75.0, true);
     azimuth_kI = new LoggableTunedNumber(name + "/Azimuth/kI", 0.0, true);
-    azimuth_kD = new LoggableTunedNumber(name + "/Azimuth/kD", 0.0, true);
+    azimuth_kD = new LoggableTunedNumber(name + "/Azimuth/kD", 0.25, true);
     azimuth_kS = new LoggableTunedNumber(name + "/Azimuth/kS", 0.0, true);
     azimuth_kV = new LoggableTunedNumber(name + "/Azimuth/kV", 0.0, true);
     azimuth_kA = new LoggableTunedNumber(name + "/Azimuth/kA", 0.0, true);
-    azimuth_velMax = new LoggableTunedNumber(name + "/Azimuth/velMaxRadPerSec", 12.0, true);
+    azimuth_velMax = new LoggableTunedNumber(name + "/Azimuth/velMaxRadPerSec", 18.0, true);
     azimuth_accelMax = new LoggableTunedNumber(name + "/Azimuth/accelMaxRadPerSec2", 40.0, true);
 
     flywheel_kP = new LoggableTunedNumber(name + "/Flywheel/kP", 3, true);

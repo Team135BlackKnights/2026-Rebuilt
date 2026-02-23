@@ -206,7 +206,7 @@ public class Intake extends SubsystemChecker {
     public double getCharacterizationMeasurement() {
         return armInputs.positionRads;
     }
-    public double getCharVeloicty() {
+    public double getCharVelocity() {
         return armInputs.velocityRadsPerSec;
     }
     public boolean isAtSetpoint() {

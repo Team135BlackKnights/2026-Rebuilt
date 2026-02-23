@@ -9,6 +9,7 @@ public interface ArmIO {
     public class ArmIOInputs {
         public boolean connected = true;
         public String name = "Arm";
+        public boolean zeroing = false;
         public double positionRads = 0.0;
         public double velocityRadsPerSec = 0.0;
         public double appliedVoltage = 0.0;
