@@ -188,7 +188,6 @@ public class TalonFXWrapper extends SmartMotorController
    * Signed voltage command used by software-closed-loop simulation updates.
    */
   private       Voltage                        m_simCommandVoltage = Volts.of(0);
-
   /**
    * Create the {@link TalonFX} wrapper
    *
@@ -919,12 +918,7 @@ public class TalonFXWrapper extends SmartMotorController
       config.clearFollowers();
     }
 
-    // Unsupported options.
-    // TODO: This isn't really unsupported but needs to be adjusted to 1microsecond since the control loop runs at that speed
-    if (config.getClosedLoopControlPeriod().isPresent())
-    {
-      throw new IllegalArgumentException("[ERROR] ClosedLoopControlPeriod is not supported");
-    }
+    // Unsupported options
     if (config.getTemperatureCutoff().isPresent())
     {
       throw new IllegalArgumentException("[ERROR] TemperatureCutoff is not supported");

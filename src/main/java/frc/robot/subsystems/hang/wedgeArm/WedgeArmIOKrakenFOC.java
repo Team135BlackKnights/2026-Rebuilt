@@ -5,6 +5,7 @@ import static edu.wpi.first.units.Units.DegreesPerSecond;
 import static edu.wpi.first.units.Units.DegreesPerSecondPerSecond;
 import static edu.wpi.first.units.Units.Inches;
 import static edu.wpi.first.units.Units.KilogramSquareMeters;
+import static edu.wpi.first.units.Units.Milliseconds;
 import static edu.wpi.first.units.Units.Radians;
 import static edu.wpi.first.units.Units.RadiansPerSecond;
 import static edu.wpi.first.units.Units.Seconds;
@@ -78,14 +79,16 @@ public class WedgeArmIOKrakenFOC implements WedgeArmIO {
                 .withIdleMode(brake ? MotorMode.BRAKE : MotorMode.COAST)
                 .withStatorCurrentLimit(Amps.of(currentLimitAmps))
                 .withSupplyCurrentLimit(Amps.of(currentLimitAmps))
+                .withClosedLoopControlPeriod(Milliseconds.of(10))
                 .withClosedLoopRampRate(Seconds.of(0.0))
                 .withOpenLoopRampRate(Seconds.of(0.0));
 
         motor = new TalonFXWrapper(talon, DCMotor.getKrakenX44Foc(1), motorConfig);
 
         wedgeArmConfig = new ArmConfig(motor)
+                .withGravity(true)
                 .withLength(Inches.of(7))
-                .withMOI(KilogramSquareMeters.of(SimpleMechanismConstants.Climber.wedgeMOI))
+                .withMOI(KilogramSquareMeters.of(.0010)) //its only for sim, idc.
                 .withHardLimit(Radians.of(minAngleRads), Radians.of(maxAngleRads))
                 .withStartingPosition(Radians.of(minAngleRads));
         wedgeArm = new Arm(wedgeArmConfig);

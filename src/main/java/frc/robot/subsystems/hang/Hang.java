@@ -37,11 +37,11 @@ public class Hang extends SubsystemChecker {
     private final LoggableTunedNumber wedgeArmSetpoint = new LoggableTunedNumber("Hang/WedgeArm/SetpointRads",
             Units.degreesToRadians(72), TuningConstants.isTuningClimber);
 
-    public enum WedgeArmState {
+    public enum HangState {
         STOWED, EXTENDED, MOVING_UP, MOVING_DOWN
     }
 
-    private WedgeArmState wedgeArmState = WedgeArmState.STOWED;
+    private HangState hangState = HangState.STOWED;
 
     public Hang(Climber climber, WedgeArmIO wedgeArmIO) {
         this.climber = climber;
@@ -76,7 +76,7 @@ public class Hang extends SubsystemChecker {
         // process state
         double setWedgeAngle = 0;
         Climber.Goal climberGoal = Climber.Goal.STOPPED;
-        switch (wedgeArmState) {
+        switch (hangState) {
             case STOWED:
                 setWedgeAngle = 0;
                 climberGoal = Climber.Goal.STOPPED;
@@ -99,7 +99,9 @@ public class Hang extends SubsystemChecker {
         wedgeArmIO.setPosition(setWedgeAngle);
         climber.setGoal(climberGoal);
     }
-
+    public void setGoal(HangState state){
+        this.hangState = state;
+    }
     public double getAngle() {
         return wedgeArmInputs.positionRads;
     }

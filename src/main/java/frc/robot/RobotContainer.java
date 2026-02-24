@@ -44,6 +44,7 @@ import frc.robot.subsystems.drive.Tank.TankIOSim;
 import frc.robot.subsystems.drive.Tank.TankIOSparkBase;
 import frc.robot.subsystems.drive.Tank.TankIOTalonFX;
 import frc.robot.subsystems.hang.Hang;
+import frc.robot.subsystems.hang.Hang.HangState;
 import frc.robot.subsystems.hang.climber.Climber;
 import frc.robot.subsystems.hang.climber.ClimberIO;
 import frc.robot.subsystems.hang.climber.ClimberIOKrakenFOC;
@@ -1027,13 +1028,19 @@ public class RobotContainer {
 		aButtonDrive.whileTrue(Commands.run(() -> {
 			// flywheel go to 5000 rpm
 			//leftTurret.setCharRPM(5000);
-			//leftTurret.setCharTurretPos(2);
+			leftTurret.setCharHoodPos(Units.degreesToRadians(12));
+			rightTurret.setCharHoodPos(Units.degreesToRadians(12));
 			intake.setGoal(Goal.STOW);
+			hang.setGoal(HangState.STOWED);
 		})); // Prepare Climb
 		bButtonDrive.whileTrue(Commands.run(() -> {
 			//leftTurret.setCharRPM(3000);
 			//leftTurret.setCharTurretPos(0);
 			intake.setGoal(Goal.INTAKE_GROUND);
+			hang.setGoal(HangState.EXTENDED);
+			leftTurret.setCharHoodPos(Units.degreesToRadians(50));
+			rightTurret.setCharHoodPos(Units.degreesToRadians(50));
+
 		})); // Climb Sequence
 		yButtonDrive.toggleOnTrue(Commands.none()); // Emergency Stop Climb
 		// Intake controls

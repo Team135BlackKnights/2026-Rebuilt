@@ -237,7 +237,7 @@ public class Turret extends SubsystemChecker {
     azimuthIO.setDesiredPosition(desiredTurretRads);
   }
   public void setCharHoodPos(double radians) {
-    goal = Goal.TUNING_HOOD;
+    //goal = Goal.TUNING_HOOD;
     desiredHoodRads = radians;
     hoodIO.setPosition(desiredHoodRads);
   }
@@ -321,7 +321,7 @@ public class Turret extends SubsystemChecker {
         var params = shotCalculator.getParameters(target, robotToTurret, ShotCalculator.HUB_PROFILE);
 
         desiredTurretRads = params.turretAngle().getRadians();
-        desiredHoodRads = params.hoodAngle();
+        //desiredHoodRads = params.hoodAngle();
         desiredFlywheelRadsPerSec = aimingFlywheelSpeedRadsPerSec.get();
 
         azimuthIO.setDesiredPosition(desiredTurretRads);
@@ -336,7 +336,7 @@ public class Turret extends SubsystemChecker {
         var params = shotCalculator.getParameters(target, robotToTurret, profile);
 
         desiredTurretRads = params.turretAngle().getRadians();
-        desiredHoodRads = params.hoodAngle();
+        //desiredHoodRads = params.hoodAngle();
         desiredFlywheelRadsPerSec = params.flywheelSpeed();
 
         azimuthIO.setDesiredPosition(desiredTurretRads);
