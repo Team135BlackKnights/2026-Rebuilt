@@ -914,7 +914,7 @@ public class RobotContainer {
 				new RoughPIDCharacterization(intake, (volts) -> intake.runCharacterization(volts),
 						intake::getCharacterizationMeasurement, intake::getCharVelocity,
 						IntakeConstants.armMinAngleRads, IntakeConstants.armMaxAngleRads, Units.degreesToRadians(10),
-						Units.degreesToRadians(120), 5, 20).beforeStarting(Commands.waitSeconds(3))
+						Units.degreesToRadians(120), 3, 20).beforeStarting(Commands.waitSeconds(3))
 						.withName("Intake PID Characterization"));
 		autoChooser.addOption("Intake FeedForward Characterization", 
 				new FeedForwardCharacterization(intake, (volts) -> intake.runCharacterization(volts),

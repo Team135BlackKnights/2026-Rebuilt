@@ -81,7 +81,7 @@ public class ArmIOKrakenFOC implements ArmIO {
                 .withClosedLoopController(
                         0.0, 0.0, 0.0, DegreesPerSecond.of(999), DegreesPerSecondPerSecond.of(999))
                 .withSimClosedLoopController(
-                        0.0, 0.0, 0.0, DegreesPerSecond.of(999), DegreesPerSecondPerSecond.of(999))
+                        12, 0.0, 1.85, DegreesPerSecond.of(999), DegreesPerSecondPerSecond.of(999))
                 .withFeedforward(new ArmFeedforward(0.0, 0.0, 0.0, 0.0))
                 .withSimFeedforward(new ArmFeedforward(0.0, 0.0, 0.0, 0.0))
                 .withGearing(new MechanismGearing(GearBox.fromReductionStages(reduction)))
