@@ -5,10 +5,11 @@ import com.ctre.phoenix6.CANBus;
 import frc.robot.utils.simpleMechanisms.SimpleMechanismConstants;
 
 public class WedgeArmIOSim extends WedgeArmIOKrakenFOC {
-    public WedgeArmIOSim(CANBus bus, int motorID, String name) {
+    public WedgeArmIOSim(CANBus bus, int motorID, int servoID, String name) {
         super(
                 bus,
                 motorID,
+                servoID,
                 name,
                 SimpleMechanismConstants.Climber.wedgeArmCurrentLimit,
                 SimpleMechanismConstants.Climber.wedgeArmInverted,
@@ -17,7 +18,7 @@ public class WedgeArmIOSim extends WedgeArmIOKrakenFOC {
     }
 
     public WedgeArmIOSim() {
-        this(new CANBus("rio"), SimpleMechanismConstants.Climber.wedgeArmId, "WedgeArmIOSim");
+        this(new CANBus("rio"), SimpleMechanismConstants.Climber.wedgeArmId, SimpleMechanismConstants.Climber.wedgeArmServoId, "WedgeArmIOSim");
     }
 
     @Override

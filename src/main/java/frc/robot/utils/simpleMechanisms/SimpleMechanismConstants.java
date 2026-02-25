@@ -12,6 +12,7 @@ public class SimpleMechanismConstants {
     public static class Climber {
         public static final int climberId = 41;
         public static final int wedgeArmId = 42;
+        public static final int wedgeArmServoId = 0; // TODO
         public static final CANBus bus = Robot.rioCanBus;
         public static final String climberName = "ClimbMotor";
         public static final String wedgeArmName = "WedgeArmMotor";

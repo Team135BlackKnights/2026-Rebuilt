@@ -485,6 +485,7 @@ public class RobotContainer {
 								SimpleMechanismConstants.Climber.climbReductionToClimbRollers)),
 								new WedgeArmIOKrakenFOC(SimpleMechanismConstants.Climber.bus,
 										SimpleMechanismConstants.Climber.wedgeArmId,
+										SimpleMechanismConstants.Climber.wedgeArmServoId,
 										SimpleMechanismConstants.Climber.wedgeArmName,
 										SimpleMechanismConstants.Climber.wedgeArmCurrentLimit,
 										SimpleMechanismConstants.Climber.wedgeArmInverted, true,
@@ -1006,25 +1007,45 @@ public class RobotContainer {
 				Set.of(drivetrainS, intake));
 
 		// Start of actual DRIVER bindings
+		//Start = zero chassis
+		//Select = zero robot
+		//Left Stick Button = orient modules to circle for pushing
+		//Right Stick Button = play megolovania because why not
+		//POV-Up / BR paddle = manual turret control for aiming at hub
+		//POV-Right / TR paddle  = manual turret control for aiming at right trench
+		//POV-Down / BL paddle = manual turret control for aiming at BOTH trenches
+		//POV-Left / TL paddle = manual turret control for aiming at left trench
+		//Left Trigger = auto align THRU the trench with velocity
+		//Right Trigger = fire while aiming at target
+		//Left Bumper = hold to intake from ground
+		//Right Bumper = hold to intake with AI
+		//A button = PRESS to either extend or retract climber
+		//B button = hold to move climber down
+		//Y button = hold to move climber up
+		//X button = jackhammer intake/indexer/Vindexer
+		//Whenever the user ISN'T holding a POV/paddle, the following is true
+		// - If we're in the score area, the turrets aim at the hub
+		// - If we're in the opponent area, the turrets aim staight down to our alliance zone / neutral zone 
+		// - If we're in the neutral zone, the turrets aim at the trench we're closer to (or both if we're in the middle)
+		
+
 		startButtonDrive
 				.onTrue(new InstantCommand(() -> {
-					System.out.println("Zeroing Gyro");
+					System.out.println("Zeroing Bot");
 					drivetrainS.zeroHeading();
-					intake.zero();
 					// drivetrainS.resetPose(GeomUtil.apply(startingPose.get(), false));
 				}));
 		selectButtonDrive
 				.onTrue(new InstantCommand(() -> {
-					System.out.println("Stowing Intake/Stopping Turrets");
-					intake.setGoal(Goal.STOW);
-
+					System.out.println("Zeroing Intake/Stopping Turrets");
+					intake.zero();
 					leftTurret.setGoal(Turret.Goal.IDLE);
 					rightTurret.setGoal(Turret.Goal.IDLE);
 				}));
 		leftStickButtonDrive.onTrue(drivetrainS.orientModules(Swerve.getXOrientations()));
 		leftStickButtonDrive.onFalse(Commands.runOnce(() -> drivetrainS.stopModules(), drivetrainS));
 		rightStickButtonDrive.onTrue(new OrchestraC("megolovania").withName("Play Megolovania"));
-		// Climber controls
+		//Test Commands
 		aButtonDrive.whileTrue(Commands.run(() -> {
 			// flywheel go to 5000 rpm
 			//leftTurret.setCharRPM(5000);
@@ -1032,7 +1053,7 @@ public class RobotContainer {
 			rightTurret.setCharHoodPos(Units.degreesToRadians(12));
 			intake.setGoal(Goal.STOW);
 			hang.setGoal(HangState.STOWED);
-		})); // Prepare Climb
+		}));
 		bButtonDrive.whileTrue(Commands.run(() -> {
 			//leftTurret.setCharRPM(3000);
 			//leftTurret.setCharTurretPos(0);
@@ -1041,8 +1062,14 @@ public class RobotContainer {
 			leftTurret.setCharHoodPos(Units.degreesToRadians(50));
 			rightTurret.setCharHoodPos(Units.degreesToRadians(50));
 
-		})); // Climb Sequence
-		yButtonDrive.toggleOnTrue(Commands.none()); // Emergency Stop Climb
+		}));
+		yButtonDrive.whileTrue(Commands.run(() ->{
+
+		}));
+		// Climber controls
+		aButtonDrive.onTrue(Commands.either(Commands.runOnce(() -> hang.setGoal(HangState.EXTENDED)), Commands.runOnce(() -> hang.setGoal(HangState.STOWED)), () -> hang.getHangState() == HangState.STOWED));
+		yButtonDrive.whileTrue(Commands.run(() -> hang.setGoal(HangState.MOVING_UP)));
+		bButtonDrive.whileTrue(Commands.run(() -> hang.setGoal(HangState.MOVING_DOWN)));
 		// Intake controls
 		leftBumperDrive.and(rightTriggerDriveFull.negate()).whileTrue(
 				Commands.run(() -> intake.setGoal(Goal.INTAKE_GROUND))

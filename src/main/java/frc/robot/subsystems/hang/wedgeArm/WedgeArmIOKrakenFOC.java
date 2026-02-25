@@ -21,9 +21,11 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.ArmFeedforward;
 import edu.wpi.first.math.system.plant.DCMotor;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
+import edu.wpi.first.wpilibj.Servo;
 import frc.robot.utils.YAMS.GearBox;
 import frc.robot.utils.YAMS.MechanismGearing;
 import frc.robot.utils.YAMS.SmartMotorController;
@@ -41,6 +43,7 @@ public class WedgeArmIOKrakenFOC implements WedgeArmIO {
     protected final String name;
 
     protected final TalonFX talon;
+    protected final Servo servo;
     protected final SmartMotorControllerConfig motorConfig;
     protected final SmartMotorController motor;
     protected final ArmConfig wedgeArmConfig;
@@ -53,10 +56,17 @@ public class WedgeArmIOKrakenFOC implements WedgeArmIO {
     protected final StatusSignal<Current> supplyCurrent;
     protected final StatusSignal<Current> torqueCurrent;
     protected final StatusSignal<Temperature> tempCelsius;
-
+    protected boolean holdingServo = false;
+    protected double tolDeg = 2.0;
+    protected static final double SERVO_MOVE_DELAY_SECS = 0.25;
+    protected final Timer servoDelayTimer = new Timer();
+    protected boolean waitingForServoDelay = false;
+    protected Double pendingSetpointRads = null;
+    protected Double lastCommandedSetpointRads = null;
     public WedgeArmIOKrakenFOC(
             CANBus bus,
             int motorID,
+            int servoID,
             String name,
             int currentLimitAmps,
             boolean invert,
@@ -65,13 +75,14 @@ public class WedgeArmIOKrakenFOC implements WedgeArmIO {
         this.name = name;
 
         talon = new TalonFX(motorID, bus);
-
+        servo = new Servo(servoID);
+        servo.setBoundsMicroseconds(2500,0,0,0,500); //1500 center?
         motorConfig = new SmartMotorControllerConfig()
                 .withControlMode(ControlMode.CLOSED_LOOP)
                 .withClosedLoopController(
-                        0.0, 0.0, 0.0, DegreesPerSecond.of(360), DegreesPerSecondPerSecond.of(720))
+                        0.0, 0.0, 0.0, DegreesPerSecond.of(90), DegreesPerSecondPerSecond.of(90))
                 .withSimClosedLoopController(
-                        0.0, 0.0, 0.0, DegreesPerSecond.of(360), DegreesPerSecondPerSecond.of(720))
+                        0.0, 0.0, 0.0, DegreesPerSecond.of(90), DegreesPerSecondPerSecond.of(90))
                 .withFeedforward(new ArmFeedforward(0.0, 0.0, 0.0, 0.0))
                 .withSimFeedforward(new ArmFeedforward(0.0, 0.0, 0.0, 0.0))
                 .withGearing(new MechanismGearing(GearBox.fromReductionStages(reduction)))
@@ -107,6 +118,34 @@ public class WedgeArmIOKrakenFOC implements WedgeArmIO {
     public void updateInputs(WedgeArmIOInputs inputs) {
         inputs.connected = BaseStatusSignal.refreshAll(appliedVoltage, supplyCurrent, torqueCurrent, tempCelsius)
                 .isOK();
+
+        // If servo is locked, arm must not move at all.
+        if (servo.get() <= 0.0) {
+            wedgeArm.setVoltage(Volts.of(0.0));
+            waitingForServoDelay = false;
+        } else {
+            // Respect servo travel time before allowing arm movement.
+            if (waitingForServoDelay) {
+                wedgeArm.setVoltage(Volts.of(0.0));
+                if (servoDelayTimer.hasElapsed(SERVO_MOVE_DELAY_SECS)) {
+                    waitingForServoDelay = false;
+                }
+            }
+
+            if (!waitingForServoDelay && pendingSetpointRads != null) {
+                wedgeArm.setMechanismPositionSetpoint(Radians.of(pendingSetpointRads));
+            }
+
+            // Lock servo when arm is within tolerance of target.
+            if (pendingSetpointRads != null
+                    && Math.abs(pendingSetpointRads - wedgeArm.getAngle().in(Radians))
+                            <= Math.toRadians(tolDeg)) {
+                holdingServo = true;
+                servo.setPosition(0.0);
+                wedgeArm.setVoltage(Volts.of(0.0));
+            }
+        }
+
         inputs.name = name;
         inputs.positionRads = wedgeArm.getAngle().in(Radians);
         inputs.velocityRadsPerSec = motor.getMechanismVelocity().in(RadiansPerSecond);
@@ -114,28 +153,49 @@ public class WedgeArmIOKrakenFOC implements WedgeArmIO {
         inputs.supplyCurrentAmps = supplyCurrent.getValueAsDouble();
         inputs.torqueCurrentAmps = torqueCurrent.getValueAsDouble();
         inputs.tempCelsius = tempCelsius.getValueAsDouble();
+        inputs.servoPos = servo.getPosition();
+        inputs.servoHold = holdingServo;
     }
 
     @Override
     public void setPosition(double positionRads) {
         double clamped = MathUtil.clamp(positionRads, minAngleRads, maxAngleRads);
-        wedgeArm.setMechanismPositionSetpoint(Radians.of(clamped));
+        if (lastCommandedSetpointRads != null
+                && Math.abs(clamped - lastCommandedSetpointRads) < 1e-6) {
+            return;
+        }
+        lastCommandedSetpointRads = clamped;
+        pendingSetpointRads = clamped;
+        holdingServo = false;
+        servo.setPosition(.2);
+        waitingForServoDelay = true;
+        servoDelayTimer.restart();
+        wedgeArm.setVoltage(Volts.of(0.0));
     }
-
     @Override
     public void setVoltage(double volts) {
+        if (servo.get() <= 0.0 || waitingForServoDelay) {
+            wedgeArm.setVoltage(Volts.of(0.0));
+            return;
+        }
         wedgeArm.setVoltage(Volts.of(volts));
     }
 
     @Override
     public void stop() {
         setVoltage(0.0);
+        holdingServo = true;
+        waitingForServoDelay = false;
+        lastCommandedSetpointRads = null;
+        pendingSetpointRads = null;
+        servo.setPosition(0.0);
     }
 
     @Override
-    public void setPID(double p, double i, double d, double ks, double kv) {
+    public void setPID(double p, double i, double d, double ks, double kv,double tolDeg) {
         motor.setFeedback(p, i, d);
         motor.setFeedforward(ks, kv, 0.0, 0.0);
+        this.tolDeg = tolDeg;
     }
 
     @Override

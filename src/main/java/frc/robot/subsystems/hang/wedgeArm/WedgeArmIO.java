@@ -15,13 +15,15 @@ public interface WedgeArmIO {
         public double supplyCurrentAmps = 0.0;
         public double torqueCurrentAmps = 0.0;
         public double tempCelsius = 0.0;
+        public double servoPos = 0.0;
+        public boolean servoHold = false;
     }
 
     default void updateInputs(WedgeArmIOInputs inputs) {}
     default void setPosition(double positionRads) {}
     default void setVoltage(double volts) {}
     default void stop() {}
-    default void setPID(double p, double i, double d, double ks, double kv) {}
+    default void setPID(double p, double i, double d, double ks, double kv, double tolDeg) {}
     default void setCurrentLimit(double amps) {}
     default void setBrakeMode(boolean brake) {}
 

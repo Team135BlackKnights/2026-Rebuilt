@@ -111,9 +111,9 @@ public class Turret extends SubsystemChecker {
     this.robotToTurret = robotToTurret;
     this.name = name;
 
-    azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 75.0, true);
+    azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 0.0, true); //75
     azimuth_kI = new LoggableTunedNumber(name + "/Azimuth/kI", 0.0, true);
-    azimuth_kD = new LoggableTunedNumber(name + "/Azimuth/kD", 0.25, true);
+    azimuth_kD = new LoggableTunedNumber(name + "/Azimuth/kD", 0.0, true); //.25
     azimuth_kS = new LoggableTunedNumber(name + "/Azimuth/kS", 0.0, true);
     azimuth_kV = new LoggableTunedNumber(name + "/Azimuth/kV", 0.0, true);
     azimuth_kA = new LoggableTunedNumber(name + "/Azimuth/kA", 0.0, true);
@@ -121,15 +121,15 @@ public class Turret extends SubsystemChecker {
     azimuth_accelMax = new LoggableTunedNumber(name + "/Azimuth/accelMaxRadPerSec2", 40.0, true);
     azimuth_ramp = new LoggableTunedNumber(name + "/Azimuth/ramp", 0.25, true);
 
-    flywheel_kP = new LoggableTunedNumber(name + "/Flywheel/kP", 3, true);
+    flywheel_kP = new LoggableTunedNumber(name + "/Flywheel/kP", 0, true); //3
     flywheel_kD = new LoggableTunedNumber(name + "/Flywheel/kD", 0.0, true);
     flywheel_kS = new LoggableTunedNumber(name + "/Flywheel/kS", 0.0, true);
-    flywheel_kV = new LoggableTunedNumber(name + "/Flywheel/kV", 0.098, true);
+    flywheel_kV = new LoggableTunedNumber(name + "/Flywheel/kV", 0.0, true); //.098
     flywheel_kA = new LoggableTunedNumber(name + "/Flywheel/kA", 0.0, true);
     flywheel_ramp = new LoggableTunedNumber(name + "/Flywheel/Ramp", 0.25, true);
 
-    hood_kP = new LoggableTunedNumber(name + "/Hood/kP", 15, true);
-    hood_kD = new LoggableTunedNumber(name + "/Hood/kD", 1.5, true);
+    hood_kP = new LoggableTunedNumber(name + "/Hood/kP", 0, true); //15
+    hood_kD = new LoggableTunedNumber(name + "/Hood/kD", 0, true); //1.5
     hood_kS = new LoggableTunedNumber(name + "/Hood/kS", 0.0, true);
     hood_kV = new LoggableTunedNumber(name + "/Hood/kV", 0.0, true);
 

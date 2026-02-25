@@ -19,28 +19,31 @@ import frc.robot.subsystems.hang.wedgeArm.WedgeArmIOInputsAutoLogged;
 import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.selfCheck.SelfChecking;
 import frc.robot.utils.simpleMechanisms.SimpleMechanismConstants;
+import lombok.Getter;
 
 public class Hang extends SubsystemChecker {
     private final Climber climber;
     private final WedgeArmIO wedgeArmIO;
     private final WedgeArmIOInputsAutoLogged wedgeArmInputs = new WedgeArmIOInputsAutoLogged();
-    private final LoggableTunedNumber wedgeArmkP = new LoggableTunedNumber("Hang/WedgeArm/kP", 0.5,
+    private final LoggableTunedNumber wedgeArmkP = new LoggableTunedNumber("Hang/WedgeArm/kP", 0.0, //.5
             TuningConstants.isTuningClimber);
     private final LoggableTunedNumber wedgeArmkI = new LoggableTunedNumber("Hang/WedgeArm/kI", 0.0,
             TuningConstants.isTuningClimber);
-    private final LoggableTunedNumber wedgeArmkD = new LoggableTunedNumber("Hang/WedgeArm/kD", 0.01,
+    private final LoggableTunedNumber wedgeArmkD = new LoggableTunedNumber("Hang/WedgeArm/kD", 0.00, //.01
             TuningConstants.isTuningClimber);
     private final LoggableTunedNumber wedgeArmkS = new LoggableTunedNumber("Hang/WedgeArm/kS", 0.0,
             TuningConstants.isTuningClimber);
     private final LoggableTunedNumber wedgeArmkV = new LoggableTunedNumber("Hang/WedgeArm/kV", 0.0,
             TuningConstants.isTuningClimber);
+    private final LoggableTunedNumber wedgeArmkTolDeg = new LoggableTunedNumber("Hang/WedgeArm/tolDeg", 2.0,
+        TuningConstants.isTuningClimber);
     private final LoggableTunedNumber wedgeArmSetpoint = new LoggableTunedNumber("Hang/WedgeArm/SetpointRads",
             Units.degreesToRadians(72), TuningConstants.isTuningClimber);
 
     public enum HangState {
         STOWED, EXTENDED, MOVING_UP, MOVING_DOWN
     }
-
+    @Getter
     private HangState hangState = HangState.STOWED;
 
     public Hang(Climber climber, WedgeArmIO wedgeArmIO) {
@@ -51,9 +54,9 @@ public class Hang extends SubsystemChecker {
 
     private void applyAllPIDs() {
 
-        wedgeArmIO.setPID(
-                wedgeArmkP.get(), wedgeArmkI.get(), wedgeArmkD.get(),
-                wedgeArmkS.get(), wedgeArmkV.get());
+    wedgeArmIO.setPID(
+        wedgeArmkP.get(), wedgeArmkI.get(), wedgeArmkD.get(),
+        wedgeArmkS.get(), wedgeArmkV.get(), wedgeArmkTolDeg.get());
 
     }
 
@@ -61,10 +64,10 @@ public class Hang extends SubsystemChecker {
 
         LoggableTunedNumber.ifChanged(
                 hashCode(),
-                () -> wedgeArmIO.setPID(
-                        wedgeArmkP.get(), wedgeArmkI.get(), wedgeArmkD.get(),
-                        wedgeArmkS.get(), wedgeArmkV.get()),
-                wedgeArmkP, wedgeArmkI, wedgeArmkD, wedgeArmkS, wedgeArmkV);
+        () -> wedgeArmIO.setPID(
+            wedgeArmkP.get(), wedgeArmkI.get(), wedgeArmkD.get(),
+            wedgeArmkS.get(), wedgeArmkV.get(), wedgeArmkTolDeg.get()),
+                wedgeArmkP, wedgeArmkI, wedgeArmkD, wedgeArmkS, wedgeArmkV, wedgeArmkTolDeg);
     }
 
     @Override
@@ -87,12 +90,10 @@ public class Hang extends SubsystemChecker {
                 break;
             case MOVING_UP:
                 setWedgeAngle = wedgeArmSetpoint.get();
-                // TODO: force lock?
                 climberGoal = Climber.Goal.CLIMBING;
                 break;
             case MOVING_DOWN:
                 setWedgeAngle = wedgeArmSetpoint.get();
-                // TODO: force lock?
                 climberGoal = Climber.Goal.DROPPING;
                 break;
         }
