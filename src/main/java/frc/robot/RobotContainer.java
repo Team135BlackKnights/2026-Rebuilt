@@ -168,7 +168,7 @@ public class RobotContainer {
 	public static Toggles toggles;
 	public static LocalADStarAK pathFinder = new LocalADStarAK();
 	public static TouchboardAutoFactory touchboardAutoFactory;
-	public static Hang hang;
+	//public static Hang hang;
 	public static Kickup kickup;
 	public static Turret leftTurret;
 	public static Turret rightTurret;
@@ -475,7 +475,7 @@ public class RobotContainer {
 				// Advanced Mechs Require Toggles
 				toggles = new Toggles(new TogglesIOHardware());
 				System.out.println("REAL SETUP DONE!");
-				switch (SimpleMechanismConstants.Climber.climbMotorType) {
+				/*switch (SimpleMechanismConstants.Climber.climbMotorType) {
 					case CTRE_ON_RIO:
 					case CTRE_ON_CANIVORE:
 						hang = new Hang(new Climber(new ClimberIOKrakenFOC(SimpleMechanismConstants.Climber.climberId,
@@ -494,7 +494,7 @@ public class RobotContainer {
 					default:
 						throw new IllegalArgumentException(
 								"Unknown implementation type for climber (REV NOT SUPPORTED!), please check SimpleMechanismConstants.java!");
-				}
+				}*/
 				// Intake
 				ArmIO armIO = new ArmIOKrakenFOC(Robot.rioCanBus,
 						IntakeConstants.intakeMotorID,
@@ -528,7 +528,9 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.minTurretAngle,
 						AdvancedMechanismConstants.Turret.maxTurretAngle,
 						AdvancedMechanismConstants.Turret.leftAzimuthBigEncoderOffset,
-						AdvancedMechanismConstants.Turret.leftAzimuthSmallEncoderOffset
+						AdvancedMechanismConstants.Turret.leftAzimuthSmallEncoderOffset,
+						AdvancedMechanismConstants.Turret.enc1GearTeethLeft,
+						AdvancedMechanismConstants.Turret.enc2GearTeethLeft
 						);
 
 				FlywheelIO flywheelIOLeftTurret = new FlywheelIOKrakenFOC(
@@ -570,7 +572,9 @@ public class RobotContainer {
 								-AdvancedMechanismConstants.Turret.maxTurretAngle,
 								-AdvancedMechanismConstants.Turret.minTurretAngle,
 								AdvancedMechanismConstants.Turret.rightAzimuthBigEncoderOffset,
-								AdvancedMechanismConstants.Turret.rightAzimuthSmallEncoderOffset);
+								AdvancedMechanismConstants.Turret.rightAzimuthSmallEncoderOffset,
+								AdvancedMechanismConstants.Turret.enc1GearTeethRight,
+								AdvancedMechanismConstants.Turret.enc2GearTeethRight);
 				FlywheelIO flywheelIORightTurret = new FlywheelIOKrakenFOC(
 						Robot.rioCanBus,
 						AdvancedMechanismConstants.Turret.rightFlywheelID,
@@ -706,10 +710,10 @@ public class RobotContainer {
 								GeomUtil.poseToTransform3d(VisionConstants.cameras[2].getPose().get()),
 								() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()));
 				toggles = new Toggles(new TogglesIONetworkTables());
-				hang = new Hang(new Climber(new ClimberIOSim(DCMotor.getKrakenX44Foc(1), "Climber",
+				/*hang = new Hang(new Climber(new ClimberIOSim(DCMotor.getKrakenX44Foc(1), "Climber",
 						SimpleMechanismConstants.Climber.climbReductionToClimbRollers,
 						SimpleMechanismConstants.Climber.climbMOI)),
-						new WedgeArmIOSim());
+						new WedgeArmIOSim());*/
 				intake = new Intake(new ArmIOSim(), new Indexer(new IndexerIOSim(DCMotor.getKrakenX44Foc(1), "Indexer",
 						IntakeConstants.intakeReductionToIndexerRollers, IntakeConstants.intakeMOI)),
 						new FrontRollers(
@@ -728,7 +732,9 @@ public class RobotContainer {
 								AdvancedMechanismConstants.Turret.leftName + "Azimuth",
 								AdvancedMechanismConstants.Turret.currentLimitAzimuth,
 								AdvancedMechanismConstants.Turret.minTurretAngle,
-								AdvancedMechanismConstants.Turret.maxTurretAngle),
+								AdvancedMechanismConstants.Turret.maxTurretAngle,
+								AdvancedMechanismConstants.Turret.enc1GearTeethLeft,
+								AdvancedMechanismConstants.Turret.enc2GearTeethLeft),
 						new FlywheelIOSim(
 						Robot.rioCanBus,
 						AdvancedMechanismConstants.Turret.leftFlywheelID,
@@ -754,7 +760,9 @@ public class RobotContainer {
 								AdvancedMechanismConstants.Turret.rightName + "Azimuth",
 								AdvancedMechanismConstants.Turret.currentLimitAzimuth,
 								-AdvancedMechanismConstants.Turret.maxTurretAngle,
-								-AdvancedMechanismConstants.Turret.minTurretAngle),
+								-AdvancedMechanismConstants.Turret.minTurretAngle,
+								AdvancedMechanismConstants.Turret.enc1GearTeethRight,
+								AdvancedMechanismConstants.Turret.enc2GearTeethRight),
 						new FlywheelIOSim(
 						Robot.rioCanBus,
 						AdvancedMechanismConstants.Turret.rightFlywheelID,
@@ -818,9 +826,9 @@ public class RobotContainer {
 						}); // MUST be same number of cameras as in real robot
 				toggles = new Toggles(new TogglesIO() {
 				});
-				hang = new Hang(new Climber(new ClimberIO() {
+				/*hang = new Hang(new Climber(new ClimberIO() {
 				}), new WedgeArmIO() {
-				});
+				});*/
 				intake = new Intake(new ArmIO() {
 				}, new Indexer(new IndexerIO() {
 				}), new FrontRollers(new FrontRollersIO() {
@@ -1052,13 +1060,13 @@ public class RobotContainer {
 			leftTurret.setCharHoodPos(Units.degreesToRadians(12));
 			rightTurret.setCharHoodPos(Units.degreesToRadians(12));
 			intake.setGoal(Goal.STOW);
-			hang.setGoal(HangState.STOWED);
+			//hang.setGoal(HangState.STOWED);
 		}));
 		bButtonDrive.whileTrue(Commands.run(() -> {
 			//leftTurret.setCharRPM(3000);
 			//leftTurret.setCharTurretPos(0);
 			intake.setGoal(Goal.INTAKE_GROUND);
-			hang.setGoal(HangState.EXTENDED);
+			//hang.setGoal(HangState.EXTENDED);
 			leftTurret.setCharHoodPos(Units.degreesToRadians(50));
 			rightTurret.setCharHoodPos(Units.degreesToRadians(50));
 
@@ -1067,9 +1075,9 @@ public class RobotContainer {
 
 		}));
 		// Climber controls
-		aButtonDrive.onTrue(Commands.either(Commands.runOnce(() -> hang.setGoal(HangState.EXTENDED)), Commands.runOnce(() -> hang.setGoal(HangState.STOWED)), () -> hang.getHangState() == HangState.STOWED));
-		yButtonDrive.whileTrue(Commands.run(() -> hang.setGoal(HangState.MOVING_UP)));
-		bButtonDrive.whileTrue(Commands.run(() -> hang.setGoal(HangState.MOVING_DOWN)));
+		//aButtonDrive.onTrue(Commands.either(Commands.runOnce(() -> hang.setGoal(HangState.EXTENDED)), Commands.runOnce(() -> hang.setGoal(HangState.STOWED)), () -> hang.getHangState() == HangState.STOWED));
+		//yButtonDrive.whileTrue(Commands.run(() -> hang.setGoal(HangState.MOVING_UP)));
+		//bButtonDrive.whileTrue(Commands.run(() -> hang.setGoal(HangState.MOVING_DOWN)));
 		// Intake controls
 		leftBumperDrive.and(rightTriggerDriveFull.negate()).whileTrue(
 				Commands.run(() -> intake.setGoal(Goal.INTAKE_GROUND))
@@ -1243,7 +1251,7 @@ public class RobotContainer {
 	 */
 	public static double[] getCurrentDraw() {
 
-		return new double[] { Math.min(drivetrainS.getCurrent(), 200), hang.getCurrent(), intake.getCurrent(),
+		return new double[] { Math.min(drivetrainS.getCurrent(), 200),/*  hang.getCurrent(),*/ intake.getCurrent(),
 				leftTurret.getCurrent(), rightTurret.getCurrent() };
 		// superStructure.getCurrent() };
 	}
@@ -1266,7 +1274,7 @@ public class RobotContainer {
 				drivetrainS.getRunnableSystemCheckCommand(),
 				visionS.getSystemCheckCommand(),
 				// leds.getSystemCheckCommand(),
-				hang.getSystemCheckCommand(),
+				//hang.getSystemCheckCommand(),
 				intake.getSystemCheckCommand(),
 				leftTurret.getSystemCheckCommand(),
 				rightTurret.getSystemCheckCommand(),
@@ -1286,7 +1294,7 @@ public class RobotContainer {
 
 	public static HashMap<String, Double> getAllTemps() {
 		// List of HashMaps
-		List<HashMap<String, Double>> maps = List.of(drivetrainS.getTemps(), visionS.getTemps(), hang.getTemps(),
+		List<HashMap<String, Double>> maps = List.of(drivetrainS.getTemps(), visionS.getTemps(), /*hang.getTemps(),*/
 				intake.getTemps(), leftTurret.getTemps(), rightTurret.getTemps(), kickup.getTemps());
 		// Combine all maps
 		HashMap<String, Double> combinedMap = combineMaps(maps);
@@ -1302,7 +1310,7 @@ public class RobotContainer {
 		return drivetrainS.getTrueSystemStatus() == SubsystemChecker.SystemStatus.OK
 				// && leds.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& visionS.getSystemStatus() == SubsystemChecker.SystemStatus.OK
-				&& hang.getSystemStatus() == SubsystemChecker.SystemStatus.OK
+				//&& hang.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& intake.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& leftTurret.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& rightTurret.getSystemStatus() == SubsystemChecker.SystemStatus.OK
@@ -1314,7 +1322,7 @@ public class RobotContainer {
 
 		Collection<ParentDevice> devices = new ArrayList<>();
 		devices.addAll(drivetrainS.getDriveOrchestraDevices());
-		devices.addAll(hang.getOrchestraDevices());
+		//devices.addAll(hang.getOrchestraDevices());
 		devices.addAll(intake.getOrchestraDevices());
 		devices.addAll(kickup.getOrchestraDevices());
 		devices.addAll(leftTurret.getOrchestraDevices());
@@ -1324,7 +1332,7 @@ public class RobotContainer {
 
 	public static SubsystemChecker[] getAllSubsystems() {
 
-		SubsystemChecker[] subsystems = new SubsystemChecker[7];
+		SubsystemChecker[] subsystems = new SubsystemChecker[6];
 		switch (DriveConstants.driveType) {
 			case SWERVE:
 				subsystems[0] = (Swerve) drivetrainS;
@@ -1337,11 +1345,11 @@ public class RobotContainer {
 				break;
 		}
 		subsystems[1] = visionS;
-		subsystems[2] = hang;
-		subsystems[3] = intake;
-		subsystems[4] = leftTurret;
-		subsystems[5] = rightTurret;
-		subsystems[6] = kickup;
+		//subsystems[2] = hang;
+		subsystems[2] = intake;
+		subsystems[3] = leftTurret;
+		subsystems[4] = rightTurret;
+		subsystems[5] = kickup;
 		return subsystems;
 	}
 

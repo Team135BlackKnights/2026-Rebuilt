@@ -16,13 +16,15 @@ public class AdvancedMechanismConstants {
                 public static final int currentLimitKickup = 50;
                 public static final int turretTeeth = 77;
                 public static final int idlerTeeth = 10;
-                public static final double motorRadPerTurretRad = 36.0 / 10.0 * 77.0 / 10.0;// motor to turret ratio
+                public static final double motorRadPerTurretRad = 35.0 / 10.0 * 77.0 / 10.0;// motor to turret ratio
                 public static final double flywheelRatio = 1.0 / 1.0;
                 public static final double hoodMotorToHoodEncoderRatio = 50.0 / 12.0;
                 public static final double hoodEncoderToHoodArmRatio = 19.0 / 15.0;
                 public static final double kickerRatio = 5.0 / 1.0;
-                public static final double enc1GearTeeth = 36;
-                public static final double enc2GearTeeth = 34;
+                public static final double enc1GearTeethRight = 36;
+                public static final double enc1GearTeethLeft = 34;
+                public static final double enc2GearTeethRight = 34;
+                public static final double enc2GearTeethLeft = 36;
                 public static final DCMotor azimuthMotor = DCMotor.getKrakenX44Foc(1);
                 public static final DCMotor flywheelMotor = DCMotor.getKrakenX44Foc(1);
                 public static final DCMotor hoodMotor = DCMotor.getMinion(1);
@@ -47,8 +49,8 @@ public class AdvancedMechanismConstants {
                 public static final int leftKickupID = 28;
                 public static final String leftName = "LeftTurret";
                 public static final Transform2d robotToLeftTurretHoleCenter = new Transform2d(-.163, -.227, new Rotation2d());
-                public static final double leftAzimuthBigEncoderOffset = -0.404541;
-                public static final double leftAzimuthSmallEncoderOffset = .088867;
+                public static final double leftAzimuthBigEncoderOffset = .2841796875;
+                public static final double leftAzimuthSmallEncoderOffset = .201904296875;
                 public static final double leftHoodEncoderOffset = 0.0;
                 // Right Turret
                 public static final int rightAzimuthID = 29;
@@ -60,8 +62,8 @@ public class AdvancedMechanismConstants {
                 public static final int rightKickupID = 35;
                 public static final String rightName = "RightTurret";
                 public static final Transform2d robotToRightTurretHoleCenter = new Transform2d(-.163, .227, new Rotation2d());
-                public static final double rightAzimuthBigEncoderOffset = 0.0;
-                public static final double rightAzimuthSmallEncoderOffset = 0.0;
+                public static final double rightAzimuthBigEncoderOffset = -.252197265625;
+                public static final double rightAzimuthSmallEncoderOffset = -.1323241875;
                 public static final double rightHoodEncoderOffset = 0.0;
         }
 }

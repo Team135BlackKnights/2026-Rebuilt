@@ -7,7 +7,7 @@ public class IntakeConstants {
     public static final int intakeMotorID = 40; 
     public static final int indexerMotorID = 41;
     public static final int frontRollersMotorID = 42;
-    public static final int intakeCurrentLimit = 30; // amps
+    public static final int intakeCurrentLimit = 80; // amps
     public static final int indexerCurrentLimit = 30; // amps
     public static final int frontRollersCurrentLimit = 30; // amps
     public static final boolean indexerInverted = true;

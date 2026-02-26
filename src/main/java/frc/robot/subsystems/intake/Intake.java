@@ -26,18 +26,18 @@ import lombok.Getter;
 public class Intake extends SubsystemChecker {
 
     // Tuning
-    private static final LoggableTunedNumber arm_kP = new LoggableTunedNumber("Intake/Arm/kP", 12,
+    private static final LoggableTunedNumber arm_kP = new LoggableTunedNumber("Intake/Arm/kP", 10,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_kI = new LoggableTunedNumber("Intake/Arm/kI", 0.0,
             TuningConstants.isTuningIntake);
-    private static final LoggableTunedNumber arm_kD = new LoggableTunedNumber("Intake/Arm/kD", 1.85,
+    private static final LoggableTunedNumber arm_kD = new LoggableTunedNumber("Intake/Arm/kD", 1,
             TuningConstants.isTuningIntake);
-    private static final LoggableTunedNumber arm_kS = new LoggableTunedNumber("Intake/Arm/kS", 0.0,
+    private static final LoggableTunedNumber arm_kS = new LoggableTunedNumber("Intake/Arm/kS", 1.7,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_kV = new LoggableTunedNumber("Intake/Arm/kV", 0.0,
             TuningConstants.isTuningIntake);
 
-    private static final LoggableTunedNumber arm_kG = new LoggableTunedNumber("Intake/Arm/kG", 0,
+    private static final LoggableTunedNumber arm_kG = new LoggableTunedNumber("Intake/Arm/kG", 3,
             TuningConstants.isTuningIntake);
 
     private static final LoggableTunedNumber arm_motionSpeed = new LoggableTunedNumber("Intake/Arm/MotionCruiseRadPerSec",999,
@@ -48,14 +48,14 @@ public class Intake extends SubsystemChecker {
             ("Intake/Arm/MotionJerkRadPerSec3", 999, TuningConstants.isTuningIntake);
     // Setpoints
     private static final LoggableTunedNumber angle_stow = new LoggableTunedNumber("Intake/Setpoints/StowRads",
-            Math.toRadians(120), TuningConstants.isTuningIntake);
+            1.25, TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber angle_ground = new LoggableTunedNumber("Intake/Setpoints/GroundRads", 0.0,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber time_jackhammer = new LoggableTunedNumber("Intake/JackhammerTimeSecs",
             .25, TuningConstants.isTuningIntake);
 
     // Tolerance
-    private static final LoggableTunedNumber arm_tolerance = new LoggableTunedNumber("Intake/ToleranceRads", 0.05,
+    private static final LoggableTunedNumber arm_tolerance = new LoggableTunedNumber("Intake/ToleranceRads", 0.2,
             TuningConstants.isTuningIntake);
 
     // IO

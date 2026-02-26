@@ -72,6 +72,8 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
     private final String name;
     private final double minAngle;
     private final double maxAngle;
+    private final double enc1GearTeeth;
+    private final double enc2GearTeeth;
 
     private double lastTurretAngleRads = 0.0;
 
@@ -87,17 +89,22 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
             double minTurretAngle,
             double maxTurretAngle,
             double encoder1Offset,
-            double encoder2Offset) {
+            double encoder2Offset,
+            double enc1GearTeeth,
+            double enc2GearTeeth) {
 
         this.name = name;
         this.minAngle = minTurretAngle;
         this.maxAngle = maxTurretAngle;
+        this.enc1GearTeeth = enc1GearTeeth;
+        this.enc2GearTeeth = enc2GearTeeth;
 
         double turretToIdlerRatio = (double) AdvancedMechanismConstants.Turret.turretTeeth
                 / (double) AdvancedMechanismConstants.Turret.idlerTeeth;
+        boolean rightTurret = canCoderBigID == 30;
         double encoder1Ratio = -turretToIdlerRatio;
         double encoder2Ratio = turretToIdlerRatio
-                * (AdvancedMechanismConstants.Turret.enc1GearTeeth / AdvancedMechanismConstants.Turret.enc2GearTeeth);
+                * (enc1GearTeeth / enc2GearTeeth);
 
         talon = new TalonFX(ID, bus);
         canCoderBig = new CANcoder(canCoderBigID, bus);
@@ -111,7 +118,6 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
         encoder1Config.MagnetSensor.MagnetOffset = encoder1Offset;
         encoder2Config.MagnetSensor.MagnetOffset = encoder2Offset;
-
         encoder1Config.MagnetSensor.SensorDirection = SensorDirectionValue.Clockwise_Positive;
         encoder2Config.MagnetSensor.SensorDirection = SensorDirectionValue.Clockwise_Positive;
 
@@ -128,7 +134,8 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
                 .withSimFeedforward(new SimpleMotorFeedforward(0.0, 0.0, 0.0))
                 .withGearing(new MechanismGearing(
                         GearBox.fromReductionStages(AdvancedMechanismConstants.Turret.motorRadPerTurretRad)))
-                .withIdleMode(MotorMode.COAST)
+                .withIdleMode(MotorMode.BRAKE)
+                .withMotorInverted(rightTurret)
                 .withStatorCurrentLimit(Amps.of(currentLimitAmps))
                 .withSupplyCurrentLimit(Amps.of(currentLimitAmps))
                 .withClosedLoopRampRate(Seconds.of(0.0))
@@ -203,7 +210,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
         Optional<Angle> solvedAngle = easyCrt.getAngleOptional();
         double fallbackSolvedRad = TurretMathematics.TurretMath.turretAngleFromEncodersRad(
-                bigRads, smallRads, turretRef, Units.degreesToRadians(8.0));
+                bigRads, smallRads, turretRef, Units.degreesToRadians(8.0), enc1GearTeeth, enc2GearTeeth);
         boolean usedFallbackSolve = false;
         double solvedRad = Double.NaN;
         if (solvedAngle.isPresent()) {
@@ -229,10 +236,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
             motorPosRadAtLock = mechanismPosRad;
         } else if (haveLock) {
             lastTurretAngleRads = turretRef;
-        } else {
-            lastTurretAngleRads = mechanismPosRad;
         }
-
         inputs.turretPositionRads = lastTurretAngleRads;
         inputs.turretVelocityRadsPerSec = motorController.getMechanismVelocity().in(RadiansPerSecond);
     }
@@ -247,6 +251,10 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
         double mechanismPosRad = motorController.getMechanismPosition().in(Radians);
         double mechanismTargetRad = mechanismPosRad + (desiredTurret - lastTurretAngleRads);
+        if (!motorController.isClosedLoopRunning()){
+            motorController.startClosedLoopController();
+            System.out.println("starting closed loop for azimuth!");
+        }
         motorController.setPosition(Radians.of(mechanismTargetRad));
     }
 

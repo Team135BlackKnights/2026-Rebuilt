@@ -108,6 +108,10 @@ public class FlywheelIOKrakenFOC implements FlywheelIO {
     public void setVelocity(double velocityRadsPerSec) {
         double motorVelocityRadsPerSec = velocityRadsPerSec * reduction;
         LinearVelocity linearSpeed = MetersPerSecond.of(motorVelocityRadsPerSec *Units.inchesToMeters(2));
+        if (!talonController.isClosedLoopRunning()){
+            talonController.startClosedLoopController();
+            System.out.println("starting closed loop for flywheel!");
+        }
         shooter.setMeasurementVelocitySetpoint(linearSpeed);
 
     }

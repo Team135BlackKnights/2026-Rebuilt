@@ -12,22 +12,7 @@ public class TurretMathematics {
         (double) AdvancedMechanismConstants.Turret.turretTeeth
             / (double) AdvancedMechanismConstants.Turret.idlerTeeth; // 77/10
 
-    private static final double ENC1_TO_ENC2_RATIO =
-        (double) AdvancedMechanismConstants.Turret.enc1GearTeeth
-            / (double) AdvancedMechanismConstants.Turret.enc2GearTeeth; // 36/34
-
     private static final double ENC1_MOD_SPAN = TWO_PI / TURRET_RATIO; // turret radians per enc1 wrap
-
-    // With 36/34 -> gcd=2 -> 17 enc1 cycles for repeat
-    private static final double GCD = greatestCommonDivisor(
-        AdvancedMechanismConstants.Turret.enc1GearTeeth,
-        AdvancedMechanismConstants.Turret.enc2GearTeeth);
-    private static final int ENC1_CYCLES_FOR_PERIOD =
-        (int) Math.round(AdvancedMechanismConstants.Turret.enc2GearTeeth / GCD);
-
-    private static final double TURRET_PERIOD = ENC1_CYCLES_FOR_PERIOD * ENC1_MOD_SPAN; // ~13.866 rad
-    private static final int MAX_ITERATIONS =
-        (int) Math.ceil(TURRET_PERIOD / ENC1_MOD_SPAN) + 4;
 
     private TurretMath() {}
 public static double motorSetpointForTurretAngle(
@@ -52,8 +37,8 @@ public static double motorSetpointForTurretAngle(
 
     return motorPositionRad + turretDelta * AdvancedMechanismConstants.Turret.motorRadPerTurretRad;
 }
-    public static double turretAngleFromEncodersRad(double enc1Rad0to2pi, double enc2Rad0to2pi, double tolRad) {
-      return turretAngleFromEncodersRad(enc1Rad0to2pi, enc2Rad0to2pi, 0.0, tolRad);
+    public static double turretAngleFromEncodersRad(double enc1Rad0to2pi, double enc2Rad0to2pi, double tolRad, double enc1GearTeeth, double enc2GearTeeth) {
+      return turretAngleFromEncodersRad(enc1Rad0to2pi, enc2Rad0to2pi, 0.0, tolRad, enc1GearTeeth, enc2GearTeeth);
     }
 
     /**
@@ -64,25 +49,34 @@ public static double motorSetpointForTurretAngle(
      * @param enc2Rad0to2pi wrapped 0..2π absolute
      * @param referenceTurretRad continuous-ish reference (motor-delta based is ideal)
      * @param tolRad tolerance
+     * @param enc1GearTeeth tooth count for encoder 1 gear
+     * @param enc2GearTeeth tooth count for encoder 2 gear
      */
     public static double turretAngleFromEncodersRad(
         double enc1Rad0to2pi,
         double enc2Rad0to2pi,
         double referenceTurretRad,
-        double tolRad
+        double tolRad,
+        double enc1GearTeeth,
+        double enc2GearTeeth
     ) {
+      final double enc1ToEnc2Ratio = enc1GearTeeth / enc2GearTeeth;
+      final double gcd = greatestCommonDivisor(enc1GearTeeth, enc2GearTeeth);
+      final int enc1CyclesForPeriod = (int) Math.round(enc2GearTeeth / gcd);
+      final double turretPeriod = enc1CyclesForPeriod * ENC1_MOD_SPAN;
+      final int maxIterations = (int) Math.ceil(turretPeriod / ENC1_MOD_SPAN) + 4;
       final double enc1 = wrapToTwoPi(enc1Rad0to2pi);
       final double enc2 = wrapToTwoPi(enc2Rad0to2pi);
 
       // Center reference into (-period/2, +period/2] so distance comparisons are stable
-      final double ref = centerToPeriod(referenceTurretRad, TURRET_PERIOD);
+      final double ref = centerToPeriod(referenceTurretRad, turretPeriod);
 
       // Try both enc2 signs (because two meshes usually makes enc2 same direction as turret,
       // but SensorDirection / mounting can flip it)
       Candidate best = null;
 
       for (int enc2Sign : new int[] { +1, -1 }) {
-        final double combined = enc2Sign * (TURRET_RATIO * ENC1_TO_ENC2_RATIO);
+        final double combined = enc2Sign * (TURRET_RATIO * enc1ToEnc2Ratio);
 
         // Estimate phases from reference:
         // enc1 ≈ wrap(-TURRET_RATIO*t + phi1) -> phi1 ≈ wrap(enc1 + TURRET_RATIO*ref)
@@ -95,7 +89,7 @@ public static double motorSetpointForTurretAngle(
         // -TURRET_RATIO*t + phi1 = enc1 + 2πm -> t = (phi1 - enc1 + 2πm)/TURRET_RATIO
         final double base = mod((phi1 - enc1) / TURRET_RATIO, ENC1_MOD_SPAN);
 
-        Candidate c = solveCandidates(base, enc2, phi2, combined, ref, tolRad);
+        Candidate c = solveCandidates(base, enc2, phi2, combined, ref, tolRad, turretPeriod, maxIterations);
         if (c != null && (best == null || c.cost < best.cost)) best = c;
       }
 
@@ -108,18 +102,20 @@ public static double motorSetpointForTurretAngle(
         double phi2,
         double combined,
         double ref,
-        double tolRad
+        double tolRad,
+        double turretPeriod,
+        int maxIterations
     ) {
       double bestTurret = Double.NaN;
       double bestErr = Double.POSITIVE_INFINITY;
       double bestDist = Double.POSITIVE_INFINITY;
 
-      for (int k = 0; k < MAX_ITERATIONS; k++) {
+      for (int k = 0; k < maxIterations; k++) {
         double candidate = base + k * ENC1_MOD_SPAN;
-        if (candidate > TURRET_PERIOD + tolRad) break;
+        if (candidate > turretPeriod + tolRad) break;
 
         // shift to around 0
-        double t = (candidate > TURRET_PERIOD / 2.0) ? candidate - TURRET_PERIOD : candidate;
+        double t = (candidate > turretPeriod / 2.0) ? candidate - turretPeriod : candidate;
 
         double pred2 = wrapToTwoPi(combined * t + phi2);
         double err2 = Math.abs(wrapToPi(pred2 - enc2));

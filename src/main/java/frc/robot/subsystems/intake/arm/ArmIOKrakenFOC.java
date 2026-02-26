@@ -1,8 +1,6 @@
 package frc.robot.subsystems.intake.arm;
 
 import static edu.wpi.first.units.Units.Amps;
-import static edu.wpi.first.units.Units.DegreesPerSecond;
-import static edu.wpi.first.units.Units.DegreesPerSecondPerSecond;
 import static edu.wpi.first.units.Units.Inches;
 import static edu.wpi.first.units.Units.KilogramSquareMeters;
 import static edu.wpi.first.units.Units.Radians;
@@ -13,6 +11,8 @@ import static edu.wpi.first.units.Units.Volts;
 
 import java.util.List;
 
+import org.littletonrobotics.junction.Logger;
+
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusSignal;
@@ -21,6 +21,8 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.ArmFeedforward;
 import edu.wpi.first.math.system.plant.DCMotor;
+import edu.wpi.first.units.measure.Angle;
+import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
@@ -40,8 +42,8 @@ import frc.robot.utils.selfCheck.drive.SelfCheckingTalonFX;
 
 public class ArmIOKrakenFOC implements ArmIO {
     private static final double ZERO_HOMING_VOLTAGE = -2.0;
-    private static final double ZERO_SPIKE_CURRENT_AMPS = 20.0;
-    private static final double ZERO_SPIKE_HOLD_TIME_SEC = 0.15;
+    private static final double ZERO_SPIKE_CURRENT_AMPS = 35.0;
+    private static final double ZERO_SPIKE_HOLD_TIME_SEC = 0.1;
 
     protected final String name;
 
@@ -53,7 +55,8 @@ public class ArmIOKrakenFOC implements ArmIO {
 
     protected final double minAngleRads = IntakeConstants.armMinAngleRads;
     protected final double maxAngleRads = IntakeConstants.armMaxAngleRads;
-
+    protected final StatusSignal<Angle> posAngle;
+    protected final StatusSignal<AngularVelocity> velAngle;
     protected final StatusSignal<Voltage> appliedVoltage;
     protected final StatusSignal<Current> supplyCurrent;
     protected final StatusSignal<Current> statorCurrent;
@@ -79,9 +82,9 @@ public class ArmIOKrakenFOC implements ArmIO {
         motorConfig = new SmartMotorControllerConfig()
                 .withControlMode(ControlMode.CLOSED_LOOP)
                 .withClosedLoopController(
-                        0.0, 0.0, 0.0, DegreesPerSecond.of(999), DegreesPerSecondPerSecond.of(999))
+                        0.0, 0.0, 0.0, RadiansPerSecond.of(1), RadiansPerSecondPerSecond.of(2))
                 .withSimClosedLoopController(
-                        12, 0.0, 1.85, DegreesPerSecond.of(999), DegreesPerSecondPerSecond.of(999))
+                        12, 0.0, 1.85, RadiansPerSecond.of(1), RadiansPerSecondPerSecond.of(2))
                 .withFeedforward(new ArmFeedforward(0.0, 0.0, 0.0, 0.0))
                 .withSimFeedforward(new ArmFeedforward(0.0, 0.0, 0.0, 0.0))
                 .withGearing(new MechanismGearing(GearBox.fromReductionStages(reduction)))
@@ -101,7 +104,9 @@ public class ArmIOKrakenFOC implements ArmIO {
                 .withHardLimit(Radians.of(minAngleRads), Radians.of(maxAngleRads))
                 .withStartingPosition(Radians.of(IntakeConstants.armMaxAngleRads));
         arm = new Arm(armConfig);
-
+            
+        posAngle = talon.getPosition();
+        velAngle = talon.getVelocity();
         appliedVoltage = talon.getMotorVoltage();
         supplyCurrent = talon.getSupplyCurrent();
         statorCurrent = talon.getStatorCurrent();
@@ -109,7 +114,7 @@ public class ArmIOKrakenFOC implements ArmIO {
         tempCelsius = talon.getDeviceTemp();
 
         BaseStatusSignal.setUpdateFrequencyForAll(
-                50.0, appliedVoltage, supplyCurrent, statorCurrent, torqueCurrent, tempCelsius);
+                50.0, posAngle, velAngle, appliedVoltage, supplyCurrent, statorCurrent, torqueCurrent, tempCelsius);
         talon.optimizeBusUtilization(0, 1.0);
 
         zero();
@@ -123,18 +128,25 @@ public class ArmIOKrakenFOC implements ArmIO {
                 .isOK();
         inputs.name = name;
         inputs.zeroing = zeroingActive;
-        inputs.positionRads = arm.getAngle().in(Radians);
+        inputs.positionRads = motor.getMechanismPosition().in(Radians);
         inputs.velocityRadsPerSec = motor.getMechanismVelocity().in(RadiansPerSecond);
         inputs.appliedVoltage = appliedVoltage.getValueAsDouble();
         inputs.supplyCurrentAmps = supplyCurrent.getValueAsDouble();
         inputs.torqueCurrentAmps = torqueCurrent.getValueAsDouble();
         inputs.tempCelsius = tempCelsius.getValueAsDouble();
+        Logger.recordOutput("Intake/ZERO", openLoop);
     }
 
     @Override
     public void setPosition(double positionRads) {
-        if (zeroingActive || openLoop) {
+        if (zeroingActive) {
             return;
+        }
+
+        //ensure the arm is started
+        if (!motor.isClosedLoopRunning()){
+            motor.startClosedLoopController();
+            System.out.println("starting closed loop for intake!");
         }
         double clamped = MathUtil.clamp(positionRads, minAngleRads, maxAngleRads);
         arm.setMechanismPositionSetpoint(Radians.of(clamped));
@@ -142,10 +154,11 @@ public class ArmIOKrakenFOC implements ArmIO {
 
     @Override
     public void setVoltage(double volts) {
-        if (zeroingActive) {
+        /*if (zeroingActive) {
             return;
-        }
+        }*/
         openLoop = true;
+        motor.stopClosedLoopController();
         arm.setVolts(volts);
     }
 
@@ -211,9 +224,10 @@ public class ArmIOKrakenFOC implements ArmIO {
 
         if (!Double.isNaN(zeroSpikeStartTimeSec) && (now - zeroSpikeStartTimeSec) >= ZERO_SPIKE_HOLD_TIME_SEC) {
             motor.setEncoderPosition(Radians.zero());
-            motor.setVoltage(Volts.zero());
+            //motor.setVoltage(Volts.zero());
             zeroingActive = false;
             zeroSpikeStartTimeSec = Double.NaN;
+            openLoop = false;
         }
     }
 }

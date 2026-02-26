@@ -21,6 +21,8 @@ import com.ctre.phoenix6.hardware.TalonFXS;
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.ArmFeedforward;
 import edu.wpi.first.math.system.plant.DCMotor;
+import edu.wpi.first.units.measure.Angle;
+import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
@@ -52,6 +54,8 @@ public class HoodIOKrakenFOC implements HoodIO {
     private final double maxAngleRads;
 
     private final StatusSignal<Voltage> appliedVoltage;
+    private final StatusSignal<Angle> posAngle;
+    private final StatusSignal<AngularVelocity> velAngle;
     private final StatusSignal<Current> supplyCurrent;
     private final StatusSignal<Current> torqueCurrent;
     private final StatusSignal<Temperature> tempCelsius;
@@ -115,14 +119,15 @@ public class HoodIOKrakenFOC implements HoodIO {
         ;
 
         hood = new Arm(hoodConfig);
-
+        posAngle = talon.getPosition();
+        velAngle = talon.getVelocity();
         appliedVoltage = talon.getMotorVoltage();
         supplyCurrent = talon.getSupplyCurrent();
         torqueCurrent = talon.getTorqueCurrent();
         tempCelsius = talon.getDeviceTemp();
 
         BaseStatusSignal.setUpdateFrequencyForAll(
-                50.0, appliedVoltage, supplyCurrent, torqueCurrent, tempCelsius);
+                50.0, posAngle, velAngle, appliedVoltage, supplyCurrent, torqueCurrent, tempCelsius);
         talon.optimizeBusUtilization(0, 1.0);
     }
 
@@ -144,6 +149,10 @@ public class HoodIOKrakenFOC implements HoodIO {
     @Override
     public void setPosition(double positionRads) {
         double clamped = MathUtil.clamp(positionRads, minAngleRads, maxAngleRads);
+        if (!motor.isClosedLoopRunning()){
+            motor.startClosedLoopController();
+            System.out.println("starting closed loop for azimuth!");
+        }
         hood.setMechanismPositionSetpoint(Radians.of(clamped));
     }
 

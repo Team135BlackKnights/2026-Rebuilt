@@ -51,9 +51,9 @@ public class AzimuthIOSim implements AzimuthIO {
 
     private static final double TURRET_RATIO = (double) AdvancedMechanismConstants.Turret.turretTeeth
             / (double) AdvancedMechanismConstants.Turret.idlerTeeth;
-    private static final double ENC1_TO_ENC2_RATIO = AdvancedMechanismConstants.Turret.enc1GearTeeth
-            / AdvancedMechanismConstants.Turret.enc2GearTeeth;
-    private static final double COMBINED_RATIO = TURRET_RATIO * ENC1_TO_ENC2_RATIO;
+
+    private final double enc1ToEnc2Ratio;
+    private final double combinedRatio;
 
     private final TalonFX talon;
     private final CANcoder canCoderBig;
@@ -80,6 +80,8 @@ public class AzimuthIOSim implements AzimuthIO {
     private final String name;
     private final double minAngleRad;
     private final double maxAngleRad;
+    private final double enc1GearTeeth;
+    private final double enc2GearTeeth;
 
     private double lastTurretAngleRads = 0.0;
 
@@ -93,14 +95,20 @@ public class AzimuthIOSim implements AzimuthIO {
             String name,
             int currentLimitAmps,
             double minTurretAngleRad,
-            double maxTurretAngleRad) {
+            double maxTurretAngleRad,
+            double enc1GearTeeth,
+            double enc2GearTeeth) {
         this.name = name;
         this.minAngleRad = minTurretAngleRad;
         this.maxAngleRad = maxTurretAngleRad;
+        this.enc1GearTeeth = enc1GearTeeth;
+        this.enc2GearTeeth = enc2GearTeeth;
+        this.enc1ToEnc2Ratio = enc1GearTeeth / enc2GearTeeth;
+        this.combinedRatio = TURRET_RATIO * enc1ToEnc2Ratio;
 
         double encoder1Ratio = -TURRET_RATIO;
         double encoder2Ratio = TURRET_RATIO
-                * (AdvancedMechanismConstants.Turret.enc1GearTeeth / AdvancedMechanismConstants.Turret.enc2GearTeeth);
+                * (enc1GearTeeth / enc2GearTeeth);
 
         talon = new TalonFX(motorID, bus);
         canCoderBig = new CANcoder(canCoderBigID, bus);
@@ -183,7 +191,9 @@ public class AzimuthIOSim implements AzimuthIO {
                 "AzimuthIOSim",
                 AdvancedMechanismConstants.Turret.currentLimitAzimuth,
                 minTurretAngleRad,
-                maxTurretAngleRad);
+                maxTurretAngleRad,
+                AdvancedMechanismConstants.Turret.enc1GearTeethRight,
+                AdvancedMechanismConstants.Turret.enc2GearTeethRight);
     }
 
     @Override
@@ -194,9 +204,9 @@ public class AzimuthIOSim implements AzimuthIO {
         double turretVelRadPerSec = motorController.getMechanismVelocity().in(RadiansPerSecond);
 
         double bigPositionRot = (TURRET_RATIO * turretPosRad) / (2.0 * Math.PI);
-        double smallPositionRot = (-COMBINED_RATIO * turretPosRad) / (2.0 * Math.PI);
+        double smallPositionRot = (-combinedRatio * turretPosRad) / (2.0 * Math.PI);
         double bigVelocityRotPerSec = (TURRET_RATIO * turretVelRadPerSec) / (2.0 * Math.PI);
-        double smallVelocityRotPerSec = (-COMBINED_RATIO * turretVelRadPerSec) / (2.0 * Math.PI);
+        double smallVelocityRotPerSec = (-combinedRatio * turretVelRadPerSec) / (2.0 * Math.PI);
 
         var bigSim = canCoderBig.getSimState();
         bigSim.setSupplyVoltage(RoboRioSim.getVInVoltage());
@@ -240,7 +250,7 @@ public class AzimuthIOSim implements AzimuthIO {
 
         Optional<Angle> solved = easyCrt.getAngleOptional();
         double fallbackSolvedRad = TurretMathematics.TurretMath.turretAngleFromEncodersRad(
-                bigRads, smallRads, turretRef, Units.degreesToRadians(8.0));
+                bigRads, smallRads, turretRef, Units.degreesToRadians(8.0), enc1GearTeeth, enc2GearTeeth);
         boolean usedFallbackSolve = false;
         double solvedRad = Double.NaN;
         if (solved.isPresent()) {

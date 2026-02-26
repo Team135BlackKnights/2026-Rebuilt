@@ -101,7 +101,7 @@ public class TalonFXWrapper extends SmartMotorController
   /**
    * Software-Controlled PID control request
    */
-  private final VoltageOut m_softwareControlledReq =  new VoltageOut(0).withEnableFOC(true);
+  private final VoltageOut m_softwareControlledReq =  new VoltageOut(0).withEnableFOC(false);
   /**
    * Velocity control request
    */
@@ -459,16 +459,20 @@ public class TalonFXWrapper extends SmartMotorController
     setpointPosition = Optional.ofNullable(angle);
     if (angle != null && !usesSoftwareClosedLoopVoltageControl())
     {
+      System.out.println("Using TalonFX");
       switch (m_positionReq.getName())
       {
         case "MotionMagicExpoVoltage":
+          System.out.println("Using Expo");
           m_talonfx.setControl(m_expoPositionReq.withPosition(angle));
           break;
         case "MotionMagicVoltage":
+          System.out.println("using magic");
           m_talonfx.setControl(m_trapPositionReq.withPosition(angle));
           break;
         case "PositionVoltage":
         default:
+          System.out.println("using pso");
           m_talonfx.setControl(m_simplePositionReq.withPosition(angle));
           break;
       }

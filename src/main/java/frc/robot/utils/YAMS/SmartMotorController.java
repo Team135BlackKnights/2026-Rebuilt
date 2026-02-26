@@ -264,6 +264,9 @@ public abstract class SmartMotorController
       m_closedLoopControllerRunning = true;
     }
   }
+  public boolean isClosedLoopRunning(){
+    return m_closedLoopControllerRunning;
+  }
 
   /**
    * Iterate the closed loop controller. Feedforward are only applied with profiled pid controllers.
