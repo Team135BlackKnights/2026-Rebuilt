@@ -26,6 +26,7 @@ import com.ctre.phoenix6.signals.MagnetHealthValue;
 import com.ctre.phoenix6.signals.SensorDirectionValue;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.util.Units;
@@ -171,8 +172,7 @@ public class AzimuthIOSim implements AzimuthIO {
         talon.optimizeBusUtilization(0, 1.0);
 
         EasyCRTConfig crtConfig = new EasyCRTConfig(
-                () -> bigAbsRots.getValue(),
-                () -> smallAbsRots.getValue())
+                () -> new Pair<>(bigAbsRots.getValue(), smallAbsRots.getValue()))
                 .withEncoderRatios(encoder1Ratio, encoder2Ratio)
                 .withMechanismRange(
                         Rotations.of(minTurretAngleRad / (2.0 * Math.PI) - .75),

@@ -101,6 +101,7 @@ public class Turret extends SubsystemChecker {
   private Translation2d target = new Translation2d();
 
   private double desiredTurretRads = 0.0;
+  private double lastTurretRads = 0.0;
   private double desiredHoodRads = 0.0;
   private double desiredFlywheelRadsPerSec = 0.0;
 
@@ -117,9 +118,9 @@ public class Turret extends SubsystemChecker {
     azimuth_kS = new LoggableTunedNumber(name + "/Azimuth/kS", 0.0, true);
     azimuth_kV = new LoggableTunedNumber(name + "/Azimuth/kV", 0.0, true);
     azimuth_kA = new LoggableTunedNumber(name + "/Azimuth/kA", 0.0, true);
-    azimuth_velMax = new LoggableTunedNumber(name + "/Azimuth/velMaxRadPerSec", 18.0, true);
-    azimuth_accelMax = new LoggableTunedNumber(name + "/Azimuth/accelMaxRadPerSec2", 40.0, true);
-    azimuth_ramp = new LoggableTunedNumber(name + "/Azimuth/ramp", 0.25, true);
+    azimuth_velMax = new LoggableTunedNumber(name + "/Azimuth/velMaxRadPerSec", 1.85, true);
+    azimuth_accelMax = new LoggableTunedNumber(name + "/Azimuth/accelMaxRadPerSec2", 2.0, true);
+    azimuth_ramp = new LoggableTunedNumber(name + "/Azimuth/ramp", 0.125, true);
 
     flywheel_kP = new LoggableTunedNumber(name + "/Flywheel/kP", 0, true); //3
     flywheel_kD = new LoggableTunedNumber(name + "/Flywheel/kD", 0.0, true);
@@ -287,9 +288,9 @@ public class Turret extends SubsystemChecker {
     Logger.processInputs(name + "/Hood", hoodInputs);
     updateTunablePIDs(); // way cleaner than last year lol
 
-    if (DriverStation.isDisabled()) {
+    /*if (DriverStation.isDisabled()) {
       goal = Goal.IDLE;
-    }
+    }*/
 
     shotCalculator.clearShootingParameters();
 
@@ -308,7 +309,7 @@ public class Turret extends SubsystemChecker {
         azimuthIO.stop();
         hoodIO.stop();
         flywheelIO.stop();
-        desiredTurretRads = azimuthInputs.turretPositionRads;
+        desiredTurretRads = lastTurretRads;
         desiredHoodRads = hoodInputs.positionRads;
       }
 
@@ -353,6 +354,7 @@ public class Turret extends SubsystemChecker {
         hoodIO.setPosition(desiredHoodRads);
       }
     }
+    lastTurretRads = desiredTurretRads;
 
     // Logging
     Logger.recordOutput(name + "/Goal", goal.toString());

@@ -2,6 +2,7 @@ package frc.robot.subsystems.Turret.azimuth.EasyCRT;
 import static edu.wpi.first.units.Units.Rotations;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.Pair;
 import edu.wpi.first.units.measure.Angle;
 import java.util.Optional;
 
@@ -93,16 +94,18 @@ public class EasyCRT {
 
     // Read + wrap into [0, 1).
     //System.out.println("EasyCRT: Reading sensors of raw val" + easyCrtConfig.getAbsoluteEncoder1Angle().in(Rotations) + " and " + easyCrtConfig.getAbsoluteEncoder2Angle().in(Rotations));
+    final Pair<Angle, Angle> absAngles = easyCrtConfig.getAbsoluteEncoderAngles();
+    
     final double abs1 =
         MathUtil.inputModulus(
-            easyCrtConfig.getAbsoluteEncoder1Angle()
+            absAngles.getFirst()
                 .plus(easyCrtConfig.getAbsoluteEncoder1Offset())
                 .in(Rotations),
             0.0,
             1.0);
     final double abs2 =
         MathUtil.inputModulus(
-            easyCrtConfig.getAbsoluteEncoder2Angle()
+            absAngles.getSecond()
                 .plus(easyCrtConfig.getAbsoluteEncoder2Offset())
                 .in(Rotations),
             0.0,

@@ -6,8 +6,8 @@ import edu.wpi.first.math.system.plant.DCMotor;
 
 public class AdvancedMechanismConstants {
         public static class Turret {
-                public static final double minTurretAngle = -Math.toRadians(30);
-                public static final double maxTurretAngle = Math.toRadians(215.0);
+                public static final double minTurretAngle = -1.3;
+                public static final double maxTurretAngle = 4.2;
                 public static final double minHoodAngle = Math.toRadians(12.0);
                 public static final double maxHoodAngle = Math.toRadians(50.0);
                 public static final int currentLimitAzimuth = 30;

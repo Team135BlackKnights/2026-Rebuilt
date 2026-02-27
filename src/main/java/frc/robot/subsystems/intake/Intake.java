@@ -37,15 +37,15 @@ public class Intake extends SubsystemChecker {
     private static final LoggableTunedNumber arm_kV = new LoggableTunedNumber("Intake/Arm/kV", 0.0,
             TuningConstants.isTuningIntake);
 
-    private static final LoggableTunedNumber arm_kG = new LoggableTunedNumber("Intake/Arm/kG", 3,
+    private static final LoggableTunedNumber arm_kG = new LoggableTunedNumber("Intake/Arm/kG", 4,
             TuningConstants.isTuningIntake);
 
-    private static final LoggableTunedNumber arm_motionSpeed = new LoggableTunedNumber("Intake/Arm/MotionCruiseRadPerSec",999,
+    private static final LoggableTunedNumber arm_motionSpeed = new LoggableTunedNumber("Intake/Arm/MotionCruiseRadPerSec",1,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_motionAccel = new LoggableTunedNumber
-            ("Intake/Arm/MotionAccelRadPerSec2", 999, TuningConstants.isTuningIntake);
+            ("Intake/Arm/MotionAccelRadPerSec2", 2, TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_motionJerk = new LoggableTunedNumber
-            ("Intake/Arm/MotionJerkRadPerSec3", 999, TuningConstants.isTuningIntake);
+            ("Intake/Arm/MotionJerkRadPerSec3", 1, TuningConstants.isTuningIntake);
     // Setpoints
     private static final LoggableTunedNumber angle_stow = new LoggableTunedNumber("Intake/Setpoints/StowRads",
             1.25, TuningConstants.isTuningIntake);

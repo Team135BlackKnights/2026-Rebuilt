@@ -1,6 +1,7 @@
 package frc.robot.subsystems.Turret.azimuth.EasyCRT;
 import static edu.wpi.first.units.Units.Rotations;
 
+import edu.wpi.first.math.Pair;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.wpilibj.RobotBase;
 import frc.robot.utils.YAMS.GearBox;
@@ -21,13 +22,7 @@ public class EasyCRTConfig {
   /**
    * Supplies the absolute angle measurement for encoder 1.
    */
-  private final Supplier<Angle> absoluteEncoder1AngleSupplier;
-
-  /**
-   * Supplies the absolute angle measurement for encoder 2.
-   */
-  private final Supplier<Angle> absoluteEncoder2AngleSupplier;
-
+  private final Supplier<Pair<Angle,Angle>> absoluteEncoderAngleSupplier;
   /**
    * Directly provided rotations per mechanism rotation for encoder 1.
    */
@@ -145,12 +140,9 @@ public class EasyCRTConfig {
    * @param absoluteEncoder2AngleSupplier supplier that returns the angle for encoder 2
    */
   public EasyCRTConfig(
-      Supplier<Angle> absoluteEncoder1AngleSupplier,
-      Supplier<Angle> absoluteEncoder2AngleSupplier) {
-    this.absoluteEncoder1AngleSupplier =
-        Objects.requireNonNull(absoluteEncoder1AngleSupplier, "absoluteEncoder1AngleSupplier");
-    this.absoluteEncoder2AngleSupplier =
-        Objects.requireNonNull(absoluteEncoder2AngleSupplier, "absoluteEncoder2AngleSupplier");
+      Supplier<Pair<Angle, Angle>> absoluteEncoderAngleSupplier) {
+    this.absoluteEncoderAngleSupplier =
+        Objects.requireNonNull(absoluteEncoderAngleSupplier, "absoluteEncoderAngleSupplier");
   }
 
   /**
@@ -502,24 +494,13 @@ public class EasyCRTConfig {
 
   // --- Getters used by EasyCRT ---
 
-  /**
-   * Returns the current angle for absolute encoder 1.
-   *
-   * @return angle for encoder 1, or NaN rotation if supplier returns null
-   */
-  public Angle getAbsoluteEncoder1Angle() {
-    Angle value = absoluteEncoder1AngleSupplier.get();
-    return value != null ? value : Rotations.of(Double.NaN);
-  }
-
-  /**
-   * Returns the current angle for absolute encoder 2.
-   *
-   * @return angle for encoder 2, or NaN rotation if supplier returns null
-   */
-  public Angle getAbsoluteEncoder2Angle() {
-    Angle value = absoluteEncoder2AngleSupplier.get();
-    return value != null ? value : Rotations.of(Double.NaN);
+  public Pair<Angle,Angle> getAbsoluteEncoderAngles(){
+    Pair<Angle,Angle> value = absoluteEncoderAngleSupplier.get();
+    //confirm both values are non-nan
+    if(value == null || value.getFirst() == null || value.getSecond() == null){
+      return new Pair<>(Rotations.of(Double.NaN), Rotations.of(Double.NaN));
+    }
+    return value;
   }
 
   /**

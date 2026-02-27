@@ -105,25 +105,25 @@ public class TalonFXWrapper extends SmartMotorController
   /**
    * Velocity control request
    */
-  private final VelocityVoltage               m_simpleVelocityReq = new VelocityVoltage(0).withSlot(m_controlReqSlot).withUpdateFreqHz(250).withEnableFOC(true);
+  private final VelocityVoltage               m_simpleVelocityReq = new VelocityVoltage(0).withSlot(m_controlReqSlot).withUpdateFreqHz(250).withEnableFOC(false);
   /**
    * Position control request.
    */
-  private final PositionVoltage               m_simplePositionReq = new PositionVoltage(0).withSlot(m_controlReqSlot).withUpdateFreqHz(250).withEnableFOC(true);
+  private final PositionVoltage               m_simplePositionReq = new PositionVoltage(0).withSlot(m_controlReqSlot).withUpdateFreqHz(250).withEnableFOC(false);
   /**
    * Position with trapezoidal profiling request.
    */
-  private final MotionMagicVoltage            m_trapPositionReq   = new MotionMagicVoltage(0).withSlot(m_controlReqSlot).withUpdateFreqHz(250).withEnableFOC(true);
+  private final MotionMagicVoltage            m_trapPositionReq   = new MotionMagicVoltage(0).withSlot(m_controlReqSlot).withUpdateFreqHz(250).withEnableFOC(false);
   /**
    * Velocity with trapezoidal profiling request.
    */
   private final MotionMagicVelocityVoltage    m_trapVelocityReq   = new MotionMagicVelocityVoltage(0).withSlot(
-      m_controlReqSlot).withUpdateFreqHz(250).withEnableFOC(true);
+      m_controlReqSlot).withUpdateFreqHz(250).withEnableFOC(false);
   /**
    * Position with exponential profiling request.
    */
   private final MotionMagicExpoVoltage        m_expoPositionReq   = new MotionMagicExpoVoltage(0).withSlot(
-      m_controlReqSlot).withUpdateFreqHz(250).withEnableFOC(true);
+      m_controlReqSlot).withUpdateFreqHz(250).withEnableFOC(false);
   /**
    * Position control request to use.
    */

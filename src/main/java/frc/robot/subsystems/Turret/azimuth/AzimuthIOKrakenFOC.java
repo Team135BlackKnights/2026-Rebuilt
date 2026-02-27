@@ -11,6 +11,7 @@ import static edu.wpi.first.units.Units.Volts;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import org.littletonrobotics.junction.Logger;
 
@@ -23,6 +24,7 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.SensorDirectionValue;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.util.Units;
@@ -31,21 +33,32 @@ import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
+import edu.wpi.first.wpilibj.Timer;
 import frc.robot.subsystems.Turret.azimuth.EasyCRT.EasyCRT;
+import frc.robot.subsystems.Turret.azimuth.EasyCRT.EasyCRT.CRTStatus;
 import frc.robot.subsystems.Turret.azimuth.EasyCRT.EasyCRTConfig;
 import frc.robot.utils.YAMS.GearBox;
 import frc.robot.utils.YAMS.MechanismGearing;
 import frc.robot.utils.YAMS.SmartMotorController;
 import frc.robot.utils.YAMS.SmartMotorControllerConfig;
-import frc.robot.utils.YAMS.TalonFXWrapper;
 import frc.robot.utils.YAMS.SmartMotorControllerConfig.ControlMode;
 import frc.robot.utils.YAMS.SmartMotorControllerConfig.MotorMode;
+import frc.robot.utils.YAMS.TalonFXWrapper;
 import frc.robot.utils.advancedMechs.AdvancedMechanismConstants;
 import frc.robot.utils.selfCheck.SelfChecking;
 import frc.robot.utils.selfCheck.drive.SelfCheckingCANCoder;
 import frc.robot.utils.selfCheck.drive.SelfCheckingTalonFX;
 
 public class AzimuthIOKrakenFOC implements AzimuthIO {
+
+    private static final double TWO_PI = 2.0 * Math.PI;
+    private static final double ENCODER_UPDATE_HZ = 200.0;
+    private static final double MOTOR_UPDATE_HZ = 200.0;
+    private static final double ENCODER_ERROR = 1/7.7;
+
+    private static final double BASE_TOLERANCE_ROT = Units.degreesToRadians(3.0) / TWO_PI;
+    /** Extra tolerance per rad/s of turret velocity to absorb CAN timestamp skew. */
+    private static final double TOLERANCE_PER_RADPS_ROT = Units.degreesToRadians(1) / TWO_PI;
 
     private final TalonFX talon;
     private final CANcoder canCoderBig;
@@ -58,7 +71,9 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
     private final StatusSignal<AngularVelocity> motorRotorVelocityRotsPerSec;
 
     private final StatusSignal<Angle> bigAbsRots;
+    private final StatusSignal<AngularVelocity> bigAbsRotsVel;
     private final StatusSignal<Angle> smallAbsRots;
+    private final StatusSignal<AngularVelocity> smallAbsRotsVel;
 
     private final StatusSignal<Voltage> appliedVoltage;
     private final StatusSignal<Current> supplyCurrent;
@@ -66,8 +81,6 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
     private final StatusSignal<Temperature> tempCelsius;
 
     private boolean haveLock = false;
-    private double motorPosRadAtLock = 0.0;
-    private double turretRadAtLock = 0.0;
 
     private final String name;
     private final double minAngle;
@@ -75,9 +88,16 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
     private final double enc1GearTeeth;
     private final double enc2GearTeeth;
 
+    /** +1 for left turret, -1 for right turret. All turret-space math uses this sign convention. */
+    private final double turretSign;
+    private final boolean rightTurret;
+
     private double lastTurretAngleRads = 0.0;
+    /** FPGA timestamp of the last updateInputs call, for velocity integration. */
+    private double lastUpdateTimeSec = -1.0;
 
     private final EasyCRT easyCrt;
+    private final EasyCRTConfig crtConfig;
 
     public AzimuthIOKrakenFOC(
             CANBus bus,
@@ -99,12 +119,20 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         this.enc1GearTeeth = enc1GearTeeth;
         this.enc2GearTeeth = enc2GearTeeth;
 
-        double turretToIdlerRatio = (double) AdvancedMechanismConstants.Turret.turretTeeth
-                / (double) AdvancedMechanismConstants.Turret.idlerTeeth;
-        boolean rightTurret = canCoderBigID == 30;
-        double encoder1Ratio = -turretToIdlerRatio;
-        double encoder2Ratio = turretToIdlerRatio
-                * (enc1GearTeeth / enc2GearTeeth);
+        this.rightTurret =
+                canCoderBigID == AdvancedMechanismConstants.Turret.rightAzimuthBigEncoderID;
+        this.turretSign = rightTurret ? -1.0 : 1.0;
+
+        final double turretToIdlerRatio =
+                (double) AdvancedMechanismConstants.Turret.turretTeeth
+                        / (double) AdvancedMechanismConstants.Turret.idlerTeeth;
+
+        /*
+         * We normalize the encoder readings into turret-space before feeding EasyCRT,
+         * so both turrets can use the SAME effective ratios here.
+         */
+        final double encoder1Ratio = -turretToIdlerRatio;
+        final double encoder2Ratio = turretToIdlerRatio * (enc1GearTeeth / enc2GearTeeth);
 
         talon = new TalonFX(ID, bus);
         canCoderBig = new CANcoder(canCoderBigID, bus);
@@ -118,6 +146,10 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
         encoder1Config.MagnetSensor.MagnetOffset = encoder1Offset;
         encoder2Config.MagnetSensor.MagnetOffset = encoder2Offset;
+
+        /*
+         * Leave both physical sensors configured the same way and do side mirroring here in software.
+         */
         encoder1Config.MagnetSensor.SensorDirection = SensorDirectionValue.Clockwise_Positive;
         encoder2Config.MagnetSensor.SensorDirection = SensorDirectionValue.Clockwise_Positive;
 
@@ -135,11 +167,12 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
                 .withGearing(new MechanismGearing(
                         GearBox.fromReductionStages(AdvancedMechanismConstants.Turret.motorRadPerTurretRad)))
                 .withIdleMode(MotorMode.BRAKE)
-                .withMotorInverted(rightTurret)
                 .withStatorCurrentLimit(Amps.of(currentLimitAmps))
                 .withSupplyCurrentLimit(Amps.of(currentLimitAmps))
                 .withClosedLoopRampRate(Seconds.of(0.0))
+                .withClosedLoopControlPeriod(Seconds.of(1.0 / MOTOR_UPDATE_HZ))
                 .withOpenLoopRampRate(Seconds.of(0.0));
+
         motorController = new TalonFXWrapper(talon, DCMotor.getKrakenX44Foc(1), motorConfig);
 
         motorRotorRots = talon.getRotorPosition();
@@ -151,11 +184,13 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         tempCelsius = talon.getDeviceTemp();
 
         bigAbsRots = canCoderBig.getAbsolutePosition();
+        bigAbsRotsVel = canCoderBig.getVelocity();
         smallAbsRots = canCoderSmall.getAbsolutePosition();
+        smallAbsRotsVel = canCoderSmall.getVelocity();
 
-        BaseStatusSignal.setUpdateFrequencyForAll(50, bigAbsRots, smallAbsRots);
+        BaseStatusSignal.setUpdateFrequencyForAll(ENCODER_UPDATE_HZ, bigAbsRots, smallAbsRots, bigAbsRotsVel, smallAbsRotsVel);
         BaseStatusSignal.setUpdateFrequencyForAll(
-                50,
+                MOTOR_UPDATE_HZ,
                 motorRotorRots,
                 motorRotorVelocityRotsPerSec,
                 appliedVoltage,
@@ -166,15 +201,18 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         talon.optimizeBusUtilization(0, 1.0);
 
         EasyCRTConfig crtConfig = new EasyCRTConfig(
-                () -> bigAbsRots.getValue(),
-                () -> smallAbsRots.getValue())
+                (Supplier<Pair<Angle, Angle>>)() -> {
+                    return Pair.of(Rotations.of(normalizeAbsoluteRotations(bigAbsRots.getValueAsDouble())),
+                            Rotations.of(normalizeAbsoluteRotations(smallAbsRots.getValueAsDouble())));
+                })
                 .withEncoderRatios(encoder1Ratio, encoder2Ratio)
                 .withMechanismRange(
-                        Rotations.of(minTurretAngle / (2.0 * Math.PI) - .75),
-                        Rotations.of(maxTurretAngle / (2.0 * Math.PI) + .75))
-                .withMatchTolerance(Rotations.of(Units.degreesToRadians(5.0) / (2.0 * Math.PI)));
+                        Rotations.of(minTurretAngle / TWO_PI - 0.75),
+                        Rotations.of(maxTurretAngle / TWO_PI + 0.75))
+                .withMatchTolerance(Rotations.of(BASE_TOLERANCE_ROT));
 
         easyCrt = new EasyCRT(crtConfig);
+        this.crtConfig = crtConfig;
     }
 
     @Override
@@ -187,75 +225,132 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
                 torqueCurrent,
                 tempCelsius).isOK();
 
-        inputs.bothEncodersConnected = BaseStatusSignal.refreshAll(bigAbsRots, smallAbsRots).isOK();
+        inputs.bothEncodersConnected = BaseStatusSignal.refreshAll(
+                bigAbsRots, smallAbsRots, bigAbsRotsVel, smallAbsRotsVel).isOK();
         inputs.name = name;
 
         inputs.motorPositionRads = Units.rotationsToRadians(motorRotorRots.getValueAsDouble());
-        inputs.motorVelocityRadsPerSec = Units.rotationsToRadians(motorRotorVelocityRotsPerSec.getValueAsDouble());
+        inputs.motorVelocityRadsPerSec =
+                Units.rotationsToRadians(motorRotorVelocityRotsPerSec.getValueAsDouble());
 
-        double bigRads = MathUtil.inputModulus(Units.rotationsToRadians(bigAbsRots.getValueAsDouble()), 0, 2 * Math.PI);
-        double smallRads = MathUtil.inputModulus(Units.rotationsToRadians(smallAbsRots.getValueAsDouble()), 0, 2 * Math.PI);
-        inputs.bigEncoderRads = bigRads;
-        inputs.smallEncoderRads = smallRads;
+        double bigRawRads = MathUtil.inputModulus(
+                Units.rotationsToRadians(bigAbsRots.getValueAsDouble()), 0.0, TWO_PI);
+        double smallRawRads = MathUtil.inputModulus(
+                Units.rotationsToRadians(smallAbsRots.getValueAsDouble()), 0.0, TWO_PI);
+
+        /*
+         * Keep raw values in the normal telemetry fields so you can still inspect exactly what the hardware reports.
+         * Use normalized turret-space values for all solving logic.
+         */
+        inputs.bigEncoderRads = bigRawRads;
+        inputs.smallEncoderRads = smallRawRads;
+
+        final double bigSolveRads = normalizeAbsoluteRadians(bigRawRads);
+        final double smallSolveRads = normalizeAbsoluteRadians(smallRawRads);
 
         inputs.appliedVoltage = appliedVoltage.getValueAsDouble();
         inputs.supplyCurrentAmps = supplyCurrent.getValueAsDouble();
         inputs.torqueCurrentAmps = torqueCurrent.getValueAsDouble();
         inputs.tempCelsius = tempCelsius.getValueAsDouble();
 
-        double mechanismPosRad = motorController.getMechanismPosition().in(Radians);
-        double turretRef = haveLock
-                ? turretRadAtLock + (mechanismPosRad - motorPosRadAtLock)
-                : mechanismPosRad;
+        final double mechanismPosRadTurretSpace =
+                toTurretSpaceMechanism(motorController.getMechanismPosition().in(Radians));
+        final double mechanismVelRadPerSecTurretSpace =
+                toTurretSpaceMechanism(motorController.getMechanismVelocity().in(RadiansPerSecond));
 
-        Optional<Angle> solvedAngle = easyCrt.getAngleOptional();
-        double fallbackSolvedRad = TurretMathematics.TurretMath.turretAngleFromEncodersRad(
-                bigRads, smallRads, turretRef, Units.degreesToRadians(8.0), enc1GearTeeth, enc2GearTeeth);
-        boolean usedFallbackSolve = false;
+        /*
+         * Velocity-integrate lastTurretAngleRads every cycle so the position
+         * estimate stays alive even when CRT drops out at high speed.
+         */
+        final double now = Timer.getFPGATimestamp();
+        final double dt = (lastUpdateTimeSec > 0) ? (now - lastUpdateTimeSec) : 0.0;
+        lastUpdateTimeSec = now;
+
+        // Predict where we are NOW based on motor velocity since last cycle
+        double predictedTurretRad = lastTurretAngleRads
+                + mechanismVelRadPerSecTurretSpace * dt;
+
+        /*
+         * Dynamically widen the CRT tolerance based on turret velocity.
+         * At high speed the two CANcoders sample at slightly different CAN timestamps,
+         * so the angular mismatch grows proportionally to velocity.
+         * This prevents NO_SOLUTION during fast motion.
+         */
+        double dynamicTolRot = BASE_TOLERANCE_ROT
+                + TOLERANCE_PER_RADPS_ROT * Math.abs(mechanismVelRadPerSecTurretSpace);
+        crtConfig.withMatchTolerance(Rotations.of(dynamicTolRot));
+
+        // --- Inline CRT solve (single-threaded, no race conditions) ---
+        Optional<Angle> crtResult = easyCrt.getAngleOptional();
+        CRTStatus crtStatus = easyCrt.getLastStatus();
+
         double solvedRad = Double.NaN;
-        if (solvedAngle.isPresent()) {
-            solvedRad = solvedAngle.get().in(Radians);
-        } else if (Double.isFinite(fallbackSolvedRad)) {
-            solvedRad = fallbackSolvedRad;
-            usedFallbackSolve = true;
+        if (crtResult.isPresent()) {
+            solvedRad = crtResult.get().in(Radians);
+            if (solvedRad - lastTurretAngleRads >= ENCODER_ERROR){
+                solvedRad += ENCODER_ERROR;
+            }else if (solvedRad - lastTurretAngleRads <= -ENCODER_ERROR){
+                solvedRad -= ENCODER_ERROR;
+            }
         }
 
-        Logger.recordOutput(name + "/Turret/SolveStatusRaw", easyCrt.getLastStatus());
+        Logger.recordOutput(name + "/Turret/IsRightTurret", rightTurret);
+        Logger.recordOutput(name + "/Turret/TurretSign", turretSign);
+        Logger.recordOutput(name + "/Turret/DynamicToleranceRot", dynamicTolRot);
+        Logger.recordOutput(name + "/Turret/CrtLastErrorRot", easyCrt.getLastErrorRotations());
+
+        Logger.recordOutput(name + "/Turret/SolveStatusRaw", crtStatus);
         Logger.recordOutput(
                 name + "/Turret/SolveStatus",
-                Double.isFinite(solvedRad) ? (usedFallbackSolve ? "FALLBACK_OK" : "OK") : easyCrt.getLastStatus().name());
-        Logger.recordOutput(name + "/Turret/SolveUsedFallback", usedFallbackSolve);
+                 crtStatus.name());
         Logger.recordOutput(name + "/Turret/SolveAngle", solvedRad);
-        Logger.recordOutput(name + "/Turret/EncoderBigRads", bigRads);
-        Logger.recordOutput(name + "/Turret/EncoderSmallRads", smallRads);
+
+        Logger.recordOutput(name + "/Turret/EncoderBigRadsRaw", bigRawRads);
+        Logger.recordOutput(name + "/Turret/EncoderSmallRadsRaw", smallRawRads);
+        Logger.recordOutput(name + "/Turret/EncoderBigRadsNormalized", bigSolveRads);
+        Logger.recordOutput(name + "/Turret/EncoderSmallRadsNormalized", smallSolveRads);
+
+        Logger.recordOutput(name + "/Turret/MechanismPosTurretSpace", mechanismPosRadTurretSpace);
+        Logger.recordOutput(name + "/Turret/MechanismVelTurretSpace", mechanismVelRadPerSecTurretSpace);
+        Logger.recordOutput(name + "/Turret/PredictedTurretRad", predictedTurretRad);
+        Logger.recordOutput(name + "/Turret/Dt", dt);
 
         if (Double.isFinite(solvedRad)) {
+            // CRT solved — use the absolute answer and mark lock
             lastTurretAngleRads = solvedRad;
             haveLock = true;
-            turretRadAtLock = solvedRad;
-            motorPosRadAtLock = mechanismPosRad;
         } else if (haveLock) {
-            lastTurretAngleRads = turretRef;
-        }
+            // CRT dropout — coast on velocity-integrated prediction
+            lastTurretAngleRads = predictedTurretRad;
+        } /*else {
+            // No lock yet — use raw mechanism position as best guess
+            /lastTurretAngleRads = mechanismPosRadTurretSpace;
+        }*/
+
         inputs.turretPositionRads = lastTurretAngleRads;
-        inputs.turretVelocityRadsPerSec = motorController.getMechanismVelocity().in(RadiansPerSecond);
+        inputs.turretVelocityRadsPerSec = mechanismVelRadPerSecTurretSpace;
     }
 
     @Override
     public void setDesiredPosition(double turretRads) {
-        final double TWO_PI = 2.0 * Math.PI;
         double lower = maxAngle - TWO_PI;
         double upper = maxAngle;
+
         double wrappedCmd = MathUtil.inputModulus(turretRads, lower, upper);
         double desiredTurret = MathUtil.clamp(wrappedCmd, minAngle, maxAngle);
 
-        double mechanismPosRad = motorController.getMechanismPosition().in(Radians);
-        double mechanismTargetRad = mechanismPosRad + (desiredTurret - lastTurretAngleRads);
-        if (!motorController.isClosedLoopRunning()){
+        double mechanismPosRadTurretSpace =
+                toTurretSpaceMechanism(motorController.getMechanismPosition().in(Radians));
+        double mechanismTargetRadTurretSpace =
+                mechanismPosRadTurretSpace + (desiredTurret - lastTurretAngleRads);
+
+        if (!motorController.isClosedLoopRunning()) {
             motorController.startClosedLoopController();
             System.out.println("starting closed loop for azimuth!");
         }
-        motorController.setPosition(Radians.of(mechanismTargetRad));
+
+        motorController.setPosition(
+                Radians.of(fromTurretSpaceMechanism(mechanismTargetRadTurretSpace)));
     }
 
     @Override
@@ -265,7 +360,10 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
     @Override
     public void runVolts(double volts) {
-        motorController.setVoltage(Volts.of(volts));
+        /*
+         * Positive open-loop volts should correspond to positive turret-space motion on BOTH turrets.
+         */
+        motorController.setVoltage(Volts.of(volts * turretSign));
     }
 
     @Override
@@ -281,14 +379,22 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
     @Override
     public void setPID(
-            double p, double i, double d, double ks, double kv, double ka, double velocityMax, double accelerationMax, double rampRate) {
+            double p,
+            double i,
+            double d,
+            double ks,
+            double kv,
+            double ka,
+            double velocityMax,
+            double accelerationMax,
+            double rampRate) {
         motorController.setFeedback(p, i, d);
         motorController.setFeedforward(ks, kv, ka, 0.0);
         motorController.setMotionProfileMaxVelocity(RadiansPerSecond.of(velocityMax));
         motorController.setMotionProfileMaxAcceleration(RadiansPerSecondPerSecond.of(accelerationMax));
         motorController.setClosedLoopRampRate(Seconds.of(rampRate));
         motorController.setOpenLoopRampRate(Seconds.of(rampRate));
-            }
+    }
 
     @Override
     public List<SelfChecking> getSelfCheckingHardware() {
@@ -297,5 +403,21 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         hardware.add(new SelfCheckingCANCoder(name + "_CANcoderBig", canCoderBig));
         hardware.add(new SelfCheckingCANCoder(name + "_CANcoderSmall", canCoderSmall));
         return hardware;
+    }
+
+    private double normalizeAbsoluteRotations(double rawRotations) {
+        return MathUtil.inputModulus(rawRotations * turretSign, 0.0, 1.0);
+    }
+
+    private double normalizeAbsoluteRadians(double rawRadians) {
+        return MathUtil.inputModulus(rawRadians * turretSign, 0.0, TWO_PI);
+    }
+
+    private double toTurretSpaceMechanism(double rawMechanismRadians) {
+        return rawMechanismRadians * turretSign;
+    }
+
+    private double fromTurretSpaceMechanism(double turretSpaceMechanismRadians) {
+        return turretSpaceMechanismRadians * turretSign;
     }
 }

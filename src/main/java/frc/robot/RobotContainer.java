@@ -565,14 +565,14 @@ public class RobotContainer {
 				// Right Turret
 				AzimuthIO azimuthIORightTurret = new AzimuthIOKrakenFOC(Robot.rioCanBus,
 						AdvancedMechanismConstants.Turret.rightAzimuthID,
-						AdvancedMechanismConstants.Turret.rightAzimuthBigEncoderID,
 						AdvancedMechanismConstants.Turret.rightAzimuthSmallEncoderID,
+						AdvancedMechanismConstants.Turret.rightAzimuthBigEncoderID,
 						AdvancedMechanismConstants.Turret.rightName,
 						AdvancedMechanismConstants.Turret.currentLimitAzimuth,
 								-AdvancedMechanismConstants.Turret.maxTurretAngle,
 								-AdvancedMechanismConstants.Turret.minTurretAngle,
-								AdvancedMechanismConstants.Turret.rightAzimuthBigEncoderOffset,
 								AdvancedMechanismConstants.Turret.rightAzimuthSmallEncoderOffset,
+								AdvancedMechanismConstants.Turret.rightAzimuthBigEncoderOffset,
 								AdvancedMechanismConstants.Turret.enc1GearTeethRight,
 								AdvancedMechanismConstants.Turret.enc2GearTeethRight);
 				FlywheelIO flywheelIORightTurret = new FlywheelIOKrakenFOC(
@@ -1057,18 +1057,19 @@ public class RobotContainer {
 		aButtonDrive.whileTrue(Commands.run(() -> {
 			// flywheel go to 5000 rpm
 			//leftTurret.setCharRPM(5000);
-			leftTurret.setCharHoodPos(Units.degreesToRadians(12));
-			rightTurret.setCharHoodPos(Units.degreesToRadians(12));
+			//leftTurret.setCharHoodPos(Units.degreesToRadians(12));
+			//rightTurret.setCharHoodPos(Units.degreesToRadians(12));
 			intake.setGoal(Goal.STOW);
+			leftTurret.setCharTurretPos(-1.49);
 			//hang.setGoal(HangState.STOWED);
 		}));
 		bButtonDrive.whileTrue(Commands.run(() -> {
 			//leftTurret.setCharRPM(3000);
-			//leftTurret.setCharTurretPos(0);
-			intake.setGoal(Goal.INTAKE_GROUND);
+			leftTurret.setCharTurretPos(0);
+			//intake.setGoal(Goal.INTAKE_GROUND);
 			//hang.setGoal(HangState.EXTENDED);
-			leftTurret.setCharHoodPos(Units.degreesToRadians(50));
-			rightTurret.setCharHoodPos(Units.degreesToRadians(50));
+			//leftTurret.setCharHoodPos(Units.degreesToRadians(50));
+			//rightTurret.setCharHoodPos(Units.degreesToRadians(50));
 
 		}));
 		yButtonDrive.whileTrue(Commands.run(() ->{
