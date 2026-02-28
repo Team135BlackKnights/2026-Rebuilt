@@ -26,6 +26,8 @@ import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj.Servo;
+import frc.robot.Constants.TuningConstants;
+import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.YAMS.GearBox;
 import frc.robot.utils.YAMS.MechanismGearing;
 import frc.robot.utils.YAMS.SmartMotorController;
@@ -55,10 +57,12 @@ public class WedgeArmIOKrakenFOC implements WedgeArmIO {
     protected final StatusSignal<Voltage> appliedVoltage;
     protected final StatusSignal<Current> supplyCurrent;
     protected final StatusSignal<Current> torqueCurrent;
+    private final LoggableTunedNumber servoIn = new LoggableTunedNumber("Hang/Servo/ServoIN",1,TuningConstants.isTuningClimber);
+    private final LoggableTunedNumber servoOut = new LoggableTunedNumber("Hang/Servo/ServoOUT",0.5,TuningConstants.isTuningClimber);
     protected final StatusSignal<Temperature> tempCelsius;
     protected boolean holdingServo = false;
     protected double tolDeg = 2.0;
-    protected static final double SERVO_MOVE_DELAY_SECS = 0.25;
+    protected static final double SERVO_MOVE_DELAY_SECS = 999;
     protected final Timer servoDelayTimer = new Timer();
     protected boolean waitingForServoDelay = false;
     protected Double pendingSetpointRads = null;
@@ -76,7 +80,7 @@ public class WedgeArmIOKrakenFOC implements WedgeArmIO {
 
         talon = new TalonFX(motorID, bus);
         servo = new Servo(servoID);
-        servo.setBoundsMicroseconds(2500,0,0,0,500); //1500 center?
+        servo.setBoundsMicroseconds(2500,0,1500,0,500); //1500 center?
         motorConfig = new SmartMotorControllerConfig()
                 .withControlMode(ControlMode.CLOSED_LOOP)
                 .withClosedLoopController(
@@ -120,7 +124,7 @@ public class WedgeArmIOKrakenFOC implements WedgeArmIO {
                 .isOK();
 
         // If servo is locked, arm must not move at all.
-        if (servo.get() <= 0.0) {
+        if (holdingServo) {
             wedgeArm.setVoltage(Volts.of(0.0));
             waitingForServoDelay = false;
         } else {
@@ -141,7 +145,7 @@ public class WedgeArmIOKrakenFOC implements WedgeArmIO {
                     && Math.abs(pendingSetpointRads - wedgeArm.getAngle().in(Radians))
                             <= Math.toRadians(tolDeg)) {
                 holdingServo = true;
-                servo.setPosition(0.0);
+                servo.setPosition(servoOut.get());
                 wedgeArm.setVoltage(Volts.of(0.0));
             }
         }
@@ -167,14 +171,14 @@ public class WedgeArmIOKrakenFOC implements WedgeArmIO {
         lastCommandedSetpointRads = clamped;
         pendingSetpointRads = clamped;
         holdingServo = false;
-        servo.setPosition(.2);
+        servo.setPosition(servoIn.get());
         waitingForServoDelay = true;
         servoDelayTimer.restart();
         wedgeArm.setVoltage(Volts.of(0.0));
     }
     @Override
     public void setVoltage(double volts) {
-        if (servo.get() <= 0.0 || waitingForServoDelay) {
+        if (holdingServo || waitingForServoDelay) {
             wedgeArm.setVoltage(Volts.of(0.0));
             return;
         }
@@ -188,7 +192,7 @@ public class WedgeArmIOKrakenFOC implements WedgeArmIO {
         waitingForServoDelay = false;
         lastCommandedSetpointRads = null;
         pendingSetpointRads = null;
-        servo.setPosition(0.0);
+        servo.setPosition(servoOut.get());
     }
 
     @Override

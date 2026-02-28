@@ -10,7 +10,7 @@ public class AdvancedMechanismConstants {
                 public static final double maxTurretAngle = 4.2;
                 public static final double minHoodAngle = Math.toRadians(0.0);
                 public static final double maxHoodAngle = Math.toRadians(38.0);
-                public static final int currentLimitAzimuth = 30;
+                public static final int currentLimitAzimuth = 50;
                 public static final int currentLimitFlywheel = 40;
                 public static final int currentLimitHood = 20;
                 public static final int currentLimitKickup = 50;
@@ -35,8 +35,8 @@ public class AdvancedMechanismConstants {
                 public static final double kickupMOI = 0.0005; // kg m^2
                 public static final double flywheelMaxRPM = 5700;
                 public static final boolean invertKickup = false;
-                public static final boolean invertFlywheel = false;
-                public static final boolean invertHood = false;
+                public static final boolean invertFlywheel = true;
+                public static final boolean invertHood = true;
                 public static final boolean invertAzimuth = true;
 
                 // Left Turret
@@ -51,7 +51,7 @@ public class AdvancedMechanismConstants {
                 public static final Transform2d robotToLeftTurretHoleCenter = new Transform2d(-.163, -.227, new Rotation2d());
                 public static final double leftAzimuthBigEncoderOffset = .2841796875;
                 public static final double leftAzimuthSmallEncoderOffset = .201904296875;
-                public static final double leftHoodEncoderOffset = 0.0;
+                public static final double leftHoodEncoderOffset = 0.2294921875;
                 // Right Turret
                 public static final int rightAzimuthID = 29;
                 public static final int rightAzimuthBigEncoderID = 30;
@@ -64,6 +64,6 @@ public class AdvancedMechanismConstants {
                 public static final Transform2d robotToRightTurretHoleCenter = new Transform2d(-.163, .227, new Rotation2d());
                 public static final double rightAzimuthBigEncoderOffset = -.252197265625;
                 public static final double rightAzimuthSmallEncoderOffset = -.1323241875;
-                public static final double rightHoodEncoderOffset = 0.0;
+                public static final double rightHoodEncoderOffset = 0.385986328125;
         }
 }

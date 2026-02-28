@@ -581,7 +581,7 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.rightName,
 						AdvancedMechanismConstants.Turret.currentLimitFlywheel,
 						AdvancedMechanismConstants.Turret.flywheelRatio,
-						AdvancedMechanismConstants.Turret.invertFlywheel,
+						!AdvancedMechanismConstants.Turret.invertFlywheel,
 						AdvancedMechanismConstants.Turret.flywheelMaxRPM,
 						AdvancedMechanismConstants.Turret.flywheelMOI);
 				HoodIO hoodIORightTurret = new HoodIOKrakenFOC(
@@ -1056,18 +1056,18 @@ public class RobotContainer {
 		//Test Commands
 		aButtonDrive.whileTrue(Commands.run(() -> {
 			// flywheel go to 5000 rpm
-			//leftTurret.setCharRPM(5000);
+			leftTurret.setCharTurretPos(4.1);
 			//leftTurret.setCharHoodPos(Units.degreesToRadians(12));
 			//rightTurret.setCharHoodPos(Units.degreesToRadians(12));
 			//intake.setGoal(Goal.STOW);
 			//leftTurret.setCharTurretPos(-1.49);
-			hang.setGoal(HangState.STOWED);
+			//hang.setGoal(HangState.STOWED);
 		}));
 		bButtonDrive.whileTrue(Commands.run(() -> {
-			//leftTurret.setCharRPM(3000);
+			leftTurret.setCharTurretPos(2.5);
 			//leftTurret.setCharTurretPos(0);
 			//intake.setGoal(Goal.INTAKE_GROUND);
-			hang.setGoal(HangState.EXTENDED);
+			//hang.setGoal(HangState.EXTENDED);
 			//leftTurret.setCharHoodPos(Units.degreesToRadians(50));
 			//rightTurret.setCharHoodPos(Units.degreesToRadians(50));
 

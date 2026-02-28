@@ -44,8 +44,8 @@ import frc.robot.utils.selfCheck.drive.SelfCheckingTalonFX;
 public class AzimuthIOKrakenFOC implements AzimuthIO {
 
     private static final double TWO_PI = 2.0 * Math.PI;
-    private static final double ENCODER_UPDATE_HZ = 200.0;
-    private static final double MOTOR_UPDATE_HZ = 200.0;
+    private static final double ENCODER_UPDATE_HZ = 100.0;
+    private static final double MOTOR_UPDATE_HZ = 100.0;
     private static final double ENCODER_ERROR = 1 / 7.7;
 
     /** Motor rotor rotations per turret rotation (36/10 * 77/10 = 27.72). */
@@ -63,8 +63,8 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
     /* Direct Phoenix 6 control requests — no YAMS wrapper */
     private final TalonFXConfiguration talonConfig = new TalonFXConfiguration();
     private final MotionMagicVoltage motionMagicRequest =
-            new MotionMagicVoltage(0).withSlot(0).withEnableFOC(true);
-    private final VoltageOut voltageRequest = new VoltageOut(0).withEnableFOC(true);
+            new MotionMagicVoltage(0).withSlot(0).withEnableFOC(false);
+    private final VoltageOut voltageRequest = new VoltageOut(0).withEnableFOC(false);
 
     private final StatusSignal<Angle> motorRotorRots;
     private final StatusSignal<AngularVelocity> motorRotorVelocityRotsPerSec;
@@ -118,8 +118,8 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         this.maxAngle = maxTurretAngle;
 
         this.rightTurret =
-                canCoderBigID == AdvancedMechanismConstants.Turret.rightAzimuthBigEncoderID;
-        this.turretSign = rightTurret ? -1.0 : 1.0;
+                canCoderSmallID == AdvancedMechanismConstants.Turret.rightAzimuthBigEncoderID;
+        this.turretSign = rightTurret ? 1.0 : 1.0;
 
         final double turretToIdlerRatio =
                 (double) AdvancedMechanismConstants.Turret.turretTeeth
@@ -282,11 +282,11 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
                 } else if (solvedRad - lastTurretAngleRads <= -ENCODER_ERROR) {
                     solvedRad -= ENCODER_ERROR;
                 }
+                solved = true;
             }
             Logger.recordOutput(name + "/Turret/SolveStatusRaw", crtStatus);
             Logger.recordOutput(name + "/Turret/SolveStatus", crtStatus.name());
             Logger.recordOutput(name + "/Turret/SolveAngle", solvedRad);
-            solved = true;
         } else {
             Logger.recordOutput(name + "/Turret/SolveStatus", "IGNORED");
         }

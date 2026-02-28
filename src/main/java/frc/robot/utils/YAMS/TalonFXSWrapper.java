@@ -31,11 +31,13 @@ import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.CANdi;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.hardware.TalonFXS;
+import com.ctre.phoenix6.signals.AdvancedHallSupportValue;
 import com.ctre.phoenix6.signals.ExternalFeedbackSensorSourceValue;
 import com.ctre.phoenix6.signals.GravityTypeValue;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.MagnetHealthValue;
 import com.ctre.phoenix6.signals.MotorAlignmentValue;
+import com.ctre.phoenix6.signals.MotorArrangementValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.ctre.phoenix6.signals.SensorDirectionValue;
 
@@ -532,9 +534,12 @@ public class TalonFXSWrapper extends SmartMotorController
     config.resetValidationCheck();
     m_configurator.refresh(m_talonConfig);
   this.m_config = config;
+  
   this.m_looseFollowers = config.getLooselyCoupledFollowers();
   m_lqr = config.getLQRClosedLoopController();
   m_pid = config.getPID();
+  m_talonConfig.Commutation.MotorArrangement = MotorArrangementValue.Minion_JST;
+  m_talonConfig.Commutation.AdvancedHallSupport = AdvancedHallSupportValue.Enabled;
     // Closed loop controllers.
     m_config.getPID().ifPresent(pid -> {
       m_talonConfig.Slot0.kP = pid.getP();
@@ -764,7 +769,7 @@ public class TalonFXSWrapper extends SmartMotorController
         // Zero offset
         if (config.getZeroOffset().isPresent())
         {
-          cfg.MagnetSensor.withMagnetOffset(config.getZeroOffset().get());
+          //cfg.MagnetSensor.withMagnetOffset(config.getZeroOffset().get());
           m_talonConfig.ExternalFeedback.AbsoluteSensorOffset = 0;
         }
         // Discontinuity Point

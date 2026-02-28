@@ -41,8 +41,8 @@ import frc.robot.utils.selfCheck.SelfChecking;
 import frc.robot.utils.selfCheck.drive.SelfCheckingTalonFX;
 
 public class ArmIOKrakenFOC implements ArmIO {
-    private static final double ZERO_HOMING_VOLTAGE = -2.0;
-    private static final double ZERO_SPIKE_CURRENT_AMPS = 35.0;
+    private static final double ZERO_HOMING_VOLTAGE = -1.0;
+    private static final double ZERO_SPIKE_CURRENT_AMPS = 30.0;
     private static final double ZERO_SPIKE_HOLD_TIME_SEC = 0.1;
 
     protected final String name;

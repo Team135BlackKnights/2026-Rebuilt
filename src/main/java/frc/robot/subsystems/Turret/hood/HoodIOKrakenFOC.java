@@ -92,17 +92,16 @@ public class HoodIOKrakenFOC implements HoodIO {
                 .withSimFeedforward(new ArmFeedforward(0.0, 0.0, 0.0, 0.0))
 
                 .withGearing(new MechanismGearing(GearBox.fromReductionStages(rotorPerMechanism)))
-
-                .withSoftLimit(Radians.of(minAngleRads), Radians.of(maxAngleRads))
+                //.withSoftLimit(Radians.of(minAngleRads), Radians.of(maxAngleRads))
 
                 // Same-vendor absolute feedback (CTRE CANcoder)
                 .withExternalEncoder(cancoder)
-                .withExternalEncoderInverted(false)
+                .withExternalEncoderInverted(cancoderID == AdvancedMechanismConstants.Turret.leftHoodEncoderID ? true : false)
                 .withExternalEncoderGearing(encoderToArm)
                 .withUseExternalFeedbackEncoder(true)
                 .withExternalEncoderZeroOffset(Radians.of(encoderOffset))
 
-                .withMotorInverted(false)
+                .withMotorInverted(AdvancedMechanismConstants.Turret.invertHood)
                 .withIdleMode(MotorMode.BRAKE)
                 .withStatorCurrentLimit(Amps.of(currentLimitAmps))
                 .withClosedLoopRampRate(Seconds.of(0.25))
