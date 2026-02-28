@@ -1,14 +1,5 @@
 package frc.robot.subsystems.intake.arm;
 
-import static edu.wpi.first.units.Units.Amps;
-import static edu.wpi.first.units.Units.Inches;
-import static edu.wpi.first.units.Units.KilogramSquareMeters;
-import static edu.wpi.first.units.Units.Radians;
-import static edu.wpi.first.units.Units.RadiansPerSecond;
-import static edu.wpi.first.units.Units.RadiansPerSecondPerSecond;
-import static edu.wpi.first.units.Units.Seconds;
-import static edu.wpi.first.units.Units.Volts;
-
 import java.util.List;
 
 import org.littletonrobotics.junction.Logger;
@@ -16,11 +7,15 @@ import org.littletonrobotics.junction.Logger;
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusSignal;
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.MotionMagicVoltage;
+import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFX;
+import com.ctre.phoenix6.signals.InvertedValue;
+import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.controller.ArmFeedforward;
-import edu.wpi.first.math.system.plant.DCMotor;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
@@ -28,15 +23,6 @@ import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj.Timer;
 import frc.robot.utils.IntakeConstants;
-import frc.robot.utils.YAMS.GearBox;
-import frc.robot.utils.YAMS.MechanismGearing;
-import frc.robot.utils.YAMS.SmartMotorController;
-import frc.robot.utils.YAMS.SmartMotorControllerConfig;
-import frc.robot.utils.YAMS.TalonFXWrapper;
-import frc.robot.utils.YAMS.SmartMotorControllerConfig.ControlMode;
-import frc.robot.utils.YAMS.SmartMotorControllerConfig.MotorMode;
-import frc.robot.utils.YAMS.mechanisms.ArmConfig;
-import frc.robot.utils.YAMS.mechanisms.Containers.Arm;
 import frc.robot.utils.selfCheck.SelfChecking;
 import frc.robot.utils.selfCheck.drive.SelfCheckingTalonFX;
 
@@ -44,17 +30,23 @@ public class ArmIOKrakenFOC implements ArmIO {
     private static final double ZERO_HOMING_VOLTAGE = -1.0;
     private static final double ZERO_SPIKE_CURRENT_AMPS = 30.0;
     private static final double ZERO_SPIKE_HOLD_TIME_SEC = 0.1;
+    private static final double TWO_PI = 2.0 * Math.PI;
 
     protected final String name;
-
     protected final TalonFX talon;
-    protected final SmartMotorControllerConfig motorConfig;
-    protected final SmartMotorController motor;
-    protected final ArmConfig armConfig;
-    protected final Arm arm;
+    protected final TalonFXConfiguration talonConfig = new TalonFXConfiguration();
+
+    /* Direct Phoenix 6 control requests — no YAMS wrapper */
+    private final MotionMagicVoltage motionMagicRequest =
+            new MotionMagicVoltage(0).withSlot(0).withEnableFOC(false);
+    private final VoltageOut voltageRequest = new VoltageOut(0).withEnableFOC(true);
+
+    /** Motor rotor rotations per mechanism rotation. */
+    protected final double reduction;
 
     protected final double minAngleRads = IntakeConstants.armMinAngleRads;
     protected final double maxAngleRads = IntakeConstants.armMaxAngleRads;
+
     protected final StatusSignal<Angle> posAngle;
     protected final StatusSignal<AngularVelocity> velAngle;
     protected final StatusSignal<Voltage> appliedVoltage;
@@ -76,35 +68,38 @@ public class ArmIOKrakenFOC implements ArmIO {
             boolean brake,
             double reduction) {
         this.name = name;
+        this.reduction = reduction;
 
         talon = new TalonFX(motorID, bus);
 
-        motorConfig = new SmartMotorControllerConfig()
-                .withControlMode(ControlMode.CLOSED_LOOP)
-                .withClosedLoopController(
-                        0.0, 0.0, 0.0, RadiansPerSecond.of(1), RadiansPerSecondPerSecond.of(2))
-                .withSimClosedLoopController(
-                        12, 0.0, 1.85, RadiansPerSecond.of(1), RadiansPerSecondPerSecond.of(2))
-                .withFeedforward(new ArmFeedforward(0.0, 0.0, 0.0, 0.0))
-                .withSimFeedforward(new ArmFeedforward(0.0, 0.0, 0.0, 0.0))
-                .withGearing(new MechanismGearing(GearBox.fromReductionStages(reduction)))
-                .withMotorInverted(invert)
-                .withIdleMode(brake ? MotorMode.BRAKE : MotorMode.COAST)
-                .withStatorCurrentLimit(Amps.of(currentLimitAmps))
-                .withSupplyCurrentLimit(Amps.of(currentLimitAmps))
-                .withClosedLoopRampRate(Seconds.of(0.0))
-                .withOpenLoopRampRate(Seconds.of(0.0));
+        talonConfig.CurrentLimits.StatorCurrentLimitEnable = false;
+        talonConfig.CurrentLimits.StatorCurrentLimit = currentLimitAmps;
+        talonConfig.CurrentLimits.SupplyCurrentLimitEnable = true;
+        talonConfig.CurrentLimits.SupplyCurrentLimit = currentLimitAmps;
 
-        motor = new TalonFXWrapper(talon, DCMotor.getKrakenX44Foc(1), motorConfig);
+        talonConfig.MotorOutput.NeutralMode = brake ? NeutralModeValue.Brake : NeutralModeValue.Coast;
+        talonConfig.MotorOutput.Inverted = invert
+                ? InvertedValue.Clockwise_Positive
+                : InvertedValue.CounterClockwise_Positive;
 
-        armConfig = new ArmConfig(motor)
-                .withGravity(false)
-                .withLength(Inches.of(7))
-                .withMOI(KilogramSquareMeters.of(IntakeConstants.armMOI))
-                .withHardLimit(Radians.of(minAngleRads), Radians.of(maxAngleRads))
-                .withStartingPosition(Radians.of(IntakeConstants.armMaxAngleRads));
-        arm = new Arm(armConfig);
-            
+        talonConfig.Feedback.SensorToMechanismRatio = reduction;
+
+        talonConfig.Slot0.kP = 0.0;
+        talonConfig.Slot0.kI = 0.0;
+        talonConfig.Slot0.kD = 0.0;
+        talonConfig.Slot0.kS = 0.0;
+        talonConfig.Slot0.kV = 0.0;
+        talonConfig.Slot0.kA = 0.0;
+        talonConfig.Slot0.kG = 0.0;
+
+        talonConfig.MotionMagic.MotionMagicCruiseVelocity = 0.0;  
+        talonConfig.MotionMagic.MotionMagicAcceleration = 0.0;    
+
+        talonConfig.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.0;
+        talonConfig.OpenLoopRamps.VoltageOpenLoopRampPeriod = 0.0;
+
+        talon.getConfigurator().apply(talonConfig);
+
         posAngle = talon.getPosition();
         velAngle = talon.getVelocity();
         appliedVoltage = talon.getMotorVoltage();
@@ -124,12 +119,13 @@ public class ArmIOKrakenFOC implements ArmIO {
     public void updateInputs(ArmIOInputs inputs) {
         processZeroing();
         inputs.connected = BaseStatusSignal.refreshAll(
-                appliedVoltage, supplyCurrent, statorCurrent, torqueCurrent, tempCelsius)
+                posAngle, velAngle, appliedVoltage, supplyCurrent, statorCurrent, torqueCurrent, tempCelsius)
                 .isOK();
         inputs.name = name;
         inputs.zeroing = zeroingActive;
-        inputs.positionRads = motor.getMechanismPosition().in(Radians);
-        inputs.velocityRadsPerSec = motor.getMechanismVelocity().in(RadiansPerSecond);
+        // posAngle is mechanism rotations thanks to SensorToMechanismRatio
+        inputs.positionRads = Units.rotationsToRadians(posAngle.getValueAsDouble());
+        inputs.velocityRadsPerSec = Units.rotationsToRadians(velAngle.getValueAsDouble());
         inputs.appliedVoltage = appliedVoltage.getValueAsDouble();
         inputs.supplyCurrentAmps = supplyCurrent.getValueAsDouble();
         inputs.torqueCurrentAmps = torqueCurrent.getValueAsDouble();
@@ -143,28 +139,21 @@ public class ArmIOKrakenFOC implements ArmIO {
             return;
         }
 
-        //ensure the arm is started
-        if (!motor.isClosedLoopRunning()){
-            motor.startClosedLoopController();
-            System.out.println("starting closed loop for intake!");
-        }
+        openLoop = false;
         double clamped = MathUtil.clamp(positionRads, minAngleRads, maxAngleRads);
-        arm.setMechanismPositionSetpoint(Radians.of(clamped));
+        double desiredRotations = Units.radiansToRotations(clamped);
+        talon.setControl(motionMagicRequest.withPosition(desiredRotations));
     }
 
     @Override
     public void setVoltage(double volts) {
-        /*if (zeroingActive) {
-            return;
-        }*/
         openLoop = true;
-        motor.stopClosedLoopController();
-        arm.setVolts(volts);
+        talon.setControl(voltageRequest.withOutput(volts));
     }
 
     @Override
     public void stop() {
-        setVoltage(0.0);
+        talon.setControl(voltageRequest.withOutput(0.0));
     }
 
     @Override
@@ -174,27 +163,52 @@ public class ArmIOKrakenFOC implements ArmIO {
     }
 
     @Override
-    public void configureMotionMagic(double cruiseRadPerSec, double accelRadPerSec2, double jerkRadPerSec3) {
-        motor.setMotionProfileMaxVelocity(RadiansPerSecond.of(cruiseRadPerSec));
-        motor.setMotionProfileMaxAcceleration(RadiansPerSecondPerSecond.of(accelRadPerSec2));
-        motor.setMotionProfileMaxJerk(RadiansPerSecondPerSecond.per(Seconds).of(jerkRadPerSec3));
+    public void configureMotionMagic(double cruiseRadPerSec, double accelRadPerSec2) {
+        talonConfig.MotionMagic.MotionMagicCruiseVelocity = cruiseRadPerSec / TWO_PI;
+        talonConfig.MotionMagic.MotionMagicAcceleration = accelRadPerSec2 / TWO_PI;
+        talon.getConfigurator().apply(talonConfig.MotionMagic);
     }
 
     @Override
     public void setPID(double p, double i, double d, double ks, double kv, double kg) {
-        motor.setFeedback(p, i, d);
-        motor.setFeedforward(ks, kv, 0.0, kg);
+        talonConfig.Slot0.kP = p;
+        talonConfig.Slot0.kI = i;
+        talonConfig.Slot0.kD = d;
+        talonConfig.Slot0.kS = ks;
+        talonConfig.Slot0.kV = kv;
+        talonConfig.Slot0.kG = kg;
+        talon.getConfigurator().apply(talonConfig.Slot0);
+    }
+
+    @Override
+    public void setPID(double p, double i, double d, double ks, double kv, double kg,
+                       double velocityMax, double accelerationMax) {
+        talonConfig.Slot0.kP = p;
+        talonConfig.Slot0.kI = i;
+        talonConfig.Slot0.kD = d;
+        talonConfig.Slot0.kS = ks;
+        talonConfig.Slot0.kV = kv;
+        talonConfig.Slot0.kG = kg;
+
+        talonConfig.MotionMagic.MotionMagicCruiseVelocity = velocityMax / TWO_PI;
+        talonConfig.MotionMagic.MotionMagicAcceleration = accelerationMax / TWO_PI;
+
+        talon.getConfigurator().apply(talonConfig.Slot0);
+        talon.getConfigurator().apply(talonConfig.MotionMagic);
     }
 
     @Override
     public void setCurrentLimit(double amps) {
-        motor.setSupplyCurrentLimit(Amps.of(amps));
-        motor.setStatorCurrentLimit(Amps.of(amps));
+        talonConfig.CurrentLimits.StatorCurrentLimit = amps;
+        talonConfig.CurrentLimits.SupplyCurrentLimit = amps;
+        talon.getConfigurator().apply(talonConfig.CurrentLimits);
     }
 
     @Override
     public void setBrakeMode(boolean brake) {
-        motor.setIdleMode(brake ? MotorMode.BRAKE : MotorMode.COAST);
+        talonConfig.MotorOutput.NeutralMode =
+                brake ? NeutralModeValue.Brake : NeutralModeValue.Coast;
+        talon.getConfigurator().apply(talonConfig.MotorOutput);
     }
 
     @Override
@@ -208,7 +222,7 @@ public class ArmIOKrakenFOC implements ArmIO {
         }
 
         double now = Timer.getFPGATimestamp();
-        motor.setVoltage(Volts.of(ZERO_HOMING_VOLTAGE));
+        talon.setControl(voltageRequest.withOutput(ZERO_HOMING_VOLTAGE));
         BaseStatusSignal.refreshAll(supplyCurrent, statorCurrent, torqueCurrent);
         double observedCurrentAmps = Math.max(
                 Math.max(Math.abs(supplyCurrent.getValueAsDouble()), Math.abs(statorCurrent.getValueAsDouble())),
@@ -223,8 +237,7 @@ public class ArmIOKrakenFOC implements ArmIO {
         }
 
         if (!Double.isNaN(zeroSpikeStartTimeSec) && (now - zeroSpikeStartTimeSec) >= ZERO_SPIKE_HOLD_TIME_SEC) {
-            motor.setEncoderPosition(Radians.zero());
-            //motor.setVoltage(Volts.zero());
+            talon.setPosition(0.0);
             zeroingActive = false;
             zeroSpikeStartTimeSec = Double.NaN;
             openLoop = false;

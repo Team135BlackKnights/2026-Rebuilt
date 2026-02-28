@@ -44,8 +44,6 @@ public class Intake extends SubsystemChecker {
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_motionAccel = new LoggableTunedNumber
             ("Intake/Arm/MotionAccelRadPerSec2", 2, TuningConstants.isTuningIntake);
-    private static final LoggableTunedNumber arm_motionJerk = new LoggableTunedNumber
-            ("Intake/Arm/MotionJerkRadPerSec3", 1, TuningConstants.isTuningIntake);
     // Setpoints
     private static final LoggableTunedNumber angle_stow = new LoggableTunedNumber("Intake/Setpoints/StowRads",
             1.25, TuningConstants.isTuningIntake);
@@ -228,12 +226,13 @@ public class Intake extends SubsystemChecker {
         return isArmConnected() && isIndexerConnected() && isFrontRollersConnected();
     }
     private void updateTunablePIDs() {
-        if (arm_kP.hasChanged(hashCode()) || arm_kI.hasChanged(hashCode()) || arm_kD.hasChanged(hashCode()) || arm_kS.hasChanged(hashCode()) || arm_kV.hasChanged(hashCode()) || arm_kG.hasChanged(hashCode())) {
-            armIO.setPID(arm_kP.get(), arm_kI.get(), arm_kD.get(), arm_kS.get(), arm_kV.get(), arm_kG.get());
-        }
-        if (arm_motionSpeed.hasChanged(hashCode()) || arm_motionAccel.hasChanged(hashCode()) || arm_motionJerk.hasChanged(hashCode())) {
-            armIO.configureMotionMagic(arm_motionSpeed.get(), arm_motionAccel.get(), arm_motionJerk.get());
-        }
+        LoggableTunedNumber.ifChanged(hashCode(), () -> {
+            armIO.setPID(
+                    arm_kP.get(), arm_kI.get(), arm_kD.get(),
+                    arm_kS.get(), arm_kV.get(), arm_kG.get(),
+                    arm_motionSpeed.get(), arm_motionAccel.get());
+        }, arm_kP, arm_kI, arm_kD, arm_kS, arm_kV, arm_kG,
+                arm_motionSpeed, arm_motionAccel);
     }
 
     // --- SubsystemChecker Implementation ---
