@@ -1248,7 +1248,7 @@ public class RobotContainer {
 	}
 
 	public static AprilTagLayoutType getSelectedAprilTagLayout() {
-		return AprilTagLayoutType.OFFICIAL;
+		return AprilTagLayoutType.HOME;
 	}
 
 	/**

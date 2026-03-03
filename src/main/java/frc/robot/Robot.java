@@ -32,6 +32,7 @@ import com.pathplanner.lib.path.PathConstraints;
 import com.pathplanner.lib.path.PathPlannerPath;
 import com.pathplanner.lib.util.FlippingUtil;
 import au.grapplerobotics.CanBridge;
+import edu.wpi.first.apriltag.AprilTagFieldLayout;
 import edu.wpi.first.math.MathShared;
 import edu.wpi.first.math.MathSharedStore;
 import edu.wpi.first.math.MathUsageId;
@@ -60,6 +61,7 @@ import frc.robot.utils.CompetitionFieldUtils.Simulation.motorsims.SimulatedBatte
 import frc.robot.utils.Touchboard.PosePlotterUtil;
 import frc.robot.utils.Touchboard.TouchboardAutoPlan;
 import frc.robot.utils.maths.TimeUtil;
+import frc.robot.utils.vision.VisionConstants.AprilTagLayoutType;
 
 /*
 TODO: Setup TODOTree to go through the year-by-year updating checklist. 
@@ -660,6 +662,13 @@ public class Robot extends LoggedRobot {
 		 * likely would want to test features that occur
 		 * at different game periods like tele and auto in simulation
 		 */
+		//log each tag pose
+		AprilTagFieldLayout field = RobotContainer.getSelectedAprilTagLayout().getLayout();
+		for (int i = 0; i < field.getTags().size(); i++) {
+			int id = field.getTags().get(i).ID;
+			Pose3d pose = field.getTags().get(i).pose;
+			Logger.recordOutput("Field/AprilTags/Tag" + id, pose);
+		}
 	}
 
 	/** This function is called periodically whilst in simulation. */

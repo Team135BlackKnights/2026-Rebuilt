@@ -182,6 +182,7 @@ public static final boolean bumperDetection = false;
 
   public enum AprilTagLayoutType {
     OFFICIAL("2026-official"),
+	HOME("2026-home"),
     NONE("2026-none");
 
     private final String name;
