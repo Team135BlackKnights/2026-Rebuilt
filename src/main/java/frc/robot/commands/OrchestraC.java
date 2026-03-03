@@ -19,14 +19,10 @@ public class OrchestraC extends Command {
 		allDevices.addAll(RobotContainer.getOrchestraDevices());
 		
 		orchestra = new Orchestra();
-		boolean flip =false;
-		for (ParentDevice device : allDevices){
-			if (flip){
-				orchestra.addInstrument(device,1);
-			}else{
-				orchestra.addInstrument(device,0);
-			}
-			flip = !flip;
+		int count = 4;
+		for (int i = 0; i < allDevices.size()-1; i++){
+				orchestra.addInstrument(allDevices.get(i),i%count);
+			
 		}
 		this.filename = fileName;
 		if (Constants.currentMode == Constants.Mode.SIM) {

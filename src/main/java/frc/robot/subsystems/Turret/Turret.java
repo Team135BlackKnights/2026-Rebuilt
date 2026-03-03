@@ -16,7 +16,6 @@ import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.util.Units;
-import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.RobotContainer;
 import frc.robot.subsystems.SubsystemChecker;
@@ -32,6 +31,7 @@ import frc.robot.utils.CompetitionFieldUtils.FieldConstants;
 import frc.robot.utils.selfCheck.SelfChecking;
 
 import frc.robot.utils.GeomUtil;
+import frc.robot.utils.LoggableTunedBoolean;
 
 public class Turret extends SubsystemChecker {
   // Azimuth setPID(p,i,d,ks,kv,ka,velMax,accelMax)
@@ -82,7 +82,8 @@ public class Turret extends SubsystemChecker {
     IDLE,
     TUNING_FLYWHEEL,
     TUNING_AZIMUTH,
-    TUNING_HOOD
+    TUNING_HOOD,
+    TUNING_SHOT // Sets RPM + hood from tuning numbers, for shot calibration
   }
 
   public enum PresetTarget {
@@ -106,6 +107,13 @@ public class Turret extends SubsystemChecker {
   private double desiredHoodRads = 0.0;
   private double desiredFlywheelRadsPerSec = 0.0;
 
+  private final LoggableTunedNumber tuning_RPM;
+  private final LoggableTunedNumber tuning_hoodDeg;
+  private final LoggableTunedNumber tuning_TOF;
+  private final LoggableTunedBoolean tuning_logFlag;
+  private final List<String> loggedShots = new ArrayList<>();
+  private boolean lastLogFlag = false;
+  private boolean canChangeGoal = true;
   public Turret(AzimuthIO azimuthIO, FlywheelIO flywheelIO, HoodIO hoodIO, Transform2d robotToTurret, String name) {
     this.azimuthIO = azimuthIO;
     this.flywheelIO = flywheelIO;
@@ -172,10 +180,15 @@ azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 6.0, true); //75
 
     // Initialize targets
     target = getPresetTarget2d(PresetTarget.HUB_TOP_CENTER);
+
+    tuning_RPM = new LoggableTunedNumber(name + "/ShotTuning/RPM", 0.0, true);
+    tuning_hoodDeg = new LoggableTunedNumber(name + "/ShotTuning/HoodDeg", 0.0, true);
+    tuning_TOF = new LoggableTunedNumber(name + "/ShotTuning/TOF_Sec", 0.5, true);
+    tuning_logFlag = new LoggableTunedBoolean(name + "/ShotTuning/LogShot", false,true);
   }
 
   public void setGoal(Goal goal) {
-    if (goal != null)
+    if (goal != null && canChangeGoal)
       this.goal = goal;
   }
 
@@ -260,7 +273,6 @@ azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 6.0, true); //75
     flywheelIO.setVelocity(desiredFlywheelRadsPerSec);
   }
   public void setCharTurretPos(double radians) {
-    goal = Goal.TUNING_AZIMUTH;
     desiredTurretRads = radians;
     azimuthIO.setDesiredPosition(desiredTurretRads);
   }
@@ -277,6 +289,17 @@ azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 6.0, true); //75
   }
   public double getCharFlywheelRPM() {
     return flywheelInputs.velocityRadsPerSec * 60.0 / (2.0 * Math.PI);
+  }
+  public Transform2d getRobotToTurret() {
+    return robotToTurret;
+  }
+  public void enterShotTuning() {
+    goal = Goal.TUNING_SHOT;
+    canChangeGoal = false;
+  }
+  public void clearLoggedShots() {
+    loggedShots.clear();
+    canChangeGoal = true;
   }
   public double getCharTurretVelocity() {
     return azimuthInputs.turretVelocityRadsPerSec;
@@ -349,7 +372,7 @@ azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 6.0, true); //75
         var params = shotCalculator.getParameters(target, robotToTurret, ShotCalculator.HUB_PROFILE);
 
         desiredTurretRads = params.turretAngle().getRadians();
-        //desiredHoodRads = params.hoodAngle();
+        desiredHoodRads = params.hoodAngle();
         desiredFlywheelRadsPerSec = aimingFlywheelSpeedRadsPerSec.get();
 
         azimuthIO.setDesiredPosition(desiredTurretRads);
@@ -364,7 +387,7 @@ azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 6.0, true); //75
         var params = shotCalculator.getParameters(target, robotToTurret, profile);
 
         desiredTurretRads = params.turretAngle().getRadians();
-        //desiredHoodRads = params.hoodAngle();
+        desiredHoodRads = params.hoodAngle();
         desiredFlywheelRadsPerSec = params.flywheelSpeed();
 
         azimuthIO.setDesiredPosition(desiredTurretRads);
@@ -380,10 +403,38 @@ azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 6.0, true); //75
       case TUNING_HOOD -> {
         hoodIO.setPosition(desiredHoodRads);
       }
+      case TUNING_SHOT -> {
+        desiredFlywheelRadsPerSec = tuning_RPM.get() * 2.0 * Math.PI / 60.0;
+        desiredHoodRads = Math.toRadians(tuning_hoodDeg.get());
+        //just grab the shot angle from tuning
+        setPresetTarget(PresetTarget.HUB_TOP_CENTER);        
+        var params = shotCalculator.getParameters(target, robotToTurret, profile);
+        desiredTurretRads = params.turretAngle().getRadians();
+        flywheelIO.setVelocity(desiredFlywheelRadsPerSec);
+        hoodIO.setPosition(desiredHoodRads);
+        azimuthIO.setDesiredPosition(desiredTurretRads);
+      }
     }
     lastTurretRads = desiredTurretRads;
 
-    // Logging
+    boolean logNow = tuning_logFlag.get();
+    if (logNow && !lastLogFlag) {
+      Pose2d turretPose = RobotContainer.drivetrainS.getPose().transformBy(robotToTurret);
+      double distToTarget = target.getDistance(turretPose.getTranslation());
+      double rpm = tuning_RPM.get();//flywheelInputs.velocityRadsPerSec * 60.0 / (2.0 * Math.PI);
+      double hoodDeg = Math.toRadians(tuning_hoodDeg.get());//Math.toDegrees(hoodInputs.positionRads);
+      double tof = tuning_TOF.get();
+      String entry = String.format("dist=%.3fm  rpm=%.1f  hood=%.2frad  tof=%.3fs", distToTarget, rpm, hoodDeg, tof);
+      loggedShots.add(entry);
+      tuning_logFlag.set(false);
+    }
+    lastLogFlag = logNow;
+    Logger.recordOutput(name + "/ShotTuning/LoggedShots", loggedShots.toArray(new String[0]));
+    Logger.recordOutput(name + "/ShotTuning/ShotCount", loggedShots.size());
+    // Live distance for tuning reference
+    Pose2d currentTurretPose = RobotContainer.drivetrainS.getPose().transformBy(robotToTurret);
+    Logger.recordOutput(name + "/ShotTuning/DistToTargetM",
+        target.getDistance(currentTurretPose.getTranslation()));
     Logger.recordOutput(name + "/Goal", goal.toString());
     Logger.recordOutput("SuperStructure/" + name + "/Goal", goal.toString());
     Logger.recordOutput("SuperStructure/" + name + "/TargetName", activePreset.toString());

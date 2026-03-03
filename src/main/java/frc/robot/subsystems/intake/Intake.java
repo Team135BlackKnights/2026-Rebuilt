@@ -26,27 +26,28 @@ import lombok.Getter;
 public class Intake extends SubsystemChecker {
 
     // Tuning
-    private static final LoggableTunedNumber arm_kP = new LoggableTunedNumber("Intake/Arm/kP", 10,
+    private static final LoggableTunedNumber arm_kP = new LoggableTunedNumber("Intake/Arm/kP", 450,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_kI = new LoggableTunedNumber("Intake/Arm/kI", 0.0,
             TuningConstants.isTuningIntake);
-    private static final LoggableTunedNumber arm_kD = new LoggableTunedNumber("Intake/Arm/kD", 1,
+    private static final LoggableTunedNumber arm_kD = new LoggableTunedNumber("Intake/Arm/kD", 0.1,
             TuningConstants.isTuningIntake);
-    private static final LoggableTunedNumber arm_kS = new LoggableTunedNumber("Intake/Arm/kS", 1.7,
+    private static final LoggableTunedNumber arm_kS = new LoggableTunedNumber("Intake/Arm/kS", 5,
             TuningConstants.isTuningIntake);
-    private static final LoggableTunedNumber arm_kV = new LoggableTunedNumber("Intake/Arm/kV", 0.0,
-            TuningConstants.isTuningIntake);
-
-    private static final LoggableTunedNumber arm_kG = new LoggableTunedNumber("Intake/Arm/kG", 4,
+    private static final LoggableTunedNumber arm_kV = new LoggableTunedNumber("Intake/Arm/kV", 0,
             TuningConstants.isTuningIntake);
 
-    private static final LoggableTunedNumber arm_motionSpeed = new LoggableTunedNumber("Intake/Arm/MotionCruiseRadPerSec",1,
+    private static final LoggableTunedNumber arm_kG = new LoggableTunedNumber("Intake/Arm/kG", 0,
+            TuningConstants.isTuningIntake);
+
+    private static final LoggableTunedNumber arm_motionSpeed = new LoggableTunedNumber("Intake/Arm/MotionCruiseRadPerSec",5,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_motionAccel = new LoggableTunedNumber
-            ("Intake/Arm/MotionAccelRadPerSec2", 2, TuningConstants.isTuningIntake);
+            ("Intake/Arm/MotionAccelRadPerSec2", 10, TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber arm_neutralBand = new LoggableTunedNumber("Intake/Arm/NeutralBand",.02,TuningConstants.isTuningIntake);
     // Setpoints
     private static final LoggableTunedNumber angle_stow = new LoggableTunedNumber("Intake/Setpoints/StowRads",
-            1.25, TuningConstants.isTuningIntake);
+            1.57, TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber angle_ground = new LoggableTunedNumber("Intake/Setpoints/GroundRads", 0.0,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber time_jackhammer = new LoggableTunedNumber("Intake/JackhammerTimeSecs",
@@ -75,6 +76,7 @@ public class Intake extends SubsystemChecker {
         JACKHAMMERING_OUT, // Rapidly pulse rollers to dislodge jams (with arm down)
         JACKHAMMERING_IN, // Rapidly pulse rollers to dislodge jams (with arm up)
         SHOOTING, // Don't mess with the arm, but run the rollers at shooting speed
+        HOLD, // Hold the arm at its current position (used after manual control)
         TUNING,
     }
 
@@ -170,6 +172,11 @@ public class Intake extends SubsystemChecker {
                 indexer.setGoal(Indexer.Goal.SHOOTING);
                 frontRollers.setGoal(FrontRollers.Goal.SHOOTING);
             }
+            case HOLD -> {
+                // Hold arm at current setpoint (set externally), stop rollers
+                indexer.setGoal(Indexer.Goal.STOPPED);
+                frontRollers.setGoal(FrontRollers.Goal.STOPPED);
+            }
 
         }
         if (goal != Goal.TUNING)
@@ -201,6 +208,11 @@ public class Intake extends SubsystemChecker {
         goal = Goal.TUNING;
         armIO.setVoltage(volts);
     }
+    /** Hold the arm at its current position using PID. Call once on release of manual control. */
+    public void holdAtCurrentPosition() {
+        currentArmSetpoint = armInputs.positionRads;
+        setGoal(Goal.HOLD);
+    }
     public double getCharacterizationMeasurement() {
         return armInputs.positionRads;
     }
@@ -230,9 +242,9 @@ public class Intake extends SubsystemChecker {
             armIO.setPID(
                     arm_kP.get(), arm_kI.get(), arm_kD.get(),
                     arm_kS.get(), arm_kV.get(), arm_kG.get(),
-                    arm_motionSpeed.get(), arm_motionAccel.get());
+                    arm_motionSpeed.get(), arm_motionAccel.get(), arm_neutralBand.get());
         }, arm_kP, arm_kI, arm_kD, arm_kS, arm_kV, arm_kG,
-                arm_motionSpeed, arm_motionAccel);
+                arm_motionSpeed, arm_motionAccel, arm_neutralBand);
     }
 
     // --- SubsystemChecker Implementation ---
