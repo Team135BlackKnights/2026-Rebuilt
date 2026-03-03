@@ -194,6 +194,9 @@ public class DriveConstants {
 			kBackLeftTurningReversed = false, kBackLeftAbsEncoderReversed = false,
 			kBackRightDriveReversed = true, kBackRightTurningReversed = false,
 			kBackRightAbsEncoderReversed = false;
+	public static ModuleLimits moduleLimitsAuto = new ModuleLimits(
+			DriveConstants.kMaxSpeedMetersPerSecond*2,
+			maxTranslationalAcceleration.get()*2, DriveConstants.kMaxTurningSpeedRadPerSec*4);
 	public static ModuleLimits moduleLimitsLow = new ModuleLimits(
 			DriveConstants.kMaxSpeedMetersPerSecond,
 			maxTranslationalAcceleration.get(), DriveConstants.kMaxTurningSpeedRadPerSec);
@@ -251,9 +254,9 @@ public class DriveConstants {
 				moi = 2.8732, // kg m^2, moment of inertia of the robot
 				weight = Units.lbsToKilograms(56); // test chassis
 		public static final MotorConstantContainer pathplannerTranslationConstantContainer = new MotorConstantContainer(
-				0.001, 0.001, 0.001, .675,.125, 0),
+				0.001, 0.001, 0.001, 1,.125, 0), //.675,.125.0
 				pathplannerRotationConstantContainer = new MotorConstantContainer(
-						0.001, 0.001, 0.001, 5, 0, 0);
+						0.001, 0.001, 0.001, 10, 0, 0);
 
 	}
 

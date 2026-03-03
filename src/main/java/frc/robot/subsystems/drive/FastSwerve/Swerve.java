@@ -28,6 +28,7 @@ import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.Constants;
 import frc.robot.Robot;
 import frc.robot.RobotContainer;
+import frc.robot.Constants.FRCMatchState;
 import frc.robot.Constants.TuningConstants;
 import frc.robot.utils.drive.DriveConstants.MotorVendor;
 import frc.robot.subsystems.SubsystemChecker;
@@ -579,6 +580,9 @@ public class Swerve extends SubsystemChecker implements DrivetrainS {
 						DriveConstants.kMaxTurningSpeedRadPerSec,
 						DriveConstants.maxRotationalAcceleration.get());
 			}
+		}
+		if (Constants.currentMatchState == FRCMatchState.AUTO){
+			currentModuleLimits = DriveConstants.moduleLimitsAuto;
 		}
 		// Run modules
 		if (!modulesOrienting && currentDriveMode != DriveMode.MODULE_CHARACTERIZATION) {

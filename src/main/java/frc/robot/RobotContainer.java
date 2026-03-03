@@ -89,6 +89,7 @@ import frc.robot.utils.drive.Sensors.GyroIOSim;
 
 import com.ctre.phoenix6.hardware.ParentDevice;
 import com.pathplanner.lib.auto.AutoBuilder;
+import com.pathplanner.lib.auto.NamedCommands;
 import com.pathplanner.lib.commands.PathfindingCommand;
 import com.pathplanner.lib.pathfinding.Pathfinding;
 import com.pathplanner.lib.util.PPLibTelemetry;
@@ -296,13 +297,13 @@ public class RobotContainer {
 							GeomUtil.applyY(plan.startPose.y, true),
 							new Rotation2d());
 				} else {
-					startingPose = new Pose2d(4.398, 0.475, new Rotation2d());
+					startingPose = new Pose2d(4.398, 7.586, new Rotation2d());
 				}
 			} else {
-				startingPose = new Pose2d(4.398, 0.475, new Rotation2d());
+				startingPose = new Pose2d(4.398, 7.586, new Rotation2d());
 			}
 		} else {
-			startingPose = new Pose2d(4.398, 0.475, new Rotation2d());
+			startingPose = new Pose2d(4.398, 7.586, new Rotation2d());
 		}
 		startingPose = GeomUtil.apply(startingPose, false);
 		switch (Constants.currentMode) {
@@ -530,8 +531,7 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.leftAzimuthBigEncoderOffset,
 						AdvancedMechanismConstants.Turret.leftAzimuthSmallEncoderOffset,
 						AdvancedMechanismConstants.Turret.enc1GearTeethLeft,
-						AdvancedMechanismConstants.Turret.enc2GearTeethLeft
-						);
+						AdvancedMechanismConstants.Turret.enc2GearTeethLeft);
 
 				FlywheelIO flywheelIOLeftTurret = new FlywheelIOKrakenFOC(
 						Robot.rioCanBus,
@@ -545,14 +545,10 @@ public class RobotContainer {
 				HoodIO hoodIOLeftTurret = new HoodIOKrakenFOC(
 						Robot.rioCanBus,
 						AdvancedMechanismConstants.Turret.leftHoodID,
-						AdvancedMechanismConstants.Turret.leftHoodEncoderID,
 						AdvancedMechanismConstants.Turret.leftName,
 						AdvancedMechanismConstants.Turret.currentLimitHood,
-						AdvancedMechanismConstants.Turret.hoodMotorToHoodEncoderRatio,
-						AdvancedMechanismConstants.Turret.hoodEncoderToHoodArmRatio,
 						AdvancedMechanismConstants.Turret.minHoodAngle,
-						AdvancedMechanismConstants.Turret.maxHoodAngle,
-						AdvancedMechanismConstants.Turret.leftHoodEncoderOffset);
+						AdvancedMechanismConstants.Turret.maxHoodAngle);
 
 				leftTurret = new Turret(azimuthIOLeftTurret, flywheelIOLeftTurret,
 						hoodIOLeftTurret,
@@ -569,12 +565,12 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.rightAzimuthBigEncoderID,
 						AdvancedMechanismConstants.Turret.rightName,
 						AdvancedMechanismConstants.Turret.currentLimitAzimuth,
-								-AdvancedMechanismConstants.Turret.maxTurretAngle,
-								-AdvancedMechanismConstants.Turret.minTurretAngle,
-								AdvancedMechanismConstants.Turret.rightAzimuthSmallEncoderOffset,
-								AdvancedMechanismConstants.Turret.rightAzimuthBigEncoderOffset,
-								AdvancedMechanismConstants.Turret.enc1GearTeethRight,
-								AdvancedMechanismConstants.Turret.enc2GearTeethRight);
+						-AdvancedMechanismConstants.Turret.maxTurretAngle,
+						-AdvancedMechanismConstants.Turret.minTurretAngle,
+						AdvancedMechanismConstants.Turret.rightAzimuthSmallEncoderOffset,
+						AdvancedMechanismConstants.Turret.rightAzimuthBigEncoderOffset,
+						AdvancedMechanismConstants.Turret.enc1GearTeethRight,
+						AdvancedMechanismConstants.Turret.enc2GearTeethRight);
 				FlywheelIO flywheelIORightTurret = new FlywheelIOKrakenFOC(
 						Robot.rioCanBus,
 						AdvancedMechanismConstants.Turret.rightFlywheelID,
@@ -587,14 +583,10 @@ public class RobotContainer {
 				HoodIO hoodIORightTurret = new HoodIOKrakenFOC(
 						Robot.rioCanBus,
 						AdvancedMechanismConstants.Turret.rightHoodID,
-						AdvancedMechanismConstants.Turret.rightHoodEncoderID,
 						AdvancedMechanismConstants.Turret.rightName,
 						AdvancedMechanismConstants.Turret.currentLimitHood,
-						AdvancedMechanismConstants.Turret.hoodMotorToHoodEncoderRatio,
-						AdvancedMechanismConstants.Turret.hoodEncoderToHoodArmRatio,
 						AdvancedMechanismConstants.Turret.minHoodAngle,
-						AdvancedMechanismConstants.Turret.maxHoodAngle,
-						AdvancedMechanismConstants.Turret.rightHoodEncoderOffset);
+						AdvancedMechanismConstants.Turret.maxHoodAngle);
 				rightTurret = new Turret(azimuthIORightTurret, flywheelIORightTurret, hoodIORightTurret,
 						AdvancedMechanismConstants.Turret.robotToRightTurretHoleCenter, "RightTurret");
 				break;
@@ -736,15 +728,14 @@ public class RobotContainer {
 								AdvancedMechanismConstants.Turret.enc1GearTeethLeft,
 								AdvancedMechanismConstants.Turret.enc2GearTeethLeft),
 						new FlywheelIOSim(
-						Robot.rioCanBus,
-						AdvancedMechanismConstants.Turret.leftFlywheelID,
-						AdvancedMechanismConstants.Turret.leftName,
-						AdvancedMechanismConstants.Turret.currentLimitFlywheel,
-						AdvancedMechanismConstants.Turret.flywheelRatio,
-						AdvancedMechanismConstants.Turret.invertFlywheel,
-						AdvancedMechanismConstants.Turret.flywheelMaxRPM,
-						AdvancedMechanismConstants.Turret.flywheelMOI
-						),
+								Robot.rioCanBus,
+								AdvancedMechanismConstants.Turret.leftFlywheelID,
+								AdvancedMechanismConstants.Turret.leftName,
+								AdvancedMechanismConstants.Turret.currentLimitFlywheel,
+								AdvancedMechanismConstants.Turret.flywheelRatio,
+								AdvancedMechanismConstants.Turret.invertFlywheel,
+								AdvancedMechanismConstants.Turret.flywheelMaxRPM,
+								AdvancedMechanismConstants.Turret.flywheelMOI),
 						new HoodIOSim(
 								Robot.rioCanBus,
 								AdvancedMechanismConstants.Turret.leftHoodID,
@@ -764,15 +755,14 @@ public class RobotContainer {
 								AdvancedMechanismConstants.Turret.enc1GearTeethRight,
 								AdvancedMechanismConstants.Turret.enc2GearTeethRight),
 						new FlywheelIOSim(
-						Robot.rioCanBus,
-						AdvancedMechanismConstants.Turret.rightFlywheelID,
-						AdvancedMechanismConstants.Turret.rightName,
-						AdvancedMechanismConstants.Turret.currentLimitFlywheel,
-						AdvancedMechanismConstants.Turret.flywheelRatio,
-						AdvancedMechanismConstants.Turret.invertFlywheel,
-						AdvancedMechanismConstants.Turret.flywheelMaxRPM,
-						AdvancedMechanismConstants.Turret.flywheelMOI
-						),
+								Robot.rioCanBus,
+								AdvancedMechanismConstants.Turret.rightFlywheelID,
+								AdvancedMechanismConstants.Turret.rightName,
+								AdvancedMechanismConstants.Turret.currentLimitFlywheel,
+								AdvancedMechanismConstants.Turret.flywheelRatio,
+								AdvancedMechanismConstants.Turret.invertFlywheel,
+								AdvancedMechanismConstants.Turret.flywheelMaxRPM,
+								AdvancedMechanismConstants.Turret.flywheelMOI),
 						new HoodIOSim(
 								Robot.rioCanBus,
 								AdvancedMechanismConstants.Turret.rightHoodID,
@@ -847,9 +837,20 @@ public class RobotContainer {
 				}, AdvancedMechanismConstants.Turret.robotToRightTurretHoleCenter, "RightTurret");
 
 		}
-
+		NamedCommands.registerCommand(
+				"Intake", Commands.run(() -> intake.setGoal(Goal.INTAKE_GROUND), intake)
+						.finallyDo(() -> intake.setGoal(Goal.INTAKE_OUTER_IDLE)));
+		NamedCommands.registerCommand(
+				"ShootWithIntakeOut", buildShootTurretsHubIntakeOutCommand());
+		NamedCommands.registerCommand(
+				"Shoot", buildShootTurretsHubIntakeInCommand());
+		NamedCommands.registerCommand("Hang", buildHangCommand());
+		NamedCommands.registerCommand("UseDrive", Commands.run(() -> {
+			drivetrainS.stopModules();
+		}, drivetrainS).withName("UseDrive").ignoringDisable(true));
+		NamedCommands.registerCommand("WarmShooter", buildTargetHubBothCommand());
 		drivetrainS.resetPose(startingPose);
-		drivetrainS.setDefaultCommand(new DrivetrainC(drivetrainS));
+		//drivetrainS.setDefaultCommand(new DrivetrainC(drivetrainS));
 		Pathfinding.setPathfinder(pathFinder);
 		// algaeScorer.setDefaultCommand(new AlgaeScorerC(algaeScorer));
 		// superStructureNotifier = new Notifier(superStructure::periodic);
@@ -881,6 +882,7 @@ public class RobotContainer {
 		 * "No images found for " + ImageStates.debug.name());
 		 * }
 		 */
+
 		if (!AutoBuilder.isConfigured()) {
 			throw new RuntimeException("AutoBuilder was not configured before attempting to build an auto chooser");
 		}
@@ -893,7 +895,7 @@ public class RobotContainer {
 		}
 		autoChooser = new LoggedDashboardChooser<>("Auto Routine", AutoBuilder.buildAutoChooser());
 		autoChooser.addDefaultOption("DynamicPathing",
-				Commands.defer(() -> PosePlotterUtil.getAuto(), Set.of(drivetrainS)));
+				Commands.defer(() -> PosePlotterUtil.getAuto(), Set.of()));
 		if (drivetrainS instanceof Swerve) {
 			Command orientBeforeData = ((Swerve) drivetrainS).orientModules(Swerve.getCircleOrientations());
 			autoChooser.addOption("Wheel Radius Characterization",
@@ -926,7 +928,7 @@ public class RobotContainer {
 						IntakeConstants.armMinAngleRads, IntakeConstants.armMaxAngleRads, Units.degreesToRadians(10),
 						Units.degreesToRadians(120), 3, 20).beforeStarting(Commands.waitSeconds(3))
 						.withName("Intake PID Characterization"));
-		autoChooser.addOption("Intake FeedForward Characterization", 
+		autoChooser.addOption("Intake FeedForward Characterization",
 				new FeedForwardCharacterization(intake, (volts) -> intake.runCharacterization(volts),
 						intake::getCharacterizationMeasurement, () -> false).beforeStarting(Commands.waitSeconds(3))
 						.withName("Intake FeedForward Characterization"));
@@ -949,6 +951,7 @@ public class RobotContainer {
 		Trigger povLeft = driveController.pov(270);
 
 		Trigger manualTurretControl = povUp.or(povRight).or(povDown).or(povLeft);
+		Trigger inTeleOp = new Trigger(() -> DriverStation.isTeleop() && DriverStation.isEnabled());
 		Trigger inScoreArea = new Trigger(() -> GeomUtil.applyX(drivetrainS.getPose().getX()) < 4.4); // when red, we
 																										// are at 12,
 																										// flipping
@@ -1015,27 +1018,28 @@ public class RobotContainer {
 				Set.of(drivetrainS, intake));
 
 		// Start of actual DRIVER bindings
-		//Start = zero chassis
-		//Select = zero robot
-		//Left Stick Button = orient modules to circle for pushing
-		//Right Stick Button = play megolovania because why not
-		//POV-Up / BR paddle = manual turret control for aiming at hub
-		//POV-Right / TR paddle  = manual turret control for aiming at right trench
-		//POV-Down / BL paddle = manual turret control for aiming at BOTH trenches
-		//POV-Left / TL paddle = manual turret control for aiming at left trench
-		//Left Trigger = auto align THRU the trench with velocity
-		//Right Trigger = fire while aiming at target
-		//Left Bumper = hold to intake from ground
-		//Right Bumper = hold to intake with AI
-		//A button = PRESS to either extend or retract climber
-		//B button = hold to move climber down
-		//Y button = hold to move climber up
-		//X button = jackhammer intake/indexer/Vindexer
-		//Whenever the user ISN'T holding a POV/paddle, the following is true
+		// Start = zero chassis
+		// Select = zero robot
+		// Left Stick Button = orient modules to circle for pushing
+		// Right Stick Button = play megolovania because why not
+		// POV-Up / BR paddle = manual turret control for aiming at hub
+		// POV-Right / TR paddle = manual turret control for aiming at right trench
+		// POV-Down / BL paddle = manual turret control for aiming at BOTH trenches
+		// POV-Left / TL paddle = manual turret control for aiming at left trench
+		// Left Trigger = auto align THRU the trench with velocity
+		// Right Trigger = fire while aiming at target
+		// Left Bumper = hold to intake from ground
+		// Right Bumper = hold to intake with AI
+		// A button = PRESS to either extend or retract climber
+		// B button = hold to move climber down
+		// Y button = hold to move climber up
+		// X button = jackhammer intake/indexer/Vindexer
+		// Whenever the user ISN'T holding a POV/paddle, the following is true
 		// - If we're in the score area, the turrets aim at the hub
-		// - If we're in the opponent area, the turrets aim staight down to our alliance zone / neutral zone 
-		// - If we're in the neutral zone, the turrets aim at the trench we're closer to (or both if we're in the middle)
-		
+		// - If we're in the opponent area, the turrets aim staight down to our alliance
+		// zone / neutral zone
+		// - If we're in the neutral zone, the turrets aim at the trench we're closer to
+		// (or both if we're in the middle)
 
 		startButtonDrive
 				.onTrue(new InstantCommand(() -> {
@@ -1053,32 +1057,37 @@ public class RobotContainer {
 		leftStickButtonDrive.onTrue(drivetrainS.orientModules(Swerve.getXOrientations()));
 		leftStickButtonDrive.onFalse(Commands.runOnce(() -> drivetrainS.stopModules(), drivetrainS));
 		rightStickButtonDrive.onTrue(new OrchestraC("megolovania").withName("Play Megolovania"));
-		//Test Commands
+		// Test Commands
 		aButtonDrive.whileTrue(Commands.run(() -> {
 			// flywheel go to 5000 rpm
 			leftTurret.setCharTurretPos(4.1);
-			//leftTurret.setCharHoodPos(Units.degreesToRadians(12));
-			//rightTurret.setCharHoodPos(Units.degreesToRadians(12));
-			//intake.setGoal(Goal.STOW);
-			//leftTurret.setCharTurretPos(-1.49);
-			//hang.setGoal(HangState.STOWED);
+			// leftTurret.setCharHoodPos(Units.degreesToRadians(12));
+			// rightTurret.setCharHoodPos(Units.degreesToRadians(12));
+			// intake.setGoal(Goal.STOW);
+			// leftTurret.setCharTurretPos(-1.49);
+			// hang.setGoal(HangState.STOWED);
 		}));
 		bButtonDrive.whileTrue(Commands.run(() -> {
 			leftTurret.setCharTurretPos(2.5);
-			//leftTurret.setCharTurretPos(0);
-			//intake.setGoal(Goal.INTAKE_GROUND);
-			//hang.setGoal(HangState.EXTENDED);
-			//leftTurret.setCharHoodPos(Units.degreesToRadians(50));
-			//rightTurret.setCharHoodPos(Units.degreesToRadians(50));
+			// leftTurret.setCharTurretPos(0);
+			// intake.setGoal(Goal.INTAKE_GROUND);
+			// hang.setGoal(HangState.EXTENDED);
+			// leftTurret.setCharHoodPos(Units.degreesToRadians(50));
+			// rightTurret.setCharHoodPos(Units.degreesToRadians(50));
 
 		}));
-		yButtonDrive.whileTrue(Commands.run(() ->{
+		yButtonDrive.whileTrue(Commands.run(() -> {
 
 		}));
 		// Climber controls
-		//aButtonDrive.onTrue(Commands.either(Commands.runOnce(() -> hang.setGoal(HangState.EXTENDED)), Commands.runOnce(() -> hang.setGoal(HangState.STOWED)), () -> hang.getHangState() == HangState.STOWED));
-		//yButtonDrive.whileTrue(Commands.run(() -> hang.setGoal(HangState.MOVING_UP)));
-		//bButtonDrive.whileTrue(Commands.run(() -> hang.setGoal(HangState.MOVING_DOWN)));
+		// aButtonDrive.onTrue(Commands.either(Commands.runOnce(() ->
+		// hang.setGoal(HangState.EXTENDED)), Commands.runOnce(() ->
+		// hang.setGoal(HangState.STOWED)), () -> hang.getHangState() ==
+		// HangState.STOWED));
+		// yButtonDrive.whileTrue(Commands.run(() ->
+		// hang.setGoal(HangState.MOVING_UP)));
+		// bButtonDrive.whileTrue(Commands.run(() ->
+		// hang.setGoal(HangState.MOVING_DOWN)));
 		// Intake controls
 		leftBumperDrive.and(rightTriggerDriveFull.negate()).whileTrue(
 				Commands.run(() -> intake.setGoal(Goal.INTAKE_GROUND))
@@ -1136,22 +1145,18 @@ public class RobotContainer {
 		povDown.onTrue(targetSplitTrenches);
 		povLeft.onTrue(targetBothLeftTrench);
 		povRight.onTrue(targetBothRightTrench);
-		//Automatic Turret Controls
-		
-		 manualTurretControl.negate().and(inScoreArea).whileTrue(targetHubBoth);
-		 manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.
-		 negate()).and(beforeRightTrench)
-		 .whileTrue(targetBothRightTrench);
-		 manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.
-		 negate()).and(beyondLeftTrench)
-		 .whileTrue(targetBothLeftTrench);
-		 manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.
-		 negate())
-		 .and(beyondLeftTrench.negate()).and(beforeRightTrench.negate()).whileTrue(
-		 targetSplitTrenches);
-		 manualTurretControl.negate().and(inOpponentArea).whileTrue(
-		 targetBothOverNeutral);
-		 
+		// Automatic Turret Controls
+
+		manualTurretControl.negate().and(inScoreArea).and(inTeleOp).whileTrue(targetHubBoth);
+		manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.negate()).and(beforeRightTrench).and(inTeleOp)
+				.whileTrue(targetBothRightTrench);
+		manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.negate()).and(beyondLeftTrench).and(inTeleOp)
+				.whileTrue(targetBothLeftTrench);
+		manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.negate()).and(inTeleOp)
+				.and(beyondLeftTrench.negate()).and(beforeRightTrench.negate()).whileTrue(
+						targetSplitTrenches);
+		manualTurretControl.negate().and(inOpponentArea).and(inTeleOp).whileTrue(
+				targetBothOverNeutral);
 
 		// - If in score area AND not manually holding POV: aim both turrets at hub
 		/*
@@ -1214,6 +1219,54 @@ public class RobotContainer {
 		}, leftTurret, rightTurret);
 	}
 
+	private Command buildShootTurretsHubIntakeOutCommand() {
+		return (buildTargetHubBothCommand().andThen(Commands.run(() -> {
+			leftTurret.setGoal(Turret.Goal.SHOOTING);
+			rightTurret.setGoal(Turret.Goal.SHOOTING);
+
+			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints()) {
+				kickup.setGoal(Kickup.Goal.SHOOTING);
+				intake.setGoal(Intake.Goal.SHOOTING);
+			} else {
+				kickup.setGoal(Kickup.Goal.IDLING);
+				intake.setGoal(Intake.Goal.JACKHAMMERING_OUT);
+			}
+		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
+			leftTurret.setGoal(Turret.Goal.AIMING);
+			rightTurret.setGoal(Turret.Goal.AIMING);
+			kickup.setGoal(Kickup.Goal.IDLING);
+			intake.setGoal(Intake.Goal.INTAKE_OUTER_IDLE);
+		}))).withName("Shoot Turrets with Intake Out");
+	}
+
+	private Command buildHangCommand() {
+		return Commands.defer(() -> Commands.sequence(Commands.runOnce(() -> {
+			hang.setGoal(HangState.EXTENDED);
+		}).andThen(
+			//go into wall, then climb up, then we ball TODO.
+		)), Set.of(hang, drivetrainS)).withName("Auto Hang");
+	}
+
+	private Command buildShootTurretsHubIntakeInCommand() {
+		return (buildTargetHubBothCommand().andThen(Commands.run(() -> {
+			leftTurret.setGoal(Turret.Goal.SHOOTING);
+			rightTurret.setGoal(Turret.Goal.SHOOTING);
+
+			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints()) {
+				kickup.setGoal(Kickup.Goal.SHOOTING);
+				intake.setGoal(Intake.Goal.SHOOTING);
+			} else {
+				kickup.setGoal(Kickup.Goal.IDLING);
+				intake.setGoal(Intake.Goal.JACKHAMMERING_IN);
+			}
+		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
+			leftTurret.setGoal(Turret.Goal.AIMING);
+			rightTurret.setGoal(Turret.Goal.AIMING);
+			kickup.setGoal(Kickup.Goal.IDLING);
+			intake.setGoal(Intake.Goal.STOW);
+		}))).withName("Shoot Turrets with Intake In");
+	}
+
 	private Command buildShootTurretsCommand() {
 		return Commands.run(() -> {
 			leftTurret.setGoal(Turret.Goal.SHOOTING);
@@ -1252,7 +1305,7 @@ public class RobotContainer {
 	 */
 	public static double[] getCurrentDraw() {
 
-		return new double[] { Math.min(drivetrainS.getCurrent(), 200),hang.getCurrent(), intake.getCurrent(),
+		return new double[] { Math.min(drivetrainS.getCurrent(), 200), hang.getCurrent(), intake.getCurrent(),
 				leftTurret.getCurrent(), rightTurret.getCurrent() };
 		// superStructure.getCurrent() };
 	}

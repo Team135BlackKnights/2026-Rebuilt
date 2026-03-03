@@ -417,7 +417,7 @@ public class Robot extends LoggedRobot {
 							GeomUtil.applyY(plan.startPose.y, true),
 							new Rotation2d());
 				} else {
-					startingPose = new Pose2d(4.398, 0.475, new Rotation2d());
+					startingPose = new Pose2d(4.398, 7.586, new Rotation2d());
 				}
 				startingPose = GeomUtil.apply(startingPose, false);
 				RobotContainer.startingPoseCache = startingPose;
@@ -443,15 +443,15 @@ public class Robot extends LoggedRobot {
 				: false;
 
 		if (!autoHasStarted) {
-			generateAuto();
+			//generateAuto();
 			// reset to starting pose
-			if (RobotContainer.startingPoseCache != null) {
+			/*if (RobotContainer.startingPoseCache != null) {
 				RobotContainer.drivetrainS.resetPose(RobotContainer.startingPoseCache);
 				if (Constants.currentMode == frc.robot.Constants.Mode.SIM) {
 					RobotContainer.fieldSimulation.getMainDriveSimulation()
 							.setSimulationWorldPose(RobotContainer.startingPoseCache);
 				}
-			}
+			}*/
 
 		}
 		oldIsRed = isRed;
@@ -489,10 +489,9 @@ public class Robot extends LoggedRobot {
 		}
 
 		m_autonomousCommand = m_robotContainer.getAutonomousCommand();
-
 		// schedule the autonomous command (example)
 		if (m_autonomousCommand != null) {
-			System.out.println(m_robotContainer.getAutoName());
+			/*System.out.println(m_robotContainer.getAutoName());
 			if (m_robotContainer.getAutoName().equals("DynamicPathing") && !hasCalculatedAuto) {
 				System.out.println("Building Dynamic Auto LATE");
 				generateAuto();
@@ -527,7 +526,7 @@ public class Robot extends LoggedRobot {
 					RobotContainer.fieldSimulation.resetField(true);
 					RobotContainer.fieldSimulation.addPoints(3);
 				}
-			}
+			}*/
 			matchHasEnded = false;
 			System.out.println("Scheduling Auto: " + m_autonomousCommand.getName());
 			CommandScheduler.getInstance().schedule(m_autonomousCommand);
