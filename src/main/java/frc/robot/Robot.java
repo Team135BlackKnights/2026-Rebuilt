@@ -257,7 +257,7 @@ public class Robot extends LoggedRobot {
 		Logger.recordOutput("SystemStatus/robotMode", Constants.currentMode);
 		Elastic.selectTab("Disabled/Prematch");
 		// Threads.setCurrentThreadPriority(true, 10); // Java magic to speed up loops.
-
+		//zero the bot
 	}
 
 	/**
@@ -445,6 +445,7 @@ public class Robot extends LoggedRobot {
 		if (!autoHasStarted) {
 			//generateAuto();
 			// reset to starting pose
+			RobotContainer.drivetrainS.resetPose(GeomUtil.apply(new Pose2d(4.398, 7.586, new Rotation2d()),false));
 			/*if (RobotContainer.startingPoseCache != null) {
 				RobotContainer.drivetrainS.resetPose(RobotContainer.startingPoseCache);
 				if (Constants.currentMode == frc.robot.Constants.Mode.SIM) {

@@ -22,14 +22,16 @@ import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj.Timer;
+import frc.robot.Constants.TuningConstants;
 import frc.robot.utils.IntakeConstants;
+import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.selfCheck.SelfChecking;
 import frc.robot.utils.selfCheck.drive.SelfCheckingTalonFX;
 
 public class ArmIOKrakenFOC implements ArmIO {
-    private static final double ZERO_HOMING_VOLTAGE = -1.0;
-    private static final double ZERO_SPIKE_CURRENT_AMPS = 30.0;
-    private static final double ZERO_SPIKE_HOLD_TIME_SEC = 0.1;
+    private static final LoggableTunedNumber ZERO_VOLTS = new LoggableTunedNumber("Intake/Arm/zeroVolts",-3.5,TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber ZERO_CURRENT_AMPS = new LoggableTunedNumber("Intake/Arm/zeroAmps",25,TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber ZERO_HOLD_SEC = new LoggableTunedNumber("Intake/Arm/zeroTime",0.15,TuningConstants.isTuningIntake);
     private static final double TWO_PI = 2.0 * Math.PI;
 
     protected final String name;
@@ -38,8 +40,8 @@ public class ArmIOKrakenFOC implements ArmIO {
 
     /* Direct Phoenix 6 control requests — no YAMS wrapper */
     private final MotionMagicVoltage motionMagicRequest =
-            new MotionMagicVoltage(0).withSlot(0).withEnableFOC(false);
-    private final VoltageOut voltageRequest = new VoltageOut(0).withEnableFOC(true);
+            new MotionMagicVoltage(0).withSlot(0).withEnableFOC(false).withOverrideBrakeDurNeutral(false);
+    private final VoltageOut voltageRequest = new VoltageOut(0).withEnableFOC(false).withIgnoreHardwareLimits(true).withIgnoreSoftwareLimits(true).withLimitReverseMotion(false).withLimitForwardMotion(false).withOverrideBrakeDurNeutral(true);
 
     /** Motor rotor rotations per mechanism rotation. */
     protected final double reduction;
@@ -78,6 +80,7 @@ public class ArmIOKrakenFOC implements ArmIO {
         talonConfig.CurrentLimits.SupplyCurrentLimit = currentLimitAmps;
 
         talonConfig.MotorOutput.NeutralMode = brake ? NeutralModeValue.Brake : NeutralModeValue.Coast;
+        talonConfig.MotorOutput.DutyCycleNeutralDeadband = 0;
         talonConfig.MotorOutput.Inverted = invert
                 ? InvertedValue.Clockwise_Positive
                 : InvertedValue.CounterClockwise_Positive;
@@ -95,7 +98,7 @@ public class ArmIOKrakenFOC implements ArmIO {
         talonConfig.MotionMagic.MotionMagicCruiseVelocity = 0.0;  
         talonConfig.MotionMagic.MotionMagicAcceleration = 0.0;    
 
-        talonConfig.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.0;
+        talonConfig.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.125;
         talonConfig.OpenLoopRamps.VoltageOpenLoopRampPeriod = 0.0;
 
         talon.getConfigurator().apply(talonConfig);
@@ -147,6 +150,9 @@ public class ArmIOKrakenFOC implements ArmIO {
 
     @Override
     public void setVoltage(double volts) {
+        if (zeroingActive){
+            return;
+        }
         openLoop = true;
         talon.setControl(voltageRequest.withOutput(volts));
     }
@@ -163,10 +169,12 @@ public class ArmIOKrakenFOC implements ArmIO {
     }
 
     @Override
-    public void configureMotionMagic(double cruiseRadPerSec, double accelRadPerSec2) {
+    public void configureMotionMagic(double cruiseRadPerSec, double accelRadPerSec2, double neutralDeadband) {
         talonConfig.MotionMagic.MotionMagicCruiseVelocity = cruiseRadPerSec / TWO_PI;
         talonConfig.MotionMagic.MotionMagicAcceleration = accelRadPerSec2 / TWO_PI;
+        talonConfig.MotorOutput.DutyCycleNeutralDeadband = neutralDeadband;
         talon.getConfigurator().apply(talonConfig.MotionMagic);
+        talon.getConfigurator().apply(talonConfig.MotorOutput);
     }
 
     @Override
@@ -182,7 +190,7 @@ public class ArmIOKrakenFOC implements ArmIO {
 
     @Override
     public void setPID(double p, double i, double d, double ks, double kv, double kg,
-                       double velocityMax, double accelerationMax) {
+                       double velocityMax, double accelerationMax, double neutralDeadband) {
         talonConfig.Slot0.kP = p;
         talonConfig.Slot0.kI = i;
         talonConfig.Slot0.kD = d;
@@ -193,8 +201,10 @@ public class ArmIOKrakenFOC implements ArmIO {
         talonConfig.MotionMagic.MotionMagicCruiseVelocity = velocityMax / TWO_PI;
         talonConfig.MotionMagic.MotionMagicAcceleration = accelerationMax / TWO_PI;
 
+        talonConfig.MotorOutput.DutyCycleNeutralDeadband = neutralDeadband;
         talon.getConfigurator().apply(talonConfig.Slot0);
         talon.getConfigurator().apply(talonConfig.MotionMagic);
+        talon.getConfigurator().apply(talonConfig.MotorOutput);
     }
 
     @Override
@@ -222,13 +232,13 @@ public class ArmIOKrakenFOC implements ArmIO {
         }
 
         double now = Timer.getFPGATimestamp();
-        talon.setControl(voltageRequest.withOutput(ZERO_HOMING_VOLTAGE));
+        talon.setControl(voltageRequest.withOutput(ZERO_VOLTS.get()));
         BaseStatusSignal.refreshAll(supplyCurrent, statorCurrent, torqueCurrent);
         double observedCurrentAmps = Math.max(
                 Math.max(Math.abs(supplyCurrent.getValueAsDouble()), Math.abs(statorCurrent.getValueAsDouble())),
                 Math.abs(torqueCurrent.getValueAsDouble()));
 
-        if (observedCurrentAmps >= ZERO_SPIKE_CURRENT_AMPS) {
+        if (observedCurrentAmps >= ZERO_CURRENT_AMPS.get()) {
             if (Double.isNaN(zeroSpikeStartTimeSec)) {
                 zeroSpikeStartTimeSec = now;
             }
@@ -236,7 +246,7 @@ public class ArmIOKrakenFOC implements ArmIO {
             zeroSpikeStartTimeSec = Double.NaN;
         }
 
-        if (!Double.isNaN(zeroSpikeStartTimeSec) && (now - zeroSpikeStartTimeSec) >= ZERO_SPIKE_HOLD_TIME_SEC) {
+        if (!Double.isNaN(zeroSpikeStartTimeSec) && (now - zeroSpikeStartTimeSec) >= ZERO_HOLD_SEC.get()) {
             talon.setPosition(0.0);
             zeroingActive = false;
             zeroSpikeStartTimeSec = Double.NaN;

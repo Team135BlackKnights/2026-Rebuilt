@@ -12,6 +12,8 @@ import frc.robot.commands.auto.AutoIntake;
 import frc.robot.commands.drive.DrivetrainC;
 import frc.robot.commands.drive.WheelRadiusCharacterization;
 import frc.robot.subsystems.SubsystemChecker;
+import frc.robot.subsystems.Turret.ShotCalculator;
+import frc.robot.subsystems.Turret.ShotCalculator.ShootingParameters;
 import frc.robot.subsystems.Turret.Turret;
 import frc.robot.subsystems.Turret.azimuth.AzimuthIO;
 import frc.robot.subsystems.Turret.azimuth.AzimuthIOKrakenFOC;
@@ -118,6 +120,7 @@ import com.therekrab.autopilot.APTarget;
 import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.kinematics.DifferentialDriveKinematics;
 import edu.wpi.first.math.kinematics.MecanumDriveKinematics;
@@ -177,7 +180,7 @@ public class RobotContainer {
 	private final LoggedDashboardChooser<Command> autoChooser;
 	// [Map<String,>,]
 	public static CommandXboxController driveController = new CommandXboxController(0);
-	public static XboxController manipController = new XboxController(1);
+	public static CommandXboxController manipController = new CommandXboxController(1);
 	public static DriverStationHID dsHIDHandler = new DriverStationHID(2);
 	public static XboxController testingController = new XboxController(5);
 	public static Optional<Rotation2d> angleOverrider = Optional.empty();
@@ -198,6 +201,8 @@ public class RobotContainer {
 	Trigger rightStickButtonDrive = driveController.rightStick();
 	Trigger selectButtonDrive = driveController.back(); // select
 	Trigger startButtonDrive = driveController.start();
+	Trigger manipRightTrigger = manipController.rightTrigger(.1);
+	Trigger manipLeftTrigger = manipController.leftTrigger(.1);
 	public static int currentTest = 0;
 	public static String piConnection = "DISCONNECTED";
 	@AutoLogOutput(key = "RobotState/currentPath")
@@ -283,8 +288,8 @@ public class RobotContainer {
 		// drivetrain system based on that.
 		// If we get something wacky, throw an error
 		String raw = PosePlotterUtil.getAutoString();
-		Pose2d startingPose;
-
+		Pose2d startingPose = new Pose2d();
+	
 		if (raw != null) {
 			var planOpt = PosePlotterUtil.tryGetPlan();
 			if (planOpt.isPresent()) {
@@ -850,7 +855,7 @@ public class RobotContainer {
 		}, drivetrainS).withName("UseDrive").ignoringDisable(true));
 		NamedCommands.registerCommand("WarmShooter", buildTargetHubBothCommand());
 		drivetrainS.resetPose(startingPose);
-		//drivetrainS.setDefaultCommand(new DrivetrainC(drivetrainS));
+		drivetrainS.setDefaultCommand(new DrivetrainC(drivetrainS));
 		Pathfinding.setPathfinder(pathFinder);
 		// algaeScorer.setDefaultCommand(new AlgaeScorerC(algaeScorer));
 		// superStructureNotifier = new Notifier(superStructure::periodic);
@@ -1067,39 +1072,32 @@ public class RobotContainer {
 			// leftTurret.setCharTurretPos(-1.49);
 			// hang.setGoal(HangState.STOWED);
 		}));
-		bButtonDrive.whileTrue(Commands.run(() -> {
-			leftTurret.setCharTurretPos(2.5);
-			// leftTurret.setCharTurretPos(0);
-			// intake.setGoal(Goal.INTAKE_GROUND);
-			// hang.setGoal(HangState.EXTENDED);
-			// leftTurret.setCharHoodPos(Units.degreesToRadians(50));
-			// rightTurret.setCharHoodPos(Units.degreesToRadians(50));
-
+		bButtonDrive.onTrue(Commands.runOnce(() -> {
+			leftTurret.clearLoggedShots();
+			rightTurret.clearLoggedShots();
 		}));
-		yButtonDrive.whileTrue(Commands.run(() -> {
-
+		yButtonDrive.onTrue(Commands.runOnce(() -> {
+			leftTurret.enterShotTuning();
+			rightTurret.enterShotTuning();
 		}));
 		// Climber controls
-		// aButtonDrive.onTrue(Commands.either(Commands.runOnce(() ->
-		// hang.setGoal(HangState.EXTENDED)), Commands.runOnce(() ->
-		// hang.setGoal(HangState.STOWED)), () -> hang.getHangState() ==
-		// HangState.STOWED));
-		// yButtonDrive.whileTrue(Commands.run(() ->
-		// hang.setGoal(HangState.MOVING_UP)));
-		// bButtonDrive.whileTrue(Commands.run(() ->
-		// hang.setGoal(HangState.MOVING_DOWN)));
-		// Intake controls
-		leftBumperDrive.and(rightTriggerDriveFull.negate()).whileTrue(
+		//aButtonDrive.onTrue(Commands.either(Commands.runOnce(() -> hang.setGoal(HangState.EXTENDED)), Commands.runOnce(() -> hang.setGoal(HangState.STOWED)), () -> hang.getHangState() == HangState.STOWED));
+		//yButtonDrive.whileTrue(Commands.run(() -> hang.setGoal(HangState.MOVING_UP)));
+		//bButtonDrive.whileTrue(Commands.run(() -> hang.setGoal(HangState.MOVING_DOWN)));
+		// Intake controls (gated: disabled when manip left trigger is held for manual voltage override)
+		leftBumperDrive.and(rightTriggerDriveFull.negate()).and(manipLeftTrigger.negate()).whileTrue(
 				Commands.run(() -> intake.setGoal(Goal.INTAKE_GROUND))
-						.finallyDo(() -> intake.setGoal(Goal.INTAKE_OUTER_IDLE)));
-		rightBumperDrive.whileTrue(teleAutoIntake);
+						.finallyDo(() -> intake.setGoal(Goal.STOW)));
+		rightBumperDrive.and(manipLeftTrigger.negate()).whileTrue(teleAutoIntake);
 		// leftBumperDrive.onTrue(Commands.runOnce(()));
-		xButtonDrive.whileTrue(Commands.either(
+		xButtonDrive.and(manipLeftTrigger.negate()).
+		whileTrue(Commands.either(
 				Commands.run(() -> intake.setGoal(Goal.JACKHAMMERING_OUT), intake)
 						.finallyDo(() -> intake.setGoal(Goal.INTAKE_OUTER_IDLE)),
 				Commands.run(() -> intake.setGoal(Goal.JACKHAMMERING_IN), intake)
 						.finallyDo(() -> intake.setGoal(Goal.STOW)),
 				() -> intake.isIntakeDeployed())); // jackhammer
+
 
 		// Auto Driving To Alliance
 		// If we're before the right, go to the right trench with 3 m/s going DOWN (up
@@ -1145,6 +1143,54 @@ public class RobotContainer {
 		povDown.onTrue(targetSplitTrenches);
 		povLeft.onTrue(targetBothLeftTrench);
 		povRight.onTrue(targetBothRightTrench);
+		//Manip Controls
+		Trigger manipManualTurret = new Trigger(() -> Math.abs(manipController.getLeftX()) > .1 || Math.abs(manipController.getLeftY()) > .1);
+		//manipManualTurret.whileTrue(());
+		manipManualTurret.whileTrue(Commands.run(() -> {
+			// Read stick
+			double x = -manipController.getLeftX();
+			double y = manipController.getLeftY();
+			double mag = Math.hypot(x, y);
+			if (mag <= 0.07) {
+				return; // deadband
+			}
+
+			double stickAngleField = Math.atan2(y, x) - Math.PI / 2.0;
+			if (stickAngleField > Math.PI) stickAngleField -= 2.0 * Math.PI;
+			else if (stickAngleField < -Math.PI) stickAngleField += 2.0 * Math.PI;
+
+			// Map magnitude [deadband..1] to distance [1m .. 10m]
+			double magNorm = Math.max(0.0, Math.min(1.0, (mag - 0.07) / (1.0 - 0.07)));
+			double rangeMeters = 1.0 + magNorm * (10.0 - 1.0);
+
+			Pose2d robotPose = drivetrainS.getPose();
+			Translation2d targetField = new Translation2d(
+				robotPose.getX() + rangeMeters * Math.cos(stickAngleField),
+				robotPose.getY() + rangeMeters * Math.sin(stickAngleField));
+
+			ShotCalculator calc = ShotCalculator.getInstance();
+
+			// Left turret
+			ShootingParameters leftParams = calc.getParameters(
+				targetField, leftTurret.getRobotToTurret(), ShotCalculator.HUB_PROFILE);
+			leftTurret.setCharTurretPos(leftParams.turretAngle().getRadians());
+			leftTurret.setCharHoodPos(leftParams.hoodAngle());
+			leftTurret.setCharRPM(leftParams.flywheelSpeed() * 60.0 / (2.0 * Math.PI)); // rad/s -> RPM
+
+			// Right turret
+			ShootingParameters rightParams = calc.getParameters(
+				targetField, rightTurret.getRobotToTurret(), ShotCalculator.HUB_PROFILE);
+			rightTurret.setCharTurretPos(rightParams.turretAngle().getRadians());
+			rightTurret.setCharHoodPos(rightParams.hoodAngle());
+			rightTurret.setCharRPM(rightParams.flywheelSpeed() * 60.0 / (2.0 * Math.PI)); // rad/s -> RPM
+		}));
+		manipLeftTrigger.whileTrue(Commands.run(() -> {
+			double stickY = manipController.getLeftY(); 
+			double volts = -stickY * 3.0; 
+			intake.runCharacterization(volts); 
+		}, intake).finallyDo(() -> {
+			intake.holdAtCurrentPosition();
+		}));
 		// Automatic Turret Controls
 
 		manualTurretControl.negate().and(inScoreArea).and(inTeleOp).whileTrue(targetHubBoth);

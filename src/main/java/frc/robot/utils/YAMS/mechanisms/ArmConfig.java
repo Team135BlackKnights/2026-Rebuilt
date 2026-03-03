@@ -180,9 +180,7 @@ public class ArmConfig
    *
    * @param MOI Moment of Inertia of the {@link yams.mechanisms.positional.Arm}. in {@link Units#KilogramSquareMeters}
    * @return {@link ArmConfig} for chaining.
-   * @implNote Please use {@link #withMOI(MomentOfInertia)} instead. Default unit is KilogramSquareMeters
    */
-  @Deprecated(since = "2026", forRemoval = true)
   public ArmConfig withMOI(double MOI)
   {
     motor.ifPresent(motor -> motor.getConfig().withMomentOfInertia(KilogramSquareMeters.of(MOI)));

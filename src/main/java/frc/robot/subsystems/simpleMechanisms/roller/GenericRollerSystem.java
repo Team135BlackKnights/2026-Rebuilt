@@ -39,7 +39,9 @@ public abstract class GenericRollerSystem<G extends GenericRollerSystem.RollGoal
 
     stateTimer.start();
     registerSelfCheckHardware();
+    if (name != "Kickup"){
     CommandScheduler.getInstance().unregisterSubsystem(this);
+    }
   }
   @Override
   public void periodic() {

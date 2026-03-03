@@ -79,15 +79,15 @@ public class ShotCalculator {
 
   public static final ShotProfile HUB_PROFILE = new ShotProfile("Hub")
       // TODO: replace with real calibration points, and not just one point each lol
-      .putHoodAngle(1.45, Rotation2d.fromDegrees(12.0))
+      .putHoodAngle(1.45, Rotation2d.fromDegrees(0.0)) //max 38
       .putFlywheelSpeed(1.45, 175.0)
       .putTimeOfFlight(1.45, 0.55);
   public static final ShotProfile TRENCH_PROFILE = new ShotProfile("Trench")
-      .putHoodAngle(2.00, Rotation2d.fromDegrees(18.0))
+      .putHoodAngle(2.00, Rotation2d.fromDegrees(0.0))
       .putFlywheelSpeed(2.00, 140.0)
       .putTimeOfFlight(2.00, 0.75);
   public static final ShotProfile NEUTRAL_ZONE_PROFILE = new ShotProfile("NeutralZone")
-      .putHoodAngle(3.50, Rotation2d.fromDegrees(30.0))
+      .putHoodAngle(3.50, Rotation2d.fromDegrees(0.0))
       .putFlywheelSpeed(3.50, 120.0)
       .putTimeOfFlight(3.50, 1.10);
 

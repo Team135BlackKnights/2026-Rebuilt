@@ -10,3 +10,4 @@ public class KickupIOKrakenFOC extends GenericRollerSystemIOKrakenFOC implements
         super(motorID, bus, name, currentLimitAmps, invert, brake, reduction);
     }
 }
+

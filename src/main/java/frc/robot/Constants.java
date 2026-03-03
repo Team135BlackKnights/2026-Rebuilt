@@ -125,9 +125,6 @@ public final class Constants {
 		
 	}
 
-	/**
-	 * @apiNote arm and algae scorer are different
-	 */
 	public static class TuningConstants {
 		public static final boolean isTuningPID = true,
 				isTuningMacros = true,
