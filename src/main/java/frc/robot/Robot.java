@@ -376,8 +376,8 @@ public class Robot extends LoggedRobot {
 				Logger.recordOutput("RobotState/AdvantageScope/model_4Pose", model_4Pose);//leftTurret
 		Logger.recordOutput("RobotState/AdvantageScope/model_5Pose",
 				model_4Pose.plus(new Transform3d(.100,0,.06, new Rotation3d(0,RobotContainer.leftTurret.hoodAngle(),0))));//leftTurretHood
-		Logger.recordOutput("RobotState/AdvantageScope/model_6Pose",
-				new Pose3d(-.214, .016, 0.475615, new Rotation3d(0,RobotContainer.hang.getAngle(),0)));//hang
+		/*Logger.recordOutput("RobotState/AdvantageScope/model_6Pose",
+				new Pose3d(-.214, .016, 0.475615, new Rotation3d(0,RobotContainer.hang.getAngle(),0)));//hang*/
 	}
 
 	/** This function is called once each time the robot enters Disabled mode. */
