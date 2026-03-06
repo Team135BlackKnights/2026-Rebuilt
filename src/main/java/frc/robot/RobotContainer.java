@@ -203,6 +203,10 @@ public class RobotContainer {
 	Trigger startButtonDrive = driveController.start();
 	Trigger manipRightTrigger = manipController.rightTrigger(.1);
 	Trigger manipLeftTrigger = manipController.leftTrigger(.1);
+	Trigger manipAButton = manipController.a();
+	Trigger manipUpPov = manipController.pov(0);
+	Trigger manipDownPov = manipController.pov(180);
+	Trigger manipBButton = manipController.b();
 	public static int currentTest = 0;
 	public static String piConnection = "DISCONNECTED";
 	@AutoLogOutput(key = "RobotState/currentPath")
@@ -970,8 +974,8 @@ public class RobotContainer {
 		Command shootTurrets = buildShootTurretsCommand();
 
 		var targetSplitTrenches = Commands.runOnce(() -> {
-			leftTurret.setPresetTarget(Turret.PresetTarget.RIGHT_TRENCH_CENTER);
-			rightTurret.setPresetTarget(Turret.PresetTarget.LEFT_TRENCH_CENTER);
+			leftTurret.setPresetTarget(Turret.PresetTarget.OVER_NEUTRAL_ZONE);
+			rightTurret.setPresetTarget(Turret.PresetTarget.OVER_NEUTRAL_ZONE);
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
 		}, leftTurret, rightTurret);
@@ -998,7 +1002,7 @@ public class RobotContainer {
 		var shootTurretsWhileIntaking = Commands.run(() -> {
 			leftTurret.setGoal(Turret.Goal.SHOOTING);
 			rightTurret.setGoal(Turret.Goal.SHOOTING);
-			intake.setGoal(Goal.INTAKE_GROUND);
+			intake.setGoal(Goal.INTAKE_GROUND_SHOOT);
 			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints()) {
 				kickup.setGoal(Kickup.Goal.SHOOTING);
 			} else {
@@ -1080,8 +1084,8 @@ public class RobotContainer {
 			rightTurret.clearLoggedShots();
 		}));
 		yButtonDrive.onTrue(Commands.runOnce(() -> {
-			leftTurret.enterShotTuning();
-			rightTurret.enterShotTuning();
+			//leftTurret.enterShotTuning();
+			//rightTurret.enterShotTuning();
 		}));
 		// Climber controls
 		//aButtonDrive.onTrue(Commands.either(Commands.runOnce(() -> hang.setGoal(HangState.EXTENDED)), Commands.runOnce(() -> hang.setGoal(HangState.STOWED)), () -> hang.getHangState() == HangState.STOWED));
@@ -1147,8 +1151,8 @@ public class RobotContainer {
 		rightTriggerDriveFull.and(leftBumperDrive).and(xButtonDrive.negate()).whileTrue(shootTurretsWhileIntaking);
 		povUp.onTrue(targetHubBoth);
 		povDown.onTrue(targetSplitTrenches);
-		povLeft.onTrue(targetBothLeftTrench);
-		povRight.onTrue(targetBothRightTrench);
+		povLeft.onTrue(targetHubBoth);
+		povRight.onTrue(targetSplitTrenches);
 		//Manip Controls
 		Trigger manipManualTurret = new Trigger(() -> Math.abs(manipController.getLeftX()) > .1 || Math.abs(manipController.getLeftY()) > .1);
 		//manipManualTurret.whileTrue(());
@@ -1178,14 +1182,14 @@ public class RobotContainer {
 
 			// Left turret
 			ShootingParameters leftParams = calc.getParameters(
-				targetField, leftTurret.getRobotToTurret(), ShotCalculator.HUB_PROFILE);
+				targetField, leftTurret.getRobotToTurret(), ShotCalculator.HUB_PROFILE, 0);
 			leftTurret.setCharTurretPos(leftParams.turretAngle().getRadians());
 			leftTurret.setCharHoodPos(leftParams.hoodAngle());
 			leftTurret.setCharRPM(leftParams.flywheelSpeed() * 60.0 / (2.0 * Math.PI)); // rad/s -> RPM
 
 			// Right turret
 			ShootingParameters rightParams = calc.getParameters(
-				targetField, rightTurret.getRobotToTurret(), ShotCalculator.HUB_PROFILE);
+				targetField, rightTurret.getRobotToTurret(), ShotCalculator.HUB_PROFILE, 0);
 			rightTurret.setCharTurretPos(rightParams.turretAngle().getRadians());
 			rightTurret.setCharHoodPos(rightParams.hoodAngle());
 			rightTurret.setCharRPM(rightParams.flywheelSpeed() * 60.0 / (2.0 * Math.PI)); // rad/s -> RPM
@@ -1196,6 +1200,29 @@ public class RobotContainer {
 			intake.runCharacterization(volts); 
 		}, intake).finallyDo(() -> {
 			intake.holdAtCurrentPosition();
+		}));
+		manipRightTrigger.whileTrue(Commands.run(() -> {
+			double stickY = manipController.getLeftY(); 
+			double volts = stickY * 3.0; 
+			intake.runCharacterization(volts); 
+		}, intake).finallyDo(() -> {
+			intake.holdAtCurrentPosition();
+		}));
+		manipAButton.onTrue(Commands.runOnce(() -> {
+			rightTurret.disAllowHood();
+			leftTurret.disAllowHood();
+		}, leftTurret,rightTurret));
+		manipBButton.onTrue(Commands.runOnce(() -> {
+			rightTurret.allowHood();
+			leftTurret.allowHood();
+		}, leftTurret,rightTurret));
+		manipUpPov.onTrue(Commands.runOnce(() -> {
+			rightTurret.offsetDistance(.05);
+			leftTurret.offsetDistance(.05);
+		}));
+		manipDownPov.onTrue(Commands.runOnce(() -> {
+			rightTurret.offsetDistance(-.05);
+			leftTurret.offsetDistance(-.05);
 		}));
 		// Automatic Turret Controls -- DISABLED UNTIL TUNING COMPLETE!
 
@@ -1275,13 +1302,11 @@ public class RobotContainer {
 		return (buildTargetHubBothCommand().andThen(Commands.run(() -> {
 			leftTurret.setGoal(Turret.Goal.SHOOTING);
 			rightTurret.setGoal(Turret.Goal.SHOOTING);
-
+			intake.setGoal(Intake.Goal.INTAKE_GROUND_SHOOT);
 			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints()) {
 				kickup.setGoal(Kickup.Goal.SHOOTING);
-				intake.setGoal(Intake.Goal.SHOOTING);
 			} else {
 				kickup.setGoal(Kickup.Goal.IDLING);
-				intake.setGoal(Intake.Goal.JACKHAMMERING_OUT);
 			}
 		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
@@ -1303,13 +1328,11 @@ public class RobotContainer {
 		return (buildTargetHubBothCommand().andThen(Commands.run(() -> {
 			leftTurret.setGoal(Turret.Goal.SHOOTING);
 			rightTurret.setGoal(Turret.Goal.SHOOTING);
-
+			intake.setGoal(Goal.SHOOTING);
 			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints()) {
 				kickup.setGoal(Kickup.Goal.SHOOTING);
-				intake.setGoal(Intake.Goal.SHOOTING);
 			} else {
 				kickup.setGoal(Kickup.Goal.IDLING);
-				intake.setGoal(Intake.Goal.JACKHAMMERING_IN);
 			}
 		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
@@ -1323,8 +1346,8 @@ public class RobotContainer {
 		return Commands.run(() -> {
 			leftTurret.setGoal(Turret.Goal.SHOOTING);
 			rightTurret.setGoal(Turret.Goal.SHOOTING);
+			intake.setGoal(Goal.SHOOTING);
 			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints()) {
-				intake.setGoal(Goal.SHOOTING);
 				kickup.setGoal(Kickup.Goal.SHOOTING);
 			} else {
 				kickup.setGoal(Kickup.Goal.IDLING);

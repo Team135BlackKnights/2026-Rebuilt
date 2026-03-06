@@ -47,14 +47,16 @@ public class VisionConstants {
 
 	public static final boolean debug = true;
 
-	public static final double ambiguityThreshold = 0.4;
+	public static final double ambiguityThreshold = 0.5;
 	public static final double objDetectConfidenceThreshold = .6;
 	public static final double maxZError = 0.75;
 	public static final double maxObjZError = 0.25;
 	public static final double maxYawError = 15.0;
-	public static final double linearStdDevBaseline = 0.005;
+	public static final double linearStdDevBaseline = 0.08;
 	public static final double angularStdDevBaseline = 0.04;
 
+	public static final LoggableTunedNumber offsetPoseX = new LoggableTunedNumber("Cams/X",.05,true);
+	public static final LoggableTunedNumber offsetPoseY = new LoggableTunedNumber("Cams/Y",.035,true);
 	public static final double limeLightAngleOffsetDegrees = -40.0;
 	public static final double limelightLensHeightoffFloorInches = 22.5;
 	public static final String limelightName = "limelight-swerve";
@@ -78,7 +80,7 @@ public class VisionConstants {
 
 	/**
 	 * ["0x01210000 / 3", "0x01230000 / 4", "0x02211000 / 5", "0x02213000 / 6"]	
-	 * ["SPCA2630 PC Camera:usb_05c8_0a00_002_007", "SPCA2630 PC Camera:usb_05c8_0a00_002_005", "SPCA2630 PC Camera:usb_05c8_0a00_001_004", "SPCA2630 PC Camera:usb_05c8_0a00_001_003"]
+'SPCA2630 PC Camera:usb_05c8_0a00_002_003', 'SPCA2630 PC Camera:usb_05c8_0a00_000_001'
 	 */
 	public static final CameraConfig[] cameras = new CameraConfig[] {
 			CameraConfig.builder()
@@ -91,8 +93,8 @@ public class VisionConstants {
 											Math.toRadians(0.0),
 											Math.toRadians(30.237350),
 											Math.toRadians(0)))) //we don't know, but it faces forward so we assume no yaw/pitch
-					.id("SPCA2630 PC Camera:usb_05c8_0a00_000_001")
-					.location("0x03200000 / 1")
+					.id("")
+					.location("")  
 					.width(1600)//1600
 					.height(1304)//1304
 					.exposure(35)
@@ -113,11 +115,12 @@ public class VisionConstants {
 										Math.toRadians(0.0),
 										Math.toRadians(-25),
 										Math.toRadians(160))))
-										.id("SPCA2630 PC Camera:usb_05c8_0a00_000_001") 
-										.location("0x00200000 / 1")
-					.width(1600)
+										.id("SPCA2630 PC Camera:usb_05c8_0a00_000_001")
+										.location("0x02220000 / 3")
+
+										.width(1600)
 					.height(1304)
-					.exposure(30)
+					.exposure(25)
 					.saturation(0)
 					.hue(0)
 					.whiteBalance(4000)
@@ -128,15 +131,15 @@ public class VisionConstants {
 					CameraConfig.builder()
 					.pose(
 							() -> new Pose3d(
-									-.317,
-									.263,
+									-.317 + offsetPoseX.get(),
+									.263 + offsetPoseY.get(),
 									.205,
 									new Rotation3d(
 											Math.toRadians(0.0),
 											Math.toRadians(-25),
 											Math.toRadians(-160))))
 					.id("SPCA2630 PC Camera:usb_05c8_0a00_002_003")
-					.location("0x02220000 / 3")
+					.location("0x00200000 / 1")
 					.width(1600)
 					.height(1304)
 					.exposure(30)

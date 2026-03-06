@@ -26,13 +26,13 @@ import lombok.Getter;
 public class Intake extends SubsystemChecker {
 
     // Tuning
-    private static final LoggableTunedNumber arm_kP = new LoggableTunedNumber("Intake/Arm/kP", 450,
+    private static final LoggableTunedNumber arm_kP = new LoggableTunedNumber("Intake/Arm/kP", 200,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_kI = new LoggableTunedNumber("Intake/Arm/kI", 0.0,
             TuningConstants.isTuningIntake);
-    private static final LoggableTunedNumber arm_kD = new LoggableTunedNumber("Intake/Arm/kD", 0.1,
+    private static final LoggableTunedNumber arm_kD = new LoggableTunedNumber("Intake/Arm/kD", 2,
             TuningConstants.isTuningIntake);
-    private static final LoggableTunedNumber arm_kS = new LoggableTunedNumber("Intake/Arm/kS", 5,
+    private static final LoggableTunedNumber arm_kS = new LoggableTunedNumber("Intake/Arm/kS", 1,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_kV = new LoggableTunedNumber("Intake/Arm/kV", 0,
             TuningConstants.isTuningIntake);
@@ -40,11 +40,11 @@ public class Intake extends SubsystemChecker {
     private static final LoggableTunedNumber arm_kG = new LoggableTunedNumber("Intake/Arm/kG", 0,
             TuningConstants.isTuningIntake);
 
-    private static final LoggableTunedNumber arm_motionSpeed = new LoggableTunedNumber("Intake/Arm/MotionCruiseRadPerSec",5,
+    private static final LoggableTunedNumber arm_motionSpeed = new LoggableTunedNumber("Intake/Arm/MotionCruiseRadPerSec",3,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_motionAccel = new LoggableTunedNumber
-            ("Intake/Arm/MotionAccelRadPerSec2", 10, TuningConstants.isTuningIntake);
-    private static final LoggableTunedNumber arm_neutralBand = new LoggableTunedNumber("Intake/Arm/NeutralBand",.02,TuningConstants.isTuningIntake);
+            ("Intake/Arm/MotionAccelRadPerSec2", 4, TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber arm_neutralBand = new LoggableTunedNumber("Intake/Arm/NeutralBand",.15,TuningConstants.isTuningIntake);
     // Setpoints
     private static final LoggableTunedNumber angle_stow = new LoggableTunedNumber("Intake/Setpoints/StowRads",
             1.57, TuningConstants.isTuningIntake);
@@ -72,6 +72,7 @@ public class Intake extends SubsystemChecker {
         START, // Initial state
         STOW, // Arm up, rollers slow
         INTAKE_GROUND, // Arm down, rollers intake
+        INTAKE_GROUND_SHOOT,
         INTAKE_OUTER_IDLE, // Arm down, rollers idling
         JACKHAMMERING_OUT, // Rapidly pulse rollers to dislodge jams (with arm down)
         JACKHAMMERING_IN, // Rapidly pulse rollers to dislodge jams (with arm up)
@@ -138,6 +139,11 @@ public class Intake extends SubsystemChecker {
                 currentArmSetpoint = angle_ground.get();
                 indexer.setGoal(Indexer.Goal.STOPPED);
                 frontRollers.setGoal(FrontRollers.Goal.INTAKING);
+            }
+            case INTAKE_GROUND_SHOOT -> {
+                currentArmSetpoint = angle_ground.get();
+                indexer.setGoal(Indexer.Goal.SHOOTING);
+                frontRollers.setGoal(FrontRollers.Goal.SHOOTING);
             }
             case INTAKE_OUTER_IDLE -> {
                 currentArmSetpoint = angle_ground.get();

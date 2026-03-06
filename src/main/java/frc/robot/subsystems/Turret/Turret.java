@@ -18,6 +18,7 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.RobotContainer;
+import frc.robot.Constants.TuningConstants;
 import frc.robot.subsystems.SubsystemChecker;
 import frc.robot.subsystems.Turret.azimuth.AzimuthIOInputsAutoLogged;
 import frc.robot.subsystems.Turret.flywheel.FlywheelIOInputsAutoLogged;
@@ -59,8 +60,8 @@ public class Turret extends SubsystemChecker {
   private final LoggableTunedNumber hood_kS;
   private final LoggableTunedNumber hood_kV;
   // Other tunables
-  private final LoggableTunedNumber aimingFlywheelSpeedRadsPerSec;
   private final LoggableTunedNumber offsetRPM;
+  private final LoggableTunedNumber offsetHoodAngle;
 
   private final LoggableTunedNumber aimToleranceRads;
   private final LoggableTunedNumber hoodToleranceRads;
@@ -73,6 +74,7 @@ public class Turret extends SubsystemChecker {
 
   private final Transform2d robotToTurret;
 
+  private  double distanceOffset = 0.0;
   private final AzimuthIOInputsAutoLogged azimuthInputs = new AzimuthIOInputsAutoLogged();
   private final FlywheelIOInputsAutoLogged flywheelInputs = new FlywheelIOInputsAutoLogged();
   private final HoodIOInputsAutoLogged hoodInputs = new HoodIOInputsAutoLogged();
@@ -115,68 +117,71 @@ public class Turret extends SubsystemChecker {
   private final List<String> loggedShots = new ArrayList<>();
   private boolean lastLogFlag = false;
   private boolean canChangeGoal = true;
+  private boolean allowHoodAdjustment = true;
+
   public Turret(AzimuthIO azimuthIO, FlywheelIO flywheelIO, HoodIO hoodIO, Transform2d robotToTurret, String name) {
     this.azimuthIO = azimuthIO;
     this.flywheelIO = flywheelIO;
     this.hoodIO = hoodIO;
     this.robotToTurret = robotToTurret;
     this.name = name;
-    if (name == "LeftTurret"){
-azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 6.0, true); //75
-    azimuth_kI = new LoggableTunedNumber(name + "/Azimuth/kI", 0.0, true);
-    azimuth_kD = new LoggableTunedNumber(name + "/Azimuth/kD", 0.5, true); //.25
-    azimuth_kS = new LoggableTunedNumber(name + "/Azimuth/kS", 0.0, true);
-    azimuth_kV = new LoggableTunedNumber(name + "/Azimuth/kV", 0.0, true);
-    azimuth_kA = new LoggableTunedNumber(name + "/Azimuth/kA", 0.0, true);
-    azimuth_velMax = new LoggableTunedNumber(name + "/Azimuth/velMaxRadPerSec", 30, true);
-    azimuth_accelMax = new LoggableTunedNumber(name + "/Azimuth/accelMaxRadPerSec2", 150.0, true);
-    azimuth_ramp = new LoggableTunedNumber(name + "/Azimuth/ramp", 0.1, true);
+    if (name == "LeftTurret") {
+      azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 6.0, TuningConstants.isTuningShooter); // 75
+      azimuth_kI = new LoggableTunedNumber(name + "/Azimuth/kI", 0.0, TuningConstants.isTuningShooter);
+      azimuth_kD = new LoggableTunedNumber(name + "/Azimuth/kD", 0.5, TuningConstants.isTuningShooter); // .25
+      azimuth_kS = new LoggableTunedNumber(name + "/Azimuth/kS", 0.0, TuningConstants.isTuningShooter);
+      azimuth_kV = new LoggableTunedNumber(name + "/Azimuth/kV", 0.0, TuningConstants.isTuningShooter);
+      azimuth_kA = new LoggableTunedNumber(name + "/Azimuth/kA", 0.0, TuningConstants.isTuningShooter);
+      azimuth_velMax = new LoggableTunedNumber(name + "/Azimuth/velMaxRadPerSec", 30, TuningConstants.isTuningShooter);
+      azimuth_accelMax = new LoggableTunedNumber(name + "/Azimuth/accelMaxRadPerSec2", 150.0, TuningConstants.isTuningShooter);
+      azimuth_ramp = new LoggableTunedNumber(name + "/Azimuth/ramp", 0.1, TuningConstants.isTuningShooter);
 
-    flywheel_kP = new LoggableTunedNumber(name + "/Flywheel/kP", 0.035, true); //3
-    flywheel_kD = new LoggableTunedNumber(name + "/Flywheel/kD", 0.04, true);
-    flywheel_kS = new LoggableTunedNumber(name + "/Flywheel/kS", 0.0, true);
-    flywheel_kV = new LoggableTunedNumber(name + "/Flywheel/kV", 0.096, true); //.098
-    flywheel_kA = new LoggableTunedNumber(name + "/Flywheel/kA", 0.0, true);
-    flywheel_ramp = new LoggableTunedNumber(name + "/Flywheel/Ramp", 0.25, true);
+      flywheel_kP = new LoggableTunedNumber(name + "/Flywheel/kP", 0.05, TuningConstants.isTuningShooter); // 3
+      flywheel_kD = new LoggableTunedNumber(name + "/Flywheel/kD", 0.0, TuningConstants.isTuningShooter);
+      flywheel_kS = new LoggableTunedNumber(name + "/Flywheel/kS", 0.0, TuningConstants.isTuningShooter);
+      flywheel_kV = new LoggableTunedNumber(name + "/Flywheel/kV", 0.095, TuningConstants.isTuningShooter); // .098
+      flywheel_kA = new LoggableTunedNumber(name + "/Flywheel/kA", 0.0, TuningConstants.isTuningShooter);
+      flywheel_ramp = new LoggableTunedNumber(name + "/Flywheel/Ramp", 0.25, TuningConstants.isTuningShooter);
 
-    hood_kP = new LoggableTunedNumber(name + "/Hood/kP", 15, true); //15
-    hood_kD = new LoggableTunedNumber(name + "/Hood/kD", 0.01, true); //1.5
-    hood_kS = new LoggableTunedNumber(name + "/Hood/kS", 0.0, true);
-    hood_kV = new LoggableTunedNumber(name + "/Hood/kV", 0.0, true);
-    offsetRPM = new LoggableTunedNumber(name+"/Flywheel/offset",400,true);
+      hood_kP = new LoggableTunedNumber(name + "/Hood/kP", 15, TuningConstants.isTuningShooter); // 15
+      hood_kD = new LoggableTunedNumber(name + "/Hood/kD", 0.01, TuningConstants.isTuningShooter); // 1.5
+      hood_kS = new LoggableTunedNumber(name + "/Hood/kS", 0.0, TuningConstants.isTuningShooter);
+      hood_kV = new LoggableTunedNumber(name + "/Hood/kV", 0.0, TuningConstants.isTuningShooter);
+      offsetRPM = new LoggableTunedNumber(name + "/Flywheel/offset", 200, TuningConstants.isTuningShooter);
+      offsetHoodAngle = new LoggableTunedNumber(name + "/Hood/DONOTTOUCH", -2, TuningConstants.isTuningShooter);
 
-    }else{ 
-      //right turret
-      azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 6, true); //75
-    azimuth_kI = new LoggableTunedNumber(name + "/Azimuth/kI", 0.0, true);
-    azimuth_kD = new LoggableTunedNumber(name + "/Azimuth/kD", 0.2, true); //.25
-    azimuth_kS = new LoggableTunedNumber(name + "/Azimuth/kS", 0.0, true);
-    azimuth_kV = new LoggableTunedNumber(name + "/Azimuth/kV", 0.0, true);
-    azimuth_kA = new LoggableTunedNumber(name + "/Azimuth/kA", 0.0, true);
-    azimuth_velMax = new LoggableTunedNumber(name + "/Azimuth/velMaxRadPerSec", 30, true);
-    azimuth_accelMax = new LoggableTunedNumber(name + "/Azimuth/accelMaxRadPerSec2", 150.0, true);
-    azimuth_ramp = new LoggableTunedNumber(name + "/Azimuth/ramp", 0.1, true);
+    } else {
+      // right turret
+      azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 6, TuningConstants.isTuningShooter); // 75
+      azimuth_kI = new LoggableTunedNumber(name + "/Azimuth/kI", 0.0, TuningConstants.isTuningShooter);
+      azimuth_kD = new LoggableTunedNumber(name + "/Azimuth/kD", 0.2, TuningConstants.isTuningShooter); // .25
+      azimuth_kS = new LoggableTunedNumber(name + "/Azimuth/kS", 0.0, TuningConstants.isTuningShooter);
+      azimuth_kV = new LoggableTunedNumber(name + "/Azimuth/kV", 0.0, TuningConstants.isTuningShooter);
+      azimuth_kA = new LoggableTunedNumber(name + "/Azimuth/kA", 0.0, TuningConstants.isTuningShooter);
+      azimuth_velMax = new LoggableTunedNumber(name + "/Azimuth/velMaxRadPerSec", 30, TuningConstants.isTuningShooter);
+      azimuth_accelMax = new LoggableTunedNumber(name + "/Azimuth/accelMaxRadPerSec2", 150.0,  TuningConstants.isTuningShooter);
+      azimuth_ramp = new LoggableTunedNumber(name + "/Azimuth/ramp", 0.1, TuningConstants.isTuningShooter);
 
-    flywheel_kP = new LoggableTunedNumber(name + "/Flywheel/kP", 0.035, true); //3
-    flywheel_kD = new LoggableTunedNumber(name + "/Flywheel/kD", 0.04, true);
-    flywheel_kS = new LoggableTunedNumber(name + "/Flywheel/kS", 0.0, true);
-    flywheel_kV = new LoggableTunedNumber(name + "/Flywheel/kV", 0.098, true); //.098
-    flywheel_kA = new LoggableTunedNumber(name + "/Flywheel/kA", 0.0, true);
-    flywheel_ramp = new LoggableTunedNumber(name + "/Flywheel/Ramp", 0.25, true);
-    offsetRPM = new LoggableTunedNumber(name+"/Flywheel/Offset",0,true);
+      flywheel_kP = new LoggableTunedNumber(name + "/Flywheel/kP", 0.05, TuningConstants.isTuningShooter); // 3
+      flywheel_kD = new LoggableTunedNumber(name + "/Flywheel/kD", 0.0, TuningConstants.isTuningShooter);
+      flywheel_kS = new LoggableTunedNumber(name + "/Flywheel/kS", 0.0, TuningConstants.isTuningShooter);
+      flywheel_kV = new LoggableTunedNumber(name + "/Flywheel/kV", 0.097, TuningConstants.isTuningShooter); // .098
+      flywheel_kA = new LoggableTunedNumber(name + "/Flywheel/kA", 0.0, TuningConstants.isTuningShooter);
+      flywheel_ramp = new LoggableTunedNumber(name + "/Flywheel/Ramp", 0.25, TuningConstants.isTuningShooter);
+      offsetRPM = new LoggableTunedNumber(name + "/Flywheel/Offset", 200, TuningConstants.isTuningShooter);
+      offsetHoodAngle = new LoggableTunedNumber(name + "/Hood/DONOTTOUCH", 0, TuningConstants.isTuningShooter);
 
-    hood_kP = new LoggableTunedNumber(name + "/Hood/kP", 15, true); //15
-    hood_kD = new LoggableTunedNumber(name + "/Hood/kD", .01, true); //1.5
-    hood_kS = new LoggableTunedNumber(name + "/Hood/kS", 0.0, true);
-    hood_kV = new LoggableTunedNumber(name + "/Hood/kV", 0.0, true);
+      hood_kP = new LoggableTunedNumber(name + "/Hood/kP", 15, TuningConstants.isTuningShooter); // 15
+      hood_kD = new LoggableTunedNumber(name + "/Hood/kD", .01, TuningConstants.isTuningShooter); // 1.5
+      hood_kS = new LoggableTunedNumber(name + "/Hood/kS", 0.0, TuningConstants.isTuningShooter);
+      hood_kV = new LoggableTunedNumber(name + "/Hood/kV", 0.0, TuningConstants.isTuningShooter);
 
     }
-    
-    aimingFlywheelSpeedRadsPerSec = new LoggableTunedNumber(name + "/Aiming/FlywheelSpeedRadsPerSec", Units.rotationsPerMinuteToRadiansPerSecond(3000), true);
 
-    aimToleranceRads = new LoggableTunedNumber(name + "/Tolerance/AimRads", Math.toRadians(7), true);
-    hoodToleranceRads = new LoggableTunedNumber(name + "/Tolerance/HoodRads", Math.toRadians(38), true);
-    flywheelToleranceRadsPerSec = new LoggableTunedNumber(name + "/Tolerance/FlywheelRadsPerSec", Units.rotationsPerMinuteToRadiansPerSecond(1000), true);
+    aimToleranceRads = new LoggableTunedNumber(name + "/Tolerance/AimRads", Math.toRadians(7),  TuningConstants.isTuningShooter);
+    hoodToleranceRads = new LoggableTunedNumber(name + "/Tolerance/HoodRads", Math.toRadians(38), TuningConstants.isTuningShooter);
+    flywheelToleranceRadsPerSec = new LoggableTunedNumber(name + "/Tolerance/FlywheelRadsPerSec",
+        Units.rotationsPerMinuteToRadiansPerSecond(1000), TuningConstants.isTuningShooter);
 
     // Apply initial PIDs once
     applyAllPIDs();
@@ -184,10 +189,10 @@ azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 6.0, true); //75
     // Initialize targets
     target = getPresetTarget2d(PresetTarget.HUB_TOP_CENTER);
 
-    tuning_RPM = new LoggableTunedNumber(name + "/ShotTuning/RPM", 0.0, true);
-    tuning_hoodDeg = new LoggableTunedNumber(name + "/ShotTuning/HoodDeg", 0.0, true);
-    tuning_TOF = new LoggableTunedNumber(name + "/ShotTuning/TOF_Sec", 0.5, true);
-    tuning_logFlag = new LoggableTunedBoolean(name + "/ShotTuning/LogShot", false,true);
+    tuning_RPM = new LoggableTunedNumber(name + "/ShotTuning/RPM", 0.0, TuningConstants.isTuningShooter);
+    tuning_hoodDeg = new LoggableTunedNumber(name + "/ShotTuning/HoodDeg", 0.0, TuningConstants.isTuningShooter);
+    tuning_TOF = new LoggableTunedNumber(name + "/ShotTuning/TOF_Sec", 0.5, TuningConstants.isTuningShooter);
+    tuning_logFlag = new LoggableTunedBoolean(name + "/ShotTuning/LogShot", false, TuningConstants.isTuningShooter);
   }
 
   public void setGoal(Goal goal) {
@@ -230,7 +235,8 @@ azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 6.0, true); //75
             azimuth_kP.get(), azimuth_kI.get(), azimuth_kD.get(),
             azimuth_kS.get(), azimuth_kV.get(), azimuth_kA.get(),
             azimuth_velMax.get(), azimuth_accelMax.get(), azimuth_ramp.get()),
-        azimuth_kP, azimuth_kI, azimuth_kD, azimuth_kS, azimuth_kV, azimuth_kA, azimuth_velMax, azimuth_accelMax, azimuth_ramp);
+        azimuth_kP, azimuth_kI, azimuth_kD, azimuth_kS, azimuth_kV, azimuth_kA, azimuth_velMax, azimuth_accelMax,
+        azimuth_ramp);
 
     LoggableTunedNumber.ifChanged(
         hashCode(),
@@ -270,56 +276,81 @@ azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 6.0, true); //75
   public boolean atAimAngle() {
     return isAzimuthConnected() && Math.abs(turretAngleErrorRads()) < aimToleranceRads.get();
   }
+
   public void setCharRPM(double rpm) {
     goal = Goal.TUNING_FLYWHEEL;
     desiredFlywheelRadsPerSec = rpm * 2.0 * Math.PI / 60.0;
-    flywheelIO.setVelocity(desiredFlywheelRadsPerSec+offsetRPM.get());
+    flywheelIO.setVelocity(desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
   }
+
   public void setCharTurretPos(double radians) {
     desiredTurretRads = radians;
     azimuthIO.setDesiredPosition(desiredTurretRads);
   }
+
   public void setCharHoodPos(double radians) {
     goal = Goal.TUNING_HOOD;
     desiredHoodRads = radians;
-    hoodIO.setPosition(desiredHoodRads);
+    hoodIO.setPosition(desiredHoodRads + Units.degreesToRadians(offsetHoodAngle.get()));
   }
+
   public double getCharTurretPos() {
     return azimuthInputs.turretPositionRads;
   }
+
   public double getCharHoodPos() {
     return hoodInputs.positionRads;
   }
+
   public double getCharFlywheelRPM() {
     return flywheelInputs.velocityRadsPerSec * 60.0 / (2.0 * Math.PI);
   }
+
   public Transform2d getRobotToTurret() {
     return robotToTurret;
   }
+
   public void enterShotTuning() {
     goal = Goal.TUNING_SHOT;
     canChangeGoal = false;
   }
+
   public void clearLoggedShots() {
     loggedShots.clear();
     canChangeGoal = true;
   }
+
   public double getCharTurretVelocity() {
     return azimuthInputs.turretVelocityRadsPerSec;
   }
+
   public double getCharHoodVelocity() {
     return hoodInputs.velocityRadsPerSec;
   }
+
   public double getCharFlywheelVelocity() {
     return flywheelInputs.accelRadsPerSec2;
   }
+
   public double hoodAngle() {
     return hoodInputs.positionRads;
   }
-
+  public void offsetDistance(double offset) {
+    distanceOffset += offset;
+  }
   /** Start zeroing the hood (delegates to underlying IO). */
   public void zeroHood() {
     hoodIO.zero();
+  }
+
+  public void disAllowHood() {
+    allowHoodAdjustment = false;
+    hoodIO.setPosition(Units.degreesToRadians(13));
+  }
+
+  public void allowHood() {
+    allowHoodAdjustment = true;
+    hoodIO.setPosition(desiredHoodRads);
   }
 
   public double turretAngle() {
@@ -331,8 +362,10 @@ azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 6.0, true); //75
         && isHoodConnected()
         && isFlywheelConnected()
         && Math.abs(turretAngleErrorRads()) < aimToleranceRads.get()
-        && Math.abs(hoodInputs.positionRads - desiredHoodRads) < hoodToleranceRads.get()
-        && Math.abs(flywheelInputs.velocityRadsPerSec - desiredFlywheelRadsPerSec+offsetRPM.get()) < flywheelToleranceRadsPerSec.get();
+        && Math.abs(hoodInputs.positionRads - desiredHoodRads
+            + Units.degreesToRadians(offsetHoodAngle.get())) < hoodToleranceRads.get()
+        && Math.abs(flywheelInputs.velocityRadsPerSec - desiredFlywheelRadsPerSec
+            + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get())) < flywheelToleranceRadsPerSec.get();
   }
 
   @Override
@@ -346,9 +379,11 @@ azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 6.0, true); //75
     Logger.processInputs(name + "/Hood", hoodInputs);
     updateTunablePIDs(); // way cleaner than last year lol
 
-    /*if (DriverStation.isDisabled()) {
-      goal = Goal.IDLE;
-    }*/
+    /*
+     * if (DriverStation.isDisabled()) {
+     * goal = Goal.IDLE;
+     * }
+     */
 
     shotCalculator.clearShootingParameters();
 
@@ -368,7 +403,7 @@ azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 6.0, true); //75
         hoodIO.stop();
         flywheelIO.stop();
         desiredTurretRads = lastTurretRads;
-        desiredHoodRads = hoodInputs.positionRads;
+        desiredHoodRads = Units.degreesToRadians(13);
       }
 
       case AIMING -> {
@@ -377,50 +412,56 @@ azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 6.0, true); //75
         if (activePreset == PresetTarget.OVER_NEUTRAL_ZONE) {
           target = getPresetTarget2d(PresetTarget.OVER_NEUTRAL_ZONE); // update for the robot pos, since target moves
         }
-        var params = shotCalculator.getParameters(target, robotToTurret, ShotCalculator.HUB_PROFILE);
-
-        desiredTurretRads = params.turretAngle().getRadians();
-        desiredHoodRads = params.hoodAngle();
-        desiredFlywheelRadsPerSec = aimingFlywheelSpeedRadsPerSec.get();
-
-        azimuthIO.setDesiredPosition(desiredTurretRads);
-        hoodIO.setPosition(desiredHoodRads);
-        flywheelIO.setVelocity(desiredFlywheelRadsPerSec+offsetRPM.get());
-      }
-
-      case SHOOTING -> {
-        if (activePreset == PresetTarget.OVER_NEUTRAL_ZONE) {
-          target = getPresetTarget2d(PresetTarget.OVER_NEUTRAL_ZONE); // update for the robot pos, since target moves
-        }
-        var params = shotCalculator.getParameters(target, robotToTurret, profile);
+        var params = shotCalculator.getParameters(target, robotToTurret, ShotCalculator.HUB_PROFILE, distanceOffset);
 
         desiredTurretRads = params.turretAngle().getRadians();
         desiredHoodRads = params.hoodAngle();
         desiredFlywheelRadsPerSec = params.flywheelSpeed();
 
         azimuthIO.setDesiredPosition(desiredTurretRads);
-        hoodIO.setPosition(desiredHoodRads);
-        flywheelIO.setVelocity(desiredFlywheelRadsPerSec+offsetRPM.get());
+
+        flywheelIO.setVelocity(desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
+        if (allowHoodAdjustment)
+          hoodIO.setPosition(desiredHoodRads + Units.degreesToRadians(offsetHoodAngle.get()));
       }
+
+      case SHOOTING -> {
+        if (activePreset == PresetTarget.OVER_NEUTRAL_ZONE) {
+          target = getPresetTarget2d(PresetTarget.OVER_NEUTRAL_ZONE); // update for the robot pos, since target moves
+        }
+        var params = shotCalculator.getParameters(target, robotToTurret, profile, distanceOffset);
+
+        desiredTurretRads = params.turretAngle().getRadians();
+        desiredHoodRads = params.hoodAngle();
+        desiredFlywheelRadsPerSec = params.flywheelSpeed();
+
+        azimuthIO.setDesiredPosition(desiredTurretRads);
+
+        flywheelIO.setVelocity(desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
+        if (allowHoodAdjustment)
+          hoodIO.setPosition(desiredHoodRads + Units.degreesToRadians(offsetHoodAngle.get()));
+      }
+
       case TUNING_FLYWHEEL -> {
-        flywheelIO.setVelocity(desiredFlywheelRadsPerSec+offsetRPM.get());
+        flywheelIO.setVelocity(desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
       }
       case TUNING_AZIMUTH -> {
         azimuthIO.setDesiredPosition(desiredTurretRads);
       }
       case TUNING_HOOD -> {
-        hoodIO.setPosition(desiredHoodRads);
+        hoodIO.setPosition(desiredHoodRads + Units.degreesToRadians(offsetHoodAngle.get()));
       }
       case TUNING_SHOT -> {
         desiredFlywheelRadsPerSec = tuning_RPM.get() * 2.0 * Math.PI / 60.0;
         desiredHoodRads = Math.toRadians(tuning_hoodDeg.get());
-        //just grab the shot angle from tuning
-        setPresetTarget(PresetTarget.HUB_TOP_CENTER);        
-        var params = shotCalculator.getParameters(target, robotToTurret, profile);
+        // just grab the shot angle from tuning
+        setPresetTarget(PresetTarget.HUB_TOP_CENTER);
+        var params = shotCalculator.getParameters(target, robotToTurret, profile, distanceOffset);
         desiredTurretRads = params.turretAngle().getRadians();
-        flywheelIO.setVelocity(desiredFlywheelRadsPerSec+offsetRPM.get());
-        hoodIO.setPosition(desiredHoodRads);
+        flywheelIO.setVelocity(desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
         azimuthIO.setDesiredPosition(desiredTurretRads);
+        if (allowHoodAdjustment)
+          hoodIO.setPosition(desiredHoodRads + Units.degreesToRadians(offsetHoodAngle.get()));
       }
     }
     lastTurretRads = desiredTurretRads;
@@ -428,9 +469,9 @@ azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 6.0, true); //75
     boolean logNow = tuning_logFlag.get();
     if (logNow && !lastLogFlag) {
       Pose2d turretPose = RobotContainer.drivetrainS.getPose().transformBy(robotToTurret);
-      double distToTarget = target.getDistance(turretPose.getTranslation()); //OUR FIELD iS .08M OFF (if we had 1, .92)
-      double rpm = tuning_RPM.get();//flywheelInputs.velocityRadsPerSec * 60.0 / (2.0 * Math.PI);
-      double hoodDeg = Math.toRadians(tuning_hoodDeg.get());//Math.toDegrees(hoodInputs.positionRads);
+      double distToTarget = target.getDistance(turretPose.getTranslation()); // OUR FIELD iS .08M OFF (if we had 1, .92)
+      double rpm = tuning_RPM.get();// flywheelInputs.velocityRadsPerSec * 60.0 / (2.0 * Math.PI);
+      double hoodDeg = Math.toRadians(tuning_hoodDeg.get());// Math.toDegrees(hoodInputs.positionRads);
       double tof = tuning_TOF.get();
       String entry = String.format("dist=%.3fm  rpm=%.1f  hood=%.2frad  tof=%.3fs", distToTarget, rpm, hoodDeg, tof);
       loggedShots.add(entry);
@@ -452,14 +493,14 @@ azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 6.0, true); //75
     Logger.recordOutput(name + "/Targets/Target2d", target);
 
     Logger.recordOutput(name + "/Setpoints/TurretRads", desiredTurretRads);
-    Logger.recordOutput(name + "/Setpoints/HoodRads", desiredHoodRads);
-    Logger.recordOutput(name + "/Setpoints/FlywheelRadsPerSec", desiredFlywheelRadsPerSec+offsetRPM.get());
+    Logger.recordOutput(name + "/Setpoints/HoodRads", desiredHoodRads + Units.degreesToRadians(offsetHoodAngle.get()));
+    Logger.recordOutput(name + "/Setpoints/FlywheelRadsPerSec",
+        desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
 
     Logger.recordOutput(name + "/Errors/TurretRads", turretAngleErrorRads());
     Logger.recordOutput(name + "/AtAimAngle", atAimAngle());
     Logger.recordOutput(name + "/AtShootSetpoints", atShootSetpoints());
   }
-
   private static Translation2d getPresetTarget2d(PresetTarget preset) {
     return switch (preset) {
       case HUB_TOP_CENTER -> {
@@ -540,12 +581,12 @@ azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 6.0, true); //75
   @Override
   protected Command systemCheckCommand() {
     return runOnce(() -> {
-            // Simple check logic
-            if (isAzimuthConnected() && isFlywheelConnected() && isHoodConnected()) {
-                Logger.recordOutput(name + "/SystemCheck/Connected", "GOOD");
-            } else {
-                Logger.recordOutput(name + "/SystemCheck/Connected", "BAD");
-            }
-        }).withName(name+"SystemCheck");
+      // Simple check logic
+      if (isAzimuthConnected() && isFlywheelConnected() && isHoodConnected()) {
+        Logger.recordOutput(name + "/SystemCheck/Connected", "GOOD");
+      } else {
+        Logger.recordOutput(name + "/SystemCheck/Connected", "BAD");
+      }
+    }).withName(name + "SystemCheck");
   }
 }

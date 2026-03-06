@@ -65,8 +65,9 @@ public abstract class GenericRollerSystem<G extends GenericRollerSystem.RollGoal
         } else {
           io.runVolts(getGoal().getValueSupplier().getAsDouble());
         }
+      }else{
+        io.runVolts(getGoal().getValueSupplier().getAsDouble());
       }
-      io.runVolts(getGoal().getValueSupplier().getAsDouble());
       /*
        * if (integratedRadians <= radsBeforeLock){
        * io.runVolts(getGoal().getValueSupplier().getAsDouble());

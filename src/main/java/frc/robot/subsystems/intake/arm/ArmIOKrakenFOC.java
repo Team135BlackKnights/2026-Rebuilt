@@ -29,9 +29,9 @@ import frc.robot.utils.selfCheck.SelfChecking;
 import frc.robot.utils.selfCheck.drive.SelfCheckingTalonFX;
 
 public class ArmIOKrakenFOC implements ArmIO {
-    private static final LoggableTunedNumber ZERO_VOLTS = new LoggableTunedNumber("Intake/Arm/zeroVolts",-3.5,TuningConstants.isTuningIntake);
-    private static final LoggableTunedNumber ZERO_CURRENT_AMPS = new LoggableTunedNumber("Intake/Arm/zeroAmps",25,TuningConstants.isTuningIntake);
-    private static final LoggableTunedNumber ZERO_HOLD_SEC = new LoggableTunedNumber("Intake/Arm/zeroTime",0.15,TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber ZERO_VOLTS = new LoggableTunedNumber("Intake/Arm/zeroVolts",-6,TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber ZERO_CURRENT_AMPS = new LoggableTunedNumber("Intake/Arm/zeroAmps",40,TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber ZERO_HOLD_SEC = new LoggableTunedNumber("Intake/Arm/zeroTime",.4,TuningConstants.isTuningIntake);
     private static final double TWO_PI = 2.0 * Math.PI;
 
     protected final String name;
@@ -234,9 +234,7 @@ public class ArmIOKrakenFOC implements ArmIO {
         double now = Timer.getFPGATimestamp();
         talon.setControl(voltageRequest.withOutput(ZERO_VOLTS.get()));
         BaseStatusSignal.refreshAll(supplyCurrent, statorCurrent, torqueCurrent);
-        double observedCurrentAmps = Math.max(
-                Math.max(Math.abs(supplyCurrent.getValueAsDouble()), Math.abs(statorCurrent.getValueAsDouble())),
-                Math.abs(torqueCurrent.getValueAsDouble()));
+        double observedCurrentAmps = Math.abs(torqueCurrent.getValueAsDouble());
 
         if (observedCurrentAmps >= ZERO_CURRENT_AMPS.get()) {
             if (Double.isNaN(zeroSpikeStartTimeSec)) {

@@ -494,13 +494,24 @@ public class Robot extends LoggedRobot {
 		m_autonomousCommand = m_robotContainer.getAutonomousCommand();
 		// schedule the autonomous command (example)
 		if (m_autonomousCommand != null) {
-			/*System.out.println(m_robotContainer.getAutoName());
-			if (m_robotContainer.getAutoName().equals("DynamicPathing") && !hasCalculatedAuto) {
-				System.out.println("Building Dynamic Auto LATE");
-				generateAuto();
-				hasCalculatedAuto = true;
-			}
-			if (Constants.currentMode == frc.robot.Constants.Mode.SIM) {
+			/*PathPlannerPath path = PathPlannerAuto
+								.getPathGroupFromAutoFile(
+										RobotContainer.currentAuto.getName())
+								.get(0);
+						if (DriveConstants.driveType == DriveTrainType.TANK) {
+							RobotContainer.fieldSimulation.getMainDriveSimulation()
+									.setSimulationWorldPose(path.getStartingDifferentialPose());
+						} else {
+							RobotContainer.fieldSimulation.getMainDriveSimulation()
+									.setSimulationWorldPose(
+											Robot.isRed ? FlippingUtil.flipFieldPose(new Pose2d(
+													path.getPoint(0).position,
+													path.getIdealStartingState().rotation()))
+													: new Pose2d(
+															path.getPoint(0).position,
+															path.getIdealStartingState().rotation()));*/
+						
+			/*if (Constants.currentMode == frc.robot.Constants.Mode.SIM) {
 				RobotContainer.fieldSimulation.resetField(true);
 				if (RobotContainer.currentAuto != null) {
 					try {
