@@ -90,14 +90,14 @@ public class VisionConstants {
 											Math.toRadians(0.0),
 											Math.toRadians(30.237350),
 											Math.toRadians(0)))) //we don't know, but it faces forward so we assume no yaw/pitch
-					.id("Microsoft® LifeCam HD-3000:usb_045e_0810_001_001")
-					.location("0x01100000 / 1")  
+					.id("SPCA2630 PC Camera:usb_05c8_0a00_000_001")
+					.location("0x03200000 / 1")  
 					.width(1600)//1600
 					.height(1304)//1304
-					.exposure(150)
-					.saturation(50)
+					.exposure(35)
+					.saturation(0)
 					.hue(0)
-					.whiteBalance(4000)
+					.whiteBalance(4500)
 					.autoWhiteBalance(0)
 					.autoExposure(0)
 					.gain(0)
@@ -112,8 +112,8 @@ public class VisionConstants {
 										Math.toRadians(0.0),
 										Math.toRadians(-25),
 										Math.toRadians(160))))
-										.id("SPCA2630 PC Camera:usb_05c8_0a00_002_005")
-										.location("0x01230000 / 4")
+										.id("SPCA2630 PC Camera:usb_05c8_0a00_003_001")
+										.location("0x00200000 / 1")
 					.width(1600)
 					.height(1304)
 					.exposure(150)
@@ -134,12 +134,12 @@ public class VisionConstants {
 											Math.toRadians(0.0),
 											Math.toRadians(-25),
 											Math.toRadians(-160))))
-					.id("SPCA2630 PC Camera:usb_05c8_0a00_001_004")
-					.location("0x02211000 / 5")
+					.id("SPCA2630 PC Camera:usb_05c8_0a00_002_003")
+					.location("0x02220000 / 3")
 					.width(1600)
 					.height(1304)
-					.exposure(150)
-					.saturation(50)
+					.exposure(25)
+					.saturation(0)
 					.hue(0)
 					.whiteBalance(4000)
 					.autoWhiteBalance(0)

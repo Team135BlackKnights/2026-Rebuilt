@@ -11,7 +11,7 @@
               {
                 "type": "path",
                 "data": {
-                  "pathName": "NewPath.0"
+                  "pathName": "MainLeft.0"
                 }
               },
               {
@@ -61,7 +61,7 @@
               {
                 "type": "path",
                 "data": {
-                  "pathName": "NewPath.1"
+                  "pathName": "MainLeft.1"
                 }
               },
               {
@@ -111,7 +111,7 @@
               {
                 "type": "path",
                 "data": {
-                  "pathName": "NewPath.2"
+                  "pathName": "MainLeft.2"
                 }
               },
               {
@@ -155,7 +155,7 @@
               {
                 "type": "path",
                 "data": {
-                  "pathName": "NewPath.3"
+                  "pathName": "MainLeft.3"
                 }
               },
               {
@@ -165,12 +165,6 @@
                 }
               }
             ]
-          }
-        },
-        {
-          "type": "named",
-          "data": {
-            "name": "Hang"
           }
         }
       ]
