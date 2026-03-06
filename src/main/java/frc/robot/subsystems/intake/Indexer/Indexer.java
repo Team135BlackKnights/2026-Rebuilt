@@ -1,5 +1,6 @@
 package frc.robot.subsystems.intake.indexer;
 
+import java.util.Optional;
 import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
 
@@ -31,20 +32,24 @@ public class Indexer extends GenericRollerSystem<Indexer.Goal> {
                 
         private final DoubleSupplier valueSupplier;
         private final BooleanSupplier isVoltageSupplier;
+        private final Optional<Double> timeout;
 
         Goal(DoubleSupplier valueSupplier) {
             this.valueSupplier = valueSupplier;
             this.isVoltageSupplier = () -> true;
+            this.timeout = Optional.empty();
         }
 
         Goal(LoggableTunedNumber valueSupplier) {
             this.valueSupplier = valueSupplier::get;
             this.isVoltageSupplier = () -> true;
+            this.timeout = Optional.empty();
         }
 
         Goal(LoggableTunedNumber valueSupplier, BooleanSupplier isVoltageSupplier) {
             this.valueSupplier = valueSupplier::get;
             this.isVoltageSupplier = isVoltageSupplier::getAsBoolean;
+            this.timeout = Optional.empty();
         }
     }
 

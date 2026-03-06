@@ -9,6 +9,7 @@ import edu.wpi.first.math.interpolation.InterpolatingDoubleTreeMap;
 import edu.wpi.first.math.interpolation.InterpolatingTreeMap;
 import edu.wpi.first.math.interpolation.InverseInterpolator;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.util.Units;
 import frc.robot.RobotContainer;
 
 import org.littletonrobotics.junction.Logger;
@@ -78,10 +79,100 @@ public class ShotCalculator {
   }
 
   public static final ShotProfile HUB_PROFILE = new ShotProfile("Hub")
-      // TODO: replace with real calibration points, and not just one point each lol
-      .putHoodAngle(1.45, Rotation2d.fromDegrees(0.0)) //max 38
-      .putFlywheelSpeed(1.45, 175.0)
-      .putTimeOfFlight(1.45, 0.55);
+      // Close range — hood stays fairly flat, RPM moderate
+      .putHoodAngle(1.567, Rotation2d.fromRadians(0.32))
+      .putFlywheelSpeed(1.567, Units.rotationsPerMinuteToRadiansPerSecond(3000))
+      .putTimeOfFlight(1.567, 0.86)
+
+      .putHoodAngle(1.669, Rotation2d.fromRadians(0.34))
+      .putFlywheelSpeed(1.669, Units.rotationsPerMinuteToRadiansPerSecond(3100))
+      .putTimeOfFlight(1.669, 0.87)
+
+      .putHoodAngle(1.769, Rotation2d.fromRadians(0.35))
+      .putFlywheelSpeed(1.769, Units.rotationsPerMinuteToRadiansPerSecond(3150))
+      .putTimeOfFlight(1.769, 0.87)
+
+      .putHoodAngle(1.885, Rotation2d.fromRadians(0.36))
+      .putFlywheelSpeed(1.885, Units.rotationsPerMinuteToRadiansPerSecond(3200))
+      .putTimeOfFlight(1.885, 0.87)
+
+      // Mid-close — hood starts climbing, RPM stays moderate (lob transition)
+      .putHoodAngle(2.065, Rotation2d.fromRadians(0.38))
+      .putFlywheelSpeed(2.065, Units.rotationsPerMinuteToRadiansPerSecond(3250))
+      .putTimeOfFlight(2.065, 0.87)
+
+      .putHoodAngle(2.215, Rotation2d.fromRadians(0.40))
+      .putFlywheelSpeed(2.215, Units.rotationsPerMinuteToRadiansPerSecond(3300))
+      .putTimeOfFlight(2.215, 0.87)
+
+      .putHoodAngle(2.373, Rotation2d.fromRadians(0.43))
+      .putFlywheelSpeed(2.373, Units.rotationsPerMinuteToRadiansPerSecond(3350))
+      .putTimeOfFlight(2.373, 0.87)
+
+      .putHoodAngle(2.542, Rotation2d.fromRadians(0.47))
+      .putFlywheelSpeed(2.542, Units.rotationsPerMinuteToRadiansPerSecond(3400))
+      .putTimeOfFlight(2.542, 0.87)
+
+      // REAL DATA
+      .putHoodAngle(2.663, Rotation2d.fromRadians(0.52))
+      .putFlywheelSpeed(2.663, Units.rotationsPerMinuteToRadiansPerSecond(3500))
+      .putTimeOfFlight(2.663, 0.87)
+      // interpolated bridge between 2.663 and 3.246
+            .putHoodAngle(2.95, Rotation2d.fromRadians(0.57))
+      .putFlywheelSpeed(2.95, Units.rotationsPerMinuteToRadiansPerSecond(3600))
+      .putTimeOfFlight(2.95, 0.87)
+      // REAL DATA
+            .putHoodAngle(3.246, Rotation2d.fromRadians(0.63))
+      .putFlywheelSpeed(3.246, Units.rotationsPerMinuteToRadiansPerSecond(3700))
+      .putTimeOfFlight(3.246, 0.87)
+      // interpolated bridge between 3.246 and 3.592
+            .putHoodAngle(3.4, Rotation2d.fromRadians(0.63))
+      .putFlywheelSpeed(3.4, Units.rotationsPerMinuteToRadiansPerSecond(3850))
+      .putTimeOfFlight(3.4, 0.93)
+      // REAL DATA
+            .putHoodAngle(3.592, Rotation2d.fromRadians(0.63))
+      .putFlywheelSpeed(3.592, Units.rotationsPerMinuteToRadiansPerSecond(4000))
+      .putTimeOfFlight(3.592, 1.00)
+      // interpolated bridge between 3.592 and 3.991
+            .putHoodAngle(3.8, Rotation2d.fromRadians(0.67))
+      .putFlywheelSpeed(3.8, Units.rotationsPerMinuteToRadiansPerSecond(4150))
+      .putTimeOfFlight(3.8, 1.05)
+      // REAL DATA
+            .putHoodAngle(3.991, Rotation2d.fromRadians(0.70))
+      .putFlywheelSpeed(3.991, Units.rotationsPerMinuteToRadiansPerSecond(4300))
+      .putTimeOfFlight(3.991, 1.10)
+
+      
+      ;
+  // Extended data points — ramping from last real point (3.991m: hood 0.70, 4300rpm, tof 1.10)
+  // These WILL need real-robot tuning.
+  static {
+    HUB_PROFILE
+        // 4.5 m
+        .putHoodAngle(4.5, Rotation2d.fromRadians(0.73))
+        .putFlywheelSpeed(4.5, Units.rotationsPerMinuteToRadiansPerSecond(4550))
+        .putTimeOfFlight(4.5, 1.20)
+        // 5.0 m
+        .putHoodAngle(5.0, Rotation2d.fromRadians(0.76))
+        .putFlywheelSpeed(5.0, Units.rotationsPerMinuteToRadiansPerSecond(4800))
+        .putTimeOfFlight(5.0, 1.30)
+        // 5.5 m
+        .putHoodAngle(5.5, Rotation2d.fromRadians(0.78))
+        .putFlywheelSpeed(5.5, Units.rotationsPerMinuteToRadiansPerSecond(5000))
+        .putTimeOfFlight(5.5, 1.40)
+        // 6.0 m
+        .putHoodAngle(6.0, Rotation2d.fromRadians(0.80))
+        .putFlywheelSpeed(6.0, Units.rotationsPerMinuteToRadiansPerSecond(5200))
+        .putTimeOfFlight(6.0, 1.50)
+        // 6.5 m
+        .putHoodAngle(6.5, Rotation2d.fromRadians(0.82))
+        .putFlywheelSpeed(6.5, Units.rotationsPerMinuteToRadiansPerSecond(5350))
+        .putTimeOfFlight(6.5, 1.60)
+        // 7.0 m — near max practical range (hood ~47 deg, still under 50 deg cap)
+        .putHoodAngle(7.0, Rotation2d.fromRadians(0.84))
+        .putFlywheelSpeed(7.0, Units.rotationsPerMinuteToRadiansPerSecond(5500))
+        .putTimeOfFlight(7.0, 1.70);
+  }
   public static final ShotProfile TRENCH_PROFILE = new ShotProfile("Trench")
       .putHoodAngle(2.00, Rotation2d.fromDegrees(0.0))
       .putFlywheelSpeed(2.00, 140.0)

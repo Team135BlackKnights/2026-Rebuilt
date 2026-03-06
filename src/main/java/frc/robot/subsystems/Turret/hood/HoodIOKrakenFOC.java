@@ -10,7 +10,6 @@ import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusSignal;
 import com.ctre.phoenix6.configs.TalonFXSConfiguration;
-import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
 import com.ctre.phoenix6.hardware.TalonFXS;
 import com.ctre.phoenix6.signals.BrushedMotorWiringValue;
@@ -22,12 +21,17 @@ import com.ctre.phoenix6.signals.SensorPhaseValue;
 import com.ctre.phoenix6.signals.TempSensorRequiredValue;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
+import edu.wpi.first.wpilibj.Timer;
+import frc.robot.Constants.TuningConstants;
+import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.selfCheck.SelfChecking;
 import frc.robot.utils.selfCheck.drive.SelfCheckingTalonFXS;
 
@@ -42,7 +46,7 @@ public class HoodIOKrakenFOC implements HoodIO {
 
     // At screw extension 0.000 in, hood 12 deg (hardstop)
     // At screw extension 1.767 in, hood 50 deg ("hard"stop)
-    private static final double START_ANGLE_DEG = 12.0;
+    private static final double START_ANGLE_DEG = 13.0;
     private static final double END_ANGLE_DEG = 50.0;
     private static final double END_EXTENSION_IN = 1.767;
     private static final double DEG_PER_INCH = (END_ANGLE_DEG - START_ANGLE_DEG) / END_EXTENSION_IN;
@@ -51,8 +55,7 @@ public class HoodIOKrakenFOC implements HoodIO {
     private static final double LEAD_MM_PER_REV = 8.0;
     private static final double LEAD_IN_PER_REV = LEAD_MM_PER_REV / 25.4;
     private static final double REV_PER_INCH = 1.0 / LEAD_IN_PER_REV;
-
-    private static final double BOOT_ANGLE_RAD = Math.toRadians(START_ANGLE_DEG);
+    public static final double BOOT_ANGLE_RAD = Math.toRadians(START_ANGLE_DEG);
 
     // CTRE config expects an int. which is annoying.. Use 178 (closest to 177.6 aka 44.4*4).
     private static final int QUAD_EDGES_PER_OUTPUT_REV = 178; //yes, we're going to be off by 0.1 ticks at max. womp womp
@@ -61,8 +64,8 @@ public class HoodIOKrakenFOC implements HoodIO {
     private final String name;
     private final TalonFXS talon;
     private final TalonFXSConfiguration cfg = new TalonFXSConfiguration();
-
-    private final MotionMagicVoltage motionMagic = new MotionMagicVoltage(0).withSlot(0);
+    private PIDController controller = new PIDController(0, 0, 0);
+    private SimpleMotorFeedforward ff = new SimpleMotorFeedforward(0, 0);
     private final VoltageOut voltageOut = new VoltageOut(0);
 
     private final double minAngleRads;
@@ -74,6 +77,14 @@ public class HoodIOKrakenFOC implements HoodIO {
     private final StatusSignal<Current> supplyCurrent;
     private final StatusSignal<Current> torqueCurrent;
     private final StatusSignal<Temperature> tempCelsius;
+
+    private static final LoggableTunedNumber ZERO_VOLTS = new LoggableTunedNumber("Hood/zeroVolts", -8, TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber ZERO_CURRENT_AMPS = new LoggableTunedNumber("Hood/zeroAmps", 4.0, TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber ZERO_HOLD_SEC = new LoggableTunedNumber("Hood/zeroTime", 0.15, TuningConstants.isTuningIntake);
+
+    protected boolean zeroingActive = false;
+    protected boolean openLoop = false;
+    private double zeroSpikeStartTimeSec = Double.NaN;
 
     public HoodIOKrakenFOC(
             CANBus bus,
@@ -90,7 +101,7 @@ public class HoodIOKrakenFOC implements HoodIO {
         talon = new TalonFXS(motorID, bus);
 
         cfg.Commutation.MotorArrangement = MotorArrangementValue.Brushed_DC;
-        cfg.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
+        cfg.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
         cfg.Commutation.BrushedMotorWiring = BrushedMotorWiringValue.Leads_A_and_B;
 
         cfg.ExternalTemp.TempSensorRequired = TempSensorRequiredValue.Not_Required;
@@ -100,10 +111,9 @@ public class HoodIOKrakenFOC implements HoodIO {
 
         cfg.ExternalFeedback.SensorPhase = SensorPhaseValue.Aligned;//MAKE SURE THIS IS RIGHT
 
-        cfg.SoftwareLimitSwitch.ForwardSoftLimitEnable = true;
+        cfg.SoftwareLimitSwitch.ForwardSoftLimitEnable = false;
         cfg.SoftwareLimitSwitch.ForwardSoftLimitThreshold = hoodRadToSensorRot(maxAngleRads);
-        cfg.SoftwareLimitSwitch.ReverseSoftLimitEnable = true;
-        cfg.SoftwareLimitSwitch.ReverseSoftLimitThreshold = hoodRadToSensorRot(minAngleRads);
+        cfg.SoftwareLimitSwitch.ReverseSoftLimitEnable = false;
 
         cfg.CurrentLimits.SupplyCurrentLimitEnable = true;
         cfg.CurrentLimits.SupplyCurrentLimit = currentLimitAmps;
@@ -136,8 +146,8 @@ public class HoodIOKrakenFOC implements HoodIO {
         BaseStatusSignal.setUpdateFrequencyForAll(
                 50.0, pos, vel, appliedVoltage, supplyCurrent, torqueCurrent, tempCelsius);
         talon.optimizeBusUtilization(0, 1.0);
-        //we always start fully compressed in to 12 deg.
-        talon.setPosition(hoodRadToSensorRot(BOOT_ANGLE_RAD));
+        // start zeroing on creation. position will be set to BOOT_ANGLE_RAD when the reverse stop/current spike is detected
+        zero();
     }
 
 
@@ -176,14 +186,15 @@ public class HoodIOKrakenFOC implements HoodIO {
 
     @Override
     public void updateInputs(HoodIOInputs inputs) {
+        processZeroing();
         inputs.name = name;
         inputs.connected = BaseStatusSignal.refreshAll(appliedVoltage, pos, vel, supplyCurrent, torqueCurrent, tempCelsius)
                 .isOK();
-
         // Position/velocity from quadrature sensor (sensor ROTS)
         double sensorRot = pos.getValueAsDouble();
         double sensorRps = vel.getValueAsDouble();
-
+        double volts = ff.calculate(sensorRps) + controller.calculate(sensorRot);
+        runVolts(volts);
         inputs.positionRads = sensorRotToHoodRad(sensorRot);
         inputs.velocityRadsPerSec = Units.rotationsToRadians(sensorRps);
 
@@ -194,23 +205,66 @@ public class HoodIOKrakenFOC implements HoodIO {
 
         Logger.recordOutput("Hood/" + name + "/SensorRot", sensorRot);
         Logger.recordOutput("Hood/" + name + "/HoodDegEst", Math.toDegrees(inputs.positionRads));
+        Logger.recordOutput("Hood/"+name+"ZERO", zeroingActive);
     }
 
     @Override
     public void setPosition(double positionRads) {
+        if (zeroingActive) {
+            return;
+        }
         double clamped = MathUtil.clamp(positionRads, minAngleRads, maxAngleRads);
         double targetSensorRot = hoodRadToSensorRot(clamped);
-        talon.setControl(motionMagic.withPosition(targetSensorRot));
+        controller.setSetpoint(targetSensorRot);
     }
 
     @Override
     public void runVolts(double volts) {
+        if (zeroingActive) {
+            return;
+        }
+        openLoop = true;
         talon.setControl(voltageOut.withOutput(volts));
     }
 
     @Override
     public void stop() {
         runVolts(0.0);
+    }
+
+    public void zero() {
+        zeroingActive = true;
+        zeroSpikeStartTimeSec = Double.NaN;
+    }
+
+    private void processZeroing() {
+        if (!zeroingActive) {
+            return;
+        }
+
+        double now = Timer.getFPGATimestamp();
+        // push gently into the reverse/hardstop direction
+        talon.setControl(voltageOut.withOutput(ZERO_VOLTS.get()));
+        BaseStatusSignal.refreshAll(supplyCurrent, torqueCurrent);
+        double observedCurrentAmps = Math.max(
+                Math.abs(supplyCurrent.getValueAsDouble()),
+                Math.abs(torqueCurrent.getValueAsDouble()));
+
+        if (observedCurrentAmps >= ZERO_CURRENT_AMPS.get()) {
+            if (Double.isNaN(zeroSpikeStartTimeSec)) {
+                zeroSpikeStartTimeSec = now;
+            }
+        } else {
+            zeroSpikeStartTimeSec = Double.NaN;
+        }
+
+        if (!Double.isNaN(zeroSpikeStartTimeSec) && (now - zeroSpikeStartTimeSec) >= ZERO_HOLD_SEC.get()) {
+            // set encoder to BOOT angle (12 deg) when we've hit the reverse hardstop
+            talon.setPosition(hoodRadToSensorRot(BOOT_ANGLE_RAD));
+            zeroingActive = false;
+            zeroSpikeStartTimeSec = Double.NaN;
+            openLoop = false;
+        }
     }
 
     @Override
@@ -228,12 +282,8 @@ public class HoodIOKrakenFOC implements HoodIO {
 
     @Override
     public void setPID(double p, double d, double ks, double kv) {
-        cfg.Slot0.kP = p;
-        cfg.Slot0.kI = 0.0;
-        cfg.Slot0.kD = d;
-        cfg.Slot0.kS = ks;
-        cfg.Slot0.kV = kv;
-        talon.getConfigurator().apply(cfg.Slot0);
+        controller = new PIDController(p, 0, d);
+        ff = new SimpleMotorFeedforward(ks, kv);
     }
 
     @Override

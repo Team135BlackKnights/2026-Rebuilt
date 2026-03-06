@@ -8,6 +8,7 @@ import frc.robot.utils.selfCheck.SelfChecking;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
 import org.littletonrobotics.junction.Logger;
@@ -18,7 +19,10 @@ import com.ctre.phoenix6.hardware.TalonFX;
 public abstract class GenericRollerSystem<G extends GenericRollerSystem.RollGoalSupplier> extends SubsystemChecker {
   public interface RollGoalSupplier {
     BooleanSupplier getIsVoltageSupplier();
+
     DoubleSupplier getValueSupplier();
+
+    Optional<Double> getTimeout();
   }
 
   public abstract G getGoal();
@@ -31,7 +35,8 @@ public abstract class GenericRollerSystem<G extends GenericRollerSystem.RollGoal
   protected boolean lastTimeout = false;
   protected boolean hasTimeout = false;
   protected double radsBeforeLock = 0;
-  protected double integratedRadians =0;
+  protected double integratedRadians = 0;
+
   public GenericRollerSystem(String name, GenericRollerSystemIO io) {
     this.name = name;
     this.setName(name);
@@ -39,10 +44,11 @@ public abstract class GenericRollerSystem<G extends GenericRollerSystem.RollGoal
 
     stateTimer.start();
     registerSelfCheckHardware();
-    if (name != "Kickup"){
-    CommandScheduler.getInstance().unregisterSubsystem(this);
+    if (name != "Kickup") {
+      CommandScheduler.getInstance().unregisterSubsystem(this);
     }
   }
+
   @Override
   public void periodic() {
     io.updateInputs(inputs);
@@ -51,18 +57,28 @@ public abstract class GenericRollerSystem<G extends GenericRollerSystem.RollGoal
       stateTimer.reset();
       lastGoal = getGoal();
     }
-    if (getGoal().getIsVoltageSupplier().getAsBoolean()){
-        io.runVolts(getGoal().getValueSupplier().getAsDouble());
-        /*if (integratedRadians <= radsBeforeLock){
+    if (getGoal().getIsVoltageSupplier().getAsBoolean()) {
+      if (getGoal().getTimeout().isPresent()) {
+        double t = Timer.getFPGATimestamp() % (getGoal().getTimeout().get() * 2);
+        if (t < getGoal().getTimeout().get()) {
+          io.runVolts(-getGoal().getValueSupplier().getAsDouble());
+        } else {
           io.runVolts(getGoal().getValueSupplier().getAsDouble());
-        }else{
-          io.runVolts(0);
-        }*/
-    }else{
+        }
+      }
+      io.runVolts(getGoal().getValueSupplier().getAsDouble());
+      /*
+       * if (integratedRadians <= radsBeforeLock){
+       * io.runVolts(getGoal().getValueSupplier().getAsDouble());
+       * }else{
+       * io.runVolts(0);
+       * }
+       */
+    } else {
       io.runCurrent(getGoal().getValueSupplier().getAsDouble());
     }
     Logger.recordOutput("SuperStructure/" + name + "Goal", getGoal().toString());
-    Logger.recordOutput("SuperStructure/" + name + "stateTimer",stateTimer.get());
+    Logger.recordOutput("SuperStructure/" + name + "stateTimer", stateTimer.get());
   }
 
   public HashMap<String, Double> getTemps() {
@@ -70,12 +86,15 @@ public abstract class GenericRollerSystem<G extends GenericRollerSystem.RollGoal
     tempMap.put(inputs.name, inputs.tempCelsius);
     return tempMap;
   }
-  public double getRadians(){
+
+  public double getRadians() {
     return inputs.positionRads;
   }
-  public double getAppliedVolts(){
+
+  public double getAppliedVolts() {
     return inputs.appliedVoltage;
   }
+
   private void registerSelfCheckHardware() {
     super.registerAllHardware(io.getSelfCheckingHardware());
   }
@@ -97,15 +116,16 @@ public abstract class GenericRollerSystem<G extends GenericRollerSystem.RollGoal
     return inputs.torqueCurrentAmps;
   }
 
-  
-  public boolean isConnected(){
+  public boolean isConnected() {
     return inputs.connected;
-  } 
+  }
+
   @Override
   public void setCurrentLimit(int amps) {
     io.setCurrentLimit(amps);
   }
-  public List<SelfChecking> getHardware(){
+
+  public List<SelfChecking> getHardware() {
     return io.getSelfCheckingHardware();
   }
 }

@@ -516,12 +516,12 @@ public class RobotContainer {
 								"Indexer",
 								IntakeConstants.indexerCurrentLimit,
 								IntakeConstants.indexerInverted,
-								true,
+								false,
 								IntakeConstants.intakeReductionToIndexerRollers));
 				FrontRollers frontRollers = new FrontRollers(
 						new FrontRollersIOKrakenFOC(IntakeConstants.frontRollersMotorID, Robot.rioCanBus,
 								IntakeConstants.frontRollersName, IntakeConstants.frontRollersCurrentLimit,
-								IntakeConstants.frontRollersInverted, true,
+								IntakeConstants.frontRollersInverted, false,
 								IntakeConstants.frontRollersReduction));
 				intake = new Intake(armIO, indexer, frontRollers);
 				// Left Turret
@@ -561,7 +561,7 @@ public class RobotContainer {
 				kickup = new Kickup(
 						new KickupIOSparkBase(AdvancedMechanismConstants.Turret.leftKickupID, Robot.rioCanBus,
 								"Kickup", AdvancedMechanismConstants.Turret.currentLimitKickup,
-								AdvancedMechanismConstants.Turret.invertKickup, true,
+								AdvancedMechanismConstants.Turret.invertKickup, false,
 								AdvancedMechanismConstants.Turret.kickerRatio));
 				// Right Turret
 				AzimuthIO azimuthIORightTurret = new AzimuthIOKrakenFOC(Robot.rioCanBus,
@@ -977,15 +977,15 @@ public class RobotContainer {
 		}, leftTurret, rightTurret);
 
 		var targetBothLeftTrench = Commands.runOnce(() -> {
-			leftTurret.setPresetTarget(Turret.PresetTarget.LEFT_TRENCH_CENTER);
-			rightTurret.setPresetTarget(Turret.PresetTarget.LEFT_TRENCH_CENTER);
+			leftTurret.setPresetTarget(Turret.PresetTarget.HUB_TOP_CENTER);
+			rightTurret.setPresetTarget(Turret.PresetTarget.HUB_TOP_CENTER);
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
 		}, leftTurret, rightTurret);
 
 		var targetBothRightTrench = Commands.runOnce(() -> {
-			leftTurret.setPresetTarget(Turret.PresetTarget.RIGHT_TRENCH_CENTER);
-			rightTurret.setPresetTarget(Turret.PresetTarget.RIGHT_TRENCH_CENTER);
+			leftTurret.setPresetTarget(Turret.PresetTarget.HUB_TOP_CENTER);
+			rightTurret.setPresetTarget(Turret.PresetTarget.HUB_TOP_CENTER);
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
 		}, leftTurret, rightTurret);
@@ -1053,19 +1053,22 @@ public class RobotContainer {
 					// drivetrainS.resetPose(GeomUtil.apply(startingPose.get(), false));
 				}));
 		selectButtonDrive
-				.onTrue(new InstantCommand(() -> {
-					System.out.println("Zeroing Intake/Stopping Turrets");
-					intake.zero();
-					leftTurret.setGoal(Turret.Goal.IDLE);
-					rightTurret.setGoal(Turret.Goal.IDLE);
-				}));
+			.onTrue(new InstantCommand(() -> {
+				System.out.println("Zeroing Intake/Stopping Turrets/Hoods");
+				intake.zero();
+				leftTurret.zeroHood();
+				rightTurret.zeroHood();
+				leftTurret.setGoal(Turret.Goal.IDLE);
+				rightTurret.setGoal(Turret.Goal.IDLE);
+			
+			}));
 		leftStickButtonDrive.onTrue(drivetrainS.orientModules(Swerve.getXOrientations()));
 		leftStickButtonDrive.onFalse(Commands.runOnce(() -> drivetrainS.stopModules(), drivetrainS));
-		rightStickButtonDrive.onTrue(new OrchestraC("megolovania").withName("Play Megolovania"));
+		rightStickButtonDrive.onTrue(new OrchestraC("speed").withName("Play Megolovania"));
 		// Test Commands
 		aButtonDrive.whileTrue(Commands.run(() -> {
 			// flywheel go to 5000 rpm
-			leftTurret.setCharTurretPos(4.1);
+			//leftTurret.setCharHoodPos(0);(4.1);
 			// leftTurret.setCharHoodPos(Units.degreesToRadians(12));
 			// rightTurret.setCharHoodPos(Units.degreesToRadians(12));
 			// intake.setGoal(Goal.STOW);
@@ -1092,10 +1095,13 @@ public class RobotContainer {
 		// leftBumperDrive.onTrue(Commands.runOnce(()));
 		xButtonDrive.and(manipLeftTrigger.negate()).
 		whileTrue(Commands.either(
-				Commands.run(() -> intake.setGoal(Goal.JACKHAMMERING_OUT), intake)
-						.finallyDo(() -> intake.setGoal(Goal.INTAKE_OUTER_IDLE)),
-				Commands.run(() -> intake.setGoal(Goal.JACKHAMMERING_IN), intake)
-						.finallyDo(() -> intake.setGoal(Goal.STOW)),
+				Commands.run(() -> {intake.setGoal(Goal.JACKHAMMERING_OUT);
+				kickup.setGoal(frc.robot.subsystems.Turret.kickup.Kickup.Goal.JACKHAMMER);
+				}, intake,kickup)
+						.finallyDo(() -> {intake.setGoal(Goal.INTAKE_OUTER_IDLE); kickup.setGoal(frc.robot.subsystems.Turret.kickup.Kickup.Goal.IDLING);}),
+				Commands.run(() -> {intake.setGoal(Goal.JACKHAMMERING_IN);
+				kickup.setGoal(frc.robot.subsystems.Turret.kickup.Kickup.Goal.JACKHAMMER);}, intake,kickup)
+						.finallyDo(() -> {intake.setGoal(Goal.STOW); kickup.setGoal(frc.robot.subsystems.Turret.kickup.Kickup.Goal.IDLING);}),
 				() -> intake.isIntakeDeployed())); // jackhammer
 
 
@@ -1137,8 +1143,8 @@ public class RobotContainer {
 								Set.of(drivetrainS))));
 		leftTriggerDriveFull.onFalse(Commands.runOnce(() -> committedToMadMax.set(false)));
 		// Turret Controls
-		rightTriggerDriveFull.and(leftBumperDrive.negate()).whileTrue(shootTurrets);
-		rightTriggerDriveFull.and(leftBumperDrive).whileTrue(shootTurretsWhileIntaking);
+		rightTriggerDriveFull.and(leftBumperDrive.negate()).and(xButtonDrive.negate()).whileTrue(shootTurrets);
+		rightTriggerDriveFull.and(leftBumperDrive).and(xButtonDrive.negate()).whileTrue(shootTurretsWhileIntaking);
 		povUp.onTrue(targetHubBoth);
 		povDown.onTrue(targetSplitTrenches);
 		povLeft.onTrue(targetBothLeftTrench);
@@ -1248,7 +1254,7 @@ public class RobotContainer {
 	}
 
 	public static AprilTagLayoutType getSelectedAprilTagLayout() {
-		return AprilTagLayoutType.HOME;
+		return AprilTagLayoutType.OFFICIAL;
 	}
 
 	/**

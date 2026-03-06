@@ -1,5 +1,6 @@
 package frc.robot.subsystems.Turret.kickup;
 
+import java.util.Optional;
 import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
 
@@ -16,25 +17,34 @@ import frc.robot.subsystems.simpleMechanisms.roller.GenericRollerSystem;
 public class Kickup extends GenericRollerSystem<Kickup.Goal> {
     @Getter
     public enum Goal implements GenericRollerSystem.RollGoalSupplier {
-        IDLING(new LoggableTunedNumber("Kickup/IdlingVoltage", 2.0, Constants.TuningConstants.isTuningShooter)),
-        SHOOTING(new LoggableTunedNumber("Kickup/ShootingVoltage", 5.0, Constants.TuningConstants.isTuningShooter));
+        IDLING(new LoggableTunedNumber("Kickup/IdlingVoltage", 0.0, Constants.TuningConstants.isTuningShooter)),
+        JACKHAMMER(new LoggableTunedNumber("Kickup/JackHammer", 12.0, Constants.TuningConstants.isTuningShooter),.25),
+        SHOOTING(new LoggableTunedNumber("Kickup/ShootingVoltage", 11.0, Constants.TuningConstants.isTuningShooter));
         
         private final DoubleSupplier valueSupplier;
         private final BooleanSupplier isVoltageSupplier;
+        private final Optional<Double> timeout;
 
         Goal(DoubleSupplier valueSupplier) {
             this.valueSupplier = valueSupplier;
             this.isVoltageSupplier = () -> true;
+            this.timeout = Optional.empty();
         }
-
         Goal(LoggableTunedNumber valueSupplier) {
             this.valueSupplier = valueSupplier::get;
             this.isVoltageSupplier = () -> true;
+            this.timeout = Optional.empty();
+        }
+        Goal(LoggableTunedNumber valueSupplier, double timeout) {
+            this.valueSupplier = valueSupplier::get;
+            this.isVoltageSupplier = () -> true;
+            this.timeout = Optional.of(timeout);
         }
 
-        Goal(LoggableTunedNumber valueSupplier, BooleanSupplier isVoltageSupplier) {
+        Goal(LoggableTunedNumber valueSupplier, BooleanSupplier isVoltageSupplier, double timeout) {
             this.valueSupplier = valueSupplier::get;
             this.isVoltageSupplier = isVoltageSupplier::getAsBoolean;
+            this.timeout = Optional.of(timeout);
         }
     }
 

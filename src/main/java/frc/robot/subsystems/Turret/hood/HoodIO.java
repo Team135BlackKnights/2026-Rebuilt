@@ -22,6 +22,8 @@ public interface HoodIO {
     default void setPosition(double positionRads) {}
     default void runVolts(double volts) {}
     default void stop() {}
+    /** Start the zeroing routine (if supported by implementation). */
+    default void zero() {}
     default void setPID(
         double p,
         double d,

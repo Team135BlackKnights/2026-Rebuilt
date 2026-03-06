@@ -12,7 +12,6 @@ import org.littletonrobotics.junction.Logger;
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusSignal;
-import com.ctre.phoenix6.configs.CANcoderConfiguration;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.MotionMagicVoltage;
 import com.ctre.phoenix6.controls.VoltageOut;
@@ -20,7 +19,6 @@ import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
-import com.ctre.phoenix6.signals.SensorDirectionValue;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.Pair;
@@ -52,7 +50,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
     private static final double MOTOR_TO_TURRET_RATIO =
             AdvancedMechanismConstants.Turret.motorRadPerTurretRad;
 
-    private static final double BASE_TOLERANCE_ROT = Units.degreesToRadians(3.0) / TWO_PI;
+    private static final double BASE_TOLERANCE_ROT = Units.degreesToRadians(6.0) / TWO_PI;
     private static final LoggableTunedNumber SPEED_CUT =
             new LoggableTunedNumber("Turrets/SPEED_CUT", 0.05, TuningConstants.isTuningShooter);
 
@@ -137,20 +135,20 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         canCoderSmall = new CANcoder(canCoderSmallID, bus);
 
         /* ---- CANcoder configs ---- */
-        CANcoderConfiguration encoder1Config = new CANcoderConfiguration();
+        /*CANcoderConfiguration encoder1Config = new CANcoderConfiguration();
         CANcoderConfiguration encoder2Config = new CANcoderConfiguration();
 
         encoder1Config.MagnetSensor.AbsoluteSensorDiscontinuityPoint = 0.5;
         encoder2Config.MagnetSensor.AbsoluteSensorDiscontinuityPoint = 0.5;
 
-        encoder1Config.MagnetSensor.MagnetOffset = encoder1Offset;
-        encoder2Config.MagnetSensor.MagnetOffset = encoder2Offset;
+        //encoder1Config.MagnetSensor.MagnetOffset = encoder1Offset;
+        //encoder2Config.MagnetSensor.MagnetOffset = encoder2Offset;
 
         encoder1Config.MagnetSensor.SensorDirection = SensorDirectionValue.Clockwise_Positive;
-        encoder2Config.MagnetSensor.SensorDirection = SensorDirectionValue.Clockwise_Positive;
+        //encoder2Config.MagnetSensor.SensorDirection = SensorDirectionValue.Clockwise_Positive;
 
         canCoderBig.getConfigurator().apply(encoder1Config);
-        canCoderSmall.getConfigurator().apply(encoder2Config);
+        canCoderSmall.getConfigurator().apply(encoder2Config);*/
 
         talonConfig.CurrentLimits.StatorCurrentLimitEnable = true;
         talonConfig.CurrentLimits.StatorCurrentLimit = currentLimitAmps;

@@ -17,6 +17,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import frc.robot.utils.GeomUtil.ApproachDirection;
 import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.Constants;
@@ -91,11 +92,11 @@ public class VisionConstants {
 											Math.toRadians(30.237350),
 											Math.toRadians(0)))) //we don't know, but it faces forward so we assume no yaw/pitch
 					.id("SPCA2630 PC Camera:usb_05c8_0a00_000_001")
-					.location("0x03200000 / 1")  
+					.location("0x03200000 / 1")
 					.width(1600)//1600
 					.height(1304)//1304
 					.exposure(35)
-					.saturation(0)
+					.saturation(50)
 					.hue(0)
 					.whiteBalance(4500)
 					.autoWhiteBalance(0)
@@ -112,12 +113,12 @@ public class VisionConstants {
 										Math.toRadians(0.0),
 										Math.toRadians(-25),
 										Math.toRadians(160))))
-										.id("SPCA2630 PC Camera:usb_05c8_0a00_003_001")
+										.id("SPCA2630 PC Camera:usb_05c8_0a00_000_001") 
 										.location("0x00200000 / 1")
 					.width(1600)
 					.height(1304)
-					.exposure(150)
-					.saturation(50)
+					.exposure(30)
+					.saturation(0)
 					.hue(0)
 					.whiteBalance(4000)
 					.autoWhiteBalance(0)
@@ -138,7 +139,7 @@ public class VisionConstants {
 					.location("0x02220000 / 3")
 					.width(1600)
 					.height(1304)
-					.exposure(25)
+					.exposure(30)
 					.saturation(0)
 					.hue(0)
 					.whiteBalance(4000)
