@@ -21,7 +21,6 @@ import frc.robot.Constants.FRCMatchState;
 import frc.robot.subsystems.SubsystemChecker;
 import frc.robot.subsystems.drive.FastSwerve.Swerve.ModuleLimits;
 import frc.robot.utils.Elastic;
-import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.drive.DriveConstants;
 import frc.robot.utils.drive.DriveConstants.DriveTrainType;
 import com.ctre.phoenix6.CANBus;
@@ -302,18 +301,33 @@ public class Robot extends LoggedRobot {
 		}
 		// Record the current accumated charge, so we can set it to that on next boot.
 		Logger.recordOutput("SystemStatus/isFMSAttached", DriverStation.isFMSAttached());
-		LoggableTunedNumber.ifChanged(hashCode(), () -> {
+		double autoAccelScale = (Constants.currentMatchState == FRCMatchState.AUTOINIT
+				|| Constants.currentMatchState == FRCMatchState.AUTO) ? 0.8 : 1.0;
+		double desiredLinearAccel = DriveConstants.maxTranslationalAcceleration.get() * autoAccelScale;
+		double desiredAngularAccel = DriveConstants.maxRotationalAcceleration.get();
+		if (Math.abs(DriveConstants.pathConstraints.maxAccelerationMPSSq() - desiredLinearAccel) > 1e-6
+				|| Math.abs(DriveConstants.pathConstraints.maxAngularAccelerationRadPerSecSq()
+						- desiredAngularAccel) > 1e-6) {
 			DriveConstants.pathConstraints = new PathConstraints(
 					DriveConstants.pathConstraints.maxVelocityMPS(),
-					DriveConstants.maxTranslationalAcceleration.get(),
+					desiredLinearAccel,
 					DriveConstants.pathConstraints.maxAngularVelocityRadPerSec(),
-					DriveConstants.maxRotationalAcceleration.get());
+					desiredAngularAccel);
+		}
+		double desiredModuleLowAccel = desiredLinearAccel;
+		double desiredModuleAutoAccel = desiredLinearAccel * 2.0;
+		if (Math.abs(DriveConstants.moduleLimitsLow.maxDriveAcceleration() - desiredModuleLowAccel) > 1e-6) {
 			DriveConstants.moduleLimitsLow = new ModuleLimits(
 					DriveConstants.kMaxSpeedMetersPerSecond,
-					DriveConstants.maxTranslationalAcceleration.get(),
+					desiredModuleLowAccel,
 					DriveConstants.maxRotationalAcceleration.get());
-		}, DriveConstants.maxTranslationalAcceleration,
-				DriveConstants.maxRotationalAcceleration);
+		}
+		if (Math.abs(DriveConstants.moduleLimitsAuto.maxDriveAcceleration() - desiredModuleAutoAccel) > 1e-6) {
+			DriveConstants.moduleLimitsAuto = new ModuleLimits(
+					DriveConstants.kMaxSpeedMetersPerSecond * 2.0,
+					desiredModuleAutoAccel,
+					DriveConstants.kMaxTurningSpeedRadPerSec * 4.0);
+		}
 		// long dataStartTime = System.currentTimeMillis();
 		// DataHandler.updateHandlerState();
 		// Logger.recordOutput("SystemStatus/Periodic/OrangePiMS",

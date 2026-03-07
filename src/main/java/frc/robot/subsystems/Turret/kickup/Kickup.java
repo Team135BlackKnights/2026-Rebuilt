@@ -19,8 +19,8 @@ public class Kickup extends GenericRollerSystem<Kickup.Goal> {
     public enum Goal implements GenericRollerSystem.RollGoalSupplier {
         IDLING(new LoggableTunedNumber("Kickup/IdlingVoltage", 0.0, Constants.TuningConstants.isTuningShooter)),
         JACKHAMMER(new LoggableTunedNumber("Kickup/JackHammer", 12.0, Constants.TuningConstants.isTuningShooter),.25),
-        SHOOTING(new LoggableTunedNumber("Kickup/ShootingVoltage", 11.0, Constants.TuningConstants.isTuningShooter));
-        
+        SHOOTING(new LoggableTunedNumber("Kickup/ShootingVoltage", 11.0, Constants.TuningConstants.isTuningShooter)),
+        VOMITING(new LoggableTunedNumber("Kickup/VomitingVoltage", -8, Constants.TuningConstants.isTuningShooter)); 
         private final DoubleSupplier valueSupplier;
         private final BooleanSupplier isVoltageSupplier;
         private final Optional<Double> timeout;

@@ -128,6 +128,7 @@ import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Filesystem;
+import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
@@ -146,6 +147,7 @@ import frc.robot.utils.GeomUtil;
 import frc.robot.utils.IntakeConstants;
 import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.Rebuilt2026FieldSimulation;
+import frc.robot.utils.CompetitionFieldUtils.FieldConstants;
 import frc.robot.utils.robotToggles.Toggles;
 import frc.robot.utils.robotToggles.TogglesIO;
 import frc.robot.utils.robotToggles.TogglesIOHardware;
@@ -970,6 +972,23 @@ public class RobotContainer {
 		Trigger beyondLeftTrench = new Trigger(() -> GeomUtil.applyY(drivetrainS.getPose().getY()) > 5.5);
 		Trigger beyondCenter = new Trigger(() -> GeomUtil.applyY(drivetrainS.getPose().getY()) > 4);
 		Trigger beforeRightTrench = new Trigger(() -> GeomUtil.applyY(drivetrainS.getPose().getY()) < 2.3);
+		Trigger nearAnyTrench = new Trigger(() -> {
+			Translation2d robotPos = drivetrainS.getPose().getTranslation();
+			Translation2d[] trenchCenters = new Translation2d[] {
+					FieldConstants.LeftTrench.openingCenter,
+					FieldConstants.RightTrench.openingCenter,
+					GeomUtil.apply(FieldConstants.LeftTrench.openingCenter, true),
+					GeomUtil.apply(FieldConstants.RightTrench.openingCenter, true)
+			};
+			for (Translation2d center : trenchCenters) {
+				if (robotPos.getDistance(center) < 1.0) {
+					return true;
+				}
+			}
+			return false;
+		});
+		Trigger hoodAboveSafeAngle = new Trigger(
+				() -> leftTurret.isHoodAboveDegrees(14.0) || rightTurret.isHoodAboveDegrees(14.0));
 		Command targetHubBoth = buildTargetHubBothCommand();
 		Command shootTurrets = buildShootTurretsCommand();
 
@@ -1071,6 +1090,8 @@ public class RobotContainer {
 		rightStickButtonDrive.onTrue(new OrchestraC("speed").withName("Play Megolovania"));
 		// Test Commands
 		aButtonDrive.whileTrue(Commands.run(() -> {
+			intake.setGoal(Goal.VOMITING);
+			kickup.setGoal(Kickup.Goal.VOMITING);
 			// flywheel go to 5000 rpm
 			//leftTurret.setCharHoodPos(0);(4.1);
 			// leftTurret.setCharHoodPos(Units.degreesToRadians(12));
@@ -1146,11 +1167,42 @@ public class RobotContainer {
 										() -> DriveConstants.pathConstraints, 1, Units.inchesToMeters(16)),
 								Set.of(drivetrainS))));
 		leftTriggerDriveFull.onFalse(Commands.runOnce(() -> committedToMadMax.set(false)));
+		nearAnyTrench.onTrue(Commands.runOnce(() -> {
+			leftTurret.setTrenchHoodLock(true);
+			rightTurret.setTrenchHoodLock(true);
+		}));
+		nearAnyTrench.onFalse(Commands.runOnce(() -> {
+			leftTurret.setTrenchHoodLock(false);
+			rightTurret.setTrenchHoodLock(false);
+		}));
+		hoodAboveSafeAngle.whileTrue(Commands.startEnd(
+				() -> driveController.getHID().setRumble(RumbleType.kBothRumble, 1.0),
+				() -> driveController.getHID().setRumble(RumbleType.kBothRumble, 0.0)));
 		// Turret Controls
 		rightTriggerDriveFull.and(leftBumperDrive.negate()).and(xButtonDrive.negate()).whileTrue(shootTurrets);
 		rightTriggerDriveFull.and(leftBumperDrive).and(xButtonDrive.negate()).whileTrue(shootTurretsWhileIntaking);
-		povUp.onTrue(targetHubBoth);
-		povDown.onTrue(targetSplitTrenches);
+		povUp.whileTrue(Commands.run(() -> {
+			intake.setGoal(Goal.VOMITING);
+			kickup.setGoal(Kickup.Goal.VOMITING);
+		}, intake, kickup).finallyDo(() -> {
+			if (intake.isIntakeDeployed()) {
+				intake.setGoal(Goal.INTAKE_OUTER_IDLE);
+			} else {
+				intake.setGoal(Goal.STOW);
+			}
+			kickup.setGoal(Kickup.Goal.IDLING);
+		}));
+		povDown.whileTrue(Commands.run(() -> {
+			intake.setGoal(Goal.VOMITING);
+			kickup.setGoal(Kickup.Goal.VOMITING);
+		}, intake, kickup).finallyDo(() -> {
+			if (intake.isIntakeDeployed()) {
+				intake.setGoal(Goal.INTAKE_OUTER_IDLE);
+			} else {
+				intake.setGoal(Goal.STOW);
+			}
+			kickup.setGoal(Kickup.Goal.IDLING);
+		}));
 		povLeft.onTrue(targetHubBoth);
 		povRight.onTrue(targetSplitTrenches);
 		//Manip Controls
@@ -1171,7 +1223,7 @@ public class RobotContainer {
 
 			// Map magnitude [deadband..1] to distance [1m .. 10m]
 			double magNorm = Math.max(0.0, Math.min(1.0, (mag - 0.07) / (1.0 - 0.07)));
-			double rangeMeters = 1.0 + magNorm * (10.0 - 1.0);
+			double rangeMeters = 1.0 + magNorm * (4.0 - 1.0);
 
 			Pose2d robotPose = drivetrainS.getPose();
 			Translation2d targetField = new Translation2d(
@@ -1208,14 +1260,15 @@ public class RobotContainer {
 		}, intake).finallyDo(() -> {
 			intake.holdAtCurrentPosition();
 		}));
-		manipAButton.onTrue(Commands.runOnce(() -> {
-			rightTurret.disAllowHood();
-			leftTurret.disAllowHood();
-		}, leftTurret,rightTurret));
-		manipBButton.onTrue(Commands.runOnce(() -> {
-			rightTurret.allowHood();
-			leftTurret.allowHood();
-		}, leftTurret,rightTurret));
+		manipAButton.whileTrue(Commands.startEnd(
+				() -> {
+					rightTurret.setManualHoodRezeroHeld(true);
+					leftTurret.setManualHoodRezeroHeld(true);
+				},
+				() -> {
+					rightTurret.setManualHoodRezeroHeld(false);
+					leftTurret.setManualHoodRezeroHeld(false);
+				}));
 		manipUpPov.onTrue(Commands.runOnce(() -> {
 			rightTurret.offsetDistance(.05);
 			leftTurret.offsetDistance(.05);

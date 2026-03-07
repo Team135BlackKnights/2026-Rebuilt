@@ -76,6 +76,7 @@ public class Intake extends SubsystemChecker {
         INTAKE_OUTER_IDLE, // Arm down, rollers idling
         JACKHAMMERING_OUT, // Rapidly pulse rollers to dislodge jams (with arm down)
         JACKHAMMERING_IN, // Rapidly pulse rollers to dislodge jams (with arm up)
+        VOMITING,
         SHOOTING, // Don't mess with the arm, but run the rollers at shooting speed
         HOLD, // Hold the arm at its current position (used after manual control)
         TUNING,
@@ -149,6 +150,11 @@ public class Intake extends SubsystemChecker {
                 currentArmSetpoint = angle_ground.get();
                 indexer.setGoal(Indexer.Goal.STOPPED);
                 frontRollers.setGoal(FrontRollers.Goal.IDLING);
+            }
+            case VOMITING -> {
+                currentArmSetpoint = angle_stow.get();
+                indexer.setGoal(Indexer.Goal.VOMITING);
+                frontRollers.setGoal(FrontRollers.Goal.VOMITING);
             }
             case JACKHAMMERING_IN -> {
                 currentArmSetpoint = angle_stow.get();

@@ -16,6 +16,8 @@ import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.util.Units;
+import edu.wpi.first.wpilibj.DriverStation;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.RobotContainer;
 import frc.robot.Constants.TuningConstants;
@@ -53,6 +55,7 @@ public class Turret extends SubsystemChecker {
   private final LoggableTunedNumber flywheel_kV;
   private final LoggableTunedNumber flywheel_kA;
   private final LoggableTunedNumber flywheel_ramp;
+  private final LoggableTunedNumber flywheel_idle;
 
   // Hood setPID(p,d,ks,kv)
   private final LoggableTunedNumber hood_kP;
@@ -117,7 +120,15 @@ public class Turret extends SubsystemChecker {
   private final List<String> loggedShots = new ArrayList<>();
   private boolean lastLogFlag = false;
   private boolean canChangeGoal = true;
-  private boolean allowHoodAdjustment = true;
+  private boolean trenchHoodLock = false;
+  private boolean manualHoodRezeroHeld = false;
+  private boolean hoodForcedDownLastLoop = false;
+  private double lastAutoRezeroSec = Double.NEGATIVE_INFINITY;
+  private double lastManualRezeroSec = Double.NEGATIVE_INFINITY;
+
+  private static final double SAFE_HOOD_DOWN_RADS = Units.degreesToRadians(13.0);
+  private static final double AUTO_REZERO_INTERVAL_SEC = 1.0;
+  private static final double MANUAL_REZERO_INTERVAL_SEC = 0.5;
 
   public Turret(AzimuthIO azimuthIO, FlywheelIO flywheelIO, HoodIO hoodIO, Transform2d robotToTurret, String name) {
     this.azimuthIO = azimuthIO;
@@ -177,9 +188,9 @@ public class Turret extends SubsystemChecker {
       hood_kV = new LoggableTunedNumber(name + "/Hood/kV", 0.0, TuningConstants.isTuningShooter);
 
     }
-
+    flywheel_idle = new LoggableTunedNumber(name+"/Flywheel/AimingSpeedRPM",3000,TuningConstants.isTuningShooter);
     aimToleranceRads = new LoggableTunedNumber(name + "/Tolerance/AimRads", Math.toRadians(7),  TuningConstants.isTuningShooter);
-    hoodToleranceRads = new LoggableTunedNumber(name + "/Tolerance/HoodRads", Math.toRadians(38), TuningConstants.isTuningShooter);
+    hoodToleranceRads = new LoggableTunedNumber(name + "/Tolerance/HoodRads", Math.toRadians(2), TuningConstants.isTuningShooter);
     flywheelToleranceRadsPerSec = new LoggableTunedNumber(name + "/Tolerance/FlywheelRadsPerSec",
         Units.rotationsPerMinuteToRadiansPerSecond(1000), TuningConstants.isTuningShooter);
 
@@ -291,7 +302,6 @@ public class Turret extends SubsystemChecker {
   public void setCharHoodPos(double radians) {
     goal = Goal.TUNING_HOOD;
     desiredHoodRads = radians;
-    hoodIO.setPosition(desiredHoodRads + Units.degreesToRadians(offsetHoodAngle.get()));
   }
 
   public double getCharTurretPos() {
@@ -344,13 +354,23 @@ public class Turret extends SubsystemChecker {
   }
 
   public void disAllowHood() {
-    allowHoodAdjustment = false;
-    hoodIO.setPosition(Units.degreesToRadians(13));
+    setManualHoodRezeroHeld(true);
   }
 
   public void allowHood() {
-    allowHoodAdjustment = true;
-    hoodIO.setPosition(desiredHoodRads);
+    setManualHoodRezeroHeld(false);
+  }
+
+  public void setTrenchHoodLock(boolean locked) {
+    trenchHoodLock = locked;
+  }
+
+  public void setManualHoodRezeroHeld(boolean held) {
+    manualHoodRezeroHeld = held;
+  }
+
+  public boolean isHoodAboveDegrees(double degrees) {
+    return hoodInputs.positionRads > Units.degreesToRadians(degrees);
   }
 
   public double turretAngle() {
@@ -361,6 +381,7 @@ public class Turret extends SubsystemChecker {
     return isAzimuthConnected()
         && isHoodConnected()
         && isFlywheelConnected()
+        && !isHoodForcedDown()
         && Math.abs(turretAngleErrorRads()) < aimToleranceRads.get()
         && Math.abs(hoodInputs.positionRads - desiredHoodRads
             + Units.degreesToRadians(offsetHoodAngle.get())) < hoodToleranceRads.get()
@@ -400,10 +421,9 @@ public class Turret extends SubsystemChecker {
         desiredFlywheelRadsPerSec = 0.0;
 
         azimuthIO.stop();
-        hoodIO.stop();
         flywheelIO.stop();
         desiredTurretRads = lastTurretRads;
-        desiredHoodRads = Units.degreesToRadians(13);
+        desiredHoodRads = SAFE_HOOD_DOWN_RADS;
       }
 
       case AIMING -> {
@@ -415,14 +435,11 @@ public class Turret extends SubsystemChecker {
         var params = shotCalculator.getParameters(target, robotToTurret, ShotCalculator.HUB_PROFILE, distanceOffset);
 
         desiredTurretRads = params.turretAngle().getRadians();
-        desiredHoodRads = params.hoodAngle();
-        desiredFlywheelRadsPerSec = params.flywheelSpeed();
-
+        desiredHoodRads = SAFE_HOOD_DOWN_RADS;
+        desiredFlywheelRadsPerSec = Units.rotationsPerMinuteToRadiansPerSecond(flywheel_idle.get());
         azimuthIO.setDesiredPosition(desiredTurretRads);
 
         flywheelIO.setVelocity(desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
-        if (allowHoodAdjustment)
-          hoodIO.setPosition(desiredHoodRads + Units.degreesToRadians(offsetHoodAngle.get()));
       }
 
       case SHOOTING -> {
@@ -438,8 +455,6 @@ public class Turret extends SubsystemChecker {
         azimuthIO.setDesiredPosition(desiredTurretRads);
 
         flywheelIO.setVelocity(desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
-        if (allowHoodAdjustment)
-          hoodIO.setPosition(desiredHoodRads + Units.degreesToRadians(offsetHoodAngle.get()));
       }
 
       case TUNING_FLYWHEEL -> {
@@ -449,7 +464,6 @@ public class Turret extends SubsystemChecker {
         azimuthIO.setDesiredPosition(desiredTurretRads);
       }
       case TUNING_HOOD -> {
-        hoodIO.setPosition(desiredHoodRads + Units.degreesToRadians(offsetHoodAngle.get()));
       }
       case TUNING_SHOT -> {
         desiredFlywheelRadsPerSec = tuning_RPM.get() * 2.0 * Math.PI / 60.0;
@@ -460,10 +474,9 @@ public class Turret extends SubsystemChecker {
         desiredTurretRads = params.turretAngle().getRadians();
         flywheelIO.setVelocity(desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
         azimuthIO.setDesiredPosition(desiredTurretRads);
-        if (allowHoodAdjustment)
-          hoodIO.setPosition(desiredHoodRads + Units.degreesToRadians(offsetHoodAngle.get()));
       }
     }
+    applyHoodSafetyControl();
     lastTurretRads = desiredTurretRads;
 
     boolean logNow = tuning_logFlag.get();
@@ -500,6 +513,35 @@ public class Turret extends SubsystemChecker {
     Logger.recordOutput(name + "/Errors/TurretRads", turretAngleErrorRads());
     Logger.recordOutput(name + "/AtAimAngle", atAimAngle());
     Logger.recordOutput(name + "/AtShootSetpoints", atShootSetpoints());
+  }
+
+  private boolean isHoodForcedDown() {
+    return manualHoodRezeroHeld || trenchHoodLock || goal != Goal.SHOOTING;
+  }
+
+  private void applyHoodSafetyControl() {
+    boolean forceDown = isHoodForcedDown();
+    if (forceDown) {
+      hoodIO.setPosition(SAFE_HOOD_DOWN_RADS);
+      if (DriverStation.isEnabled()) {
+        double now = Timer.getFPGATimestamp();
+        if (manualHoodRezeroHeld) {
+          if (!hoodForcedDownLastLoop || now - lastManualRezeroSec >= MANUAL_REZERO_INTERVAL_SEC) {
+            hoodIO.zero();
+            lastManualRezeroSec = now;
+          }
+        } else if (!hoodForcedDownLastLoop || now - lastAutoRezeroSec >= AUTO_REZERO_INTERVAL_SEC) {
+          hoodIO.zero();
+          lastAutoRezeroSec = now;
+        }
+      }
+    } else {
+      hoodIO.setPosition(desiredHoodRads + Units.degreesToRadians(offsetHoodAngle.get()));
+    }
+    hoodForcedDownLastLoop = forceDown;
+    Logger.recordOutput(name + "/Hood/ForceDown", forceDown);
+    Logger.recordOutput(name + "/Hood/TrenchLock", trenchHoodLock);
+    Logger.recordOutput(name + "/Hood/ManualRezeroHeld", manualHoodRezeroHeld);
   }
   private static Translation2d getPresetTarget2d(PresetTarget preset) {
     return switch (preset) {
