@@ -713,6 +713,9 @@ public class Robot extends LoggedRobot {
 	public void simulationPeriodic() {
 		if (Constants.currentMode != frc.robot.Constants.Mode.REPLAY) {
 			RobotContainer.updateSimulationWorld();
+			if (RobotContainer.fieldSimulation != null) {
+				RobotContainer.fieldSimulation.simulateTurretShotsIfReady();
+			}
 			if (Constants.currentMatchState == Constants.FRCMatchState.MATCHOVER) {
 				if (!matchHasEnded) {
 					RobotContainer.fieldSimulation.addPoints(2);

@@ -114,6 +114,30 @@ public abstract class CompetitionFieldSimulation {
 			Set<GamePieceInSimulation> gamePiecesCopy = new HashSet<>(gamePieces); // Create a copy of the gamePieces
 																					// set
 			for (GamePieceInSimulation gamePiece : gamePiecesCopy) { // Iterate over the copy
+				// Handle airborne projectiles before any other interactions.
+				if (!gamePiece.isGrounded()) {
+					if (gamePiece.hasHitTarget()) {
+						gamePiece.triggerHitTargetCallBack();
+						removeGamepiece(gamePiece.cleanUp());
+						continue;
+					}
+
+					final boolean hitGround = gamePiece.hasHitGround();
+					final boolean outOfField = gamePiece.hasGoneOutOfField();
+					if (hitGround || outOfField) {
+						final Pose3d settledPose = gamePiece.getPose3d();
+						final boolean shouldBecomeGroundPiece = hitGround
+								&& gamePiece.shouldBecomeGamePieceOnFieldAfterTouchGround();
+						removeGamepiece(gamePiece.cleanUp());
+
+						if (shouldBecomeGroundPiece) {
+							addGamePiece(new Rebuilt2026FieldObjects.FuelOnFieldSimulated(
+									settledPose.getTranslation().toTranslation2d()));
+						}
+						continue;
+					}
+				}
+
 				// Score it if in score zone
 				Pair<Boolean, String> inScoreZone = gamePiece.isInScoreZone();
 				if (inScoreZone.getFirst()) {

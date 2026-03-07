@@ -77,8 +77,16 @@ public abstract class GamePieceInSimulation extends Body
 		return GeometryConvertor.toWpilibPose2d(super.getTransform());
 	}
 
+	@Override
+	public Pose3d getPose3d() {
+		if (launchedTimer.isRunning()) {
+			return new Pose3d(getPositionAtTime(launchedTimer.get()), gamePieceRotation);
+		}
+		return GamePieceOnFieldDisplay.super.getPose3d();
+	}
+
 	// Air stuff
-	public static final double GRAVITY = 11;
+	public static final double GRAVITY = FieldConstants.COEFFICIENT_OF_GRAVITY;
 
 	// Properties of the game piece projectile:
 	protected final String gamePieceType = "Fuel";
@@ -203,6 +211,7 @@ public abstract class GamePieceInSimulation extends Body
 		else
 			projectileTrajectoryDisplayCallBackMiss.accept(trajectoryPoints);
 
+		launchedTimer.reset();
 		launchedTimer.start();
 	}
 
@@ -270,5 +279,9 @@ public GamePieceInSimulation withTouchGroundHeight(double heightAsTouchGround) {
     }
 	public void setHitTargetCallBack(Runnable hitTargetCallBack) {
 		this.hitTargetCallBack = hitTargetCallBack;
+	}
+
+	public boolean shouldBecomeGamePieceOnFieldAfterTouchGround() {
+		return becomesGamePieceOnGroundAfterTouchGround;
 	}
 }

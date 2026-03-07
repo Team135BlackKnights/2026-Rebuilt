@@ -74,7 +74,7 @@ public class ShotCalculator {
     }
 
     private double getTimeOfFlight(double distanceMeters) {
-      return timeOfFlightMap.get(distanceMeters)/3;
+      return timeOfFlightMap.get(distanceMeters);
     }
   }
 
@@ -125,7 +125,7 @@ public class ShotCalculator {
       .putFlywheelSpeed(3.0, Units.rotationsPerMinuteToRadiansPerSecond(4400))
       .putTimeOfFlight(3.0, 1.18)
 
-      // REAL DATA (kept, hood reduced slightly to match trend)
+      // REAL DATA
       .putHoodAngle(3.246, Rotation2d.fromRadians(0.59))
       .putFlywheelSpeed(3.246, Units.rotationsPerMinuteToRadiansPerSecond(4500))
       .putTimeOfFlight(3.246, 1.20)
@@ -135,7 +135,7 @@ public class ShotCalculator {
       .putFlywheelSpeed(3.4, Units.rotationsPerMinuteToRadiansPerSecond(4600))
       .putTimeOfFlight(3.4, 1.23)
 
-      // REAL DATA (RPM adjusted up to match new curve)
+      // REAL DATA
       .putHoodAngle(3.592, Rotation2d.fromRadians(0.62))
       .putFlywheelSpeed(3.592, Units.rotationsPerMinuteToRadiansPerSecond(4700))
       .putTimeOfFlight(3.592, 1.26)
@@ -145,14 +145,14 @@ public class ShotCalculator {
       .putFlywheelSpeed(3.8, Units.rotationsPerMinuteToRadiansPerSecond(4850))
       .putTimeOfFlight(3.8, 1.30)
 
-      // REAL DATA (adjusted to match new RPM curve)
+      // REAL DATA
       .putHoodAngle(3.991, Rotation2d.fromRadians(0.66))
       .putFlywheelSpeed(3.991, Units.rotationsPerMinuteToRadiansPerSecond(5000))
       .putTimeOfFlight(3.991, 1.34)
 
       ;
   // Extended data points — ramping from last real point (3.991m: hood 0.66, 5000rpm, tof 1.34)
-  // These WILL need real-robot tuning.
+  // These ARE NOT REAL DATA POINTS.
   static {
     HUB_PROFILE
         // 4.5 m
