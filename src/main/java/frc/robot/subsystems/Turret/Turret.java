@@ -532,6 +532,7 @@ public class Turret extends SubsystemChecker {
           }
         } else if (!hoodForcedDownLastLoop || now - lastAutoRezeroSec >= AUTO_REZERO_INTERVAL_SEC) {
           hoodIO.zero();
+          System.out.println("Auto-rezeroing hood due to safety lock");
           lastAutoRezeroSec = now;
         }
       }

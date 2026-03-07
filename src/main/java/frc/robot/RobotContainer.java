@@ -972,8 +972,16 @@ public class RobotContainer {
 		Trigger beyondLeftTrench = new Trigger(() -> GeomUtil.applyY(drivetrainS.getPose().getY()) > 5.5);
 		Trigger beyondCenter = new Trigger(() -> GeomUtil.applyY(drivetrainS.getPose().getY()) > 4);
 		Trigger beforeRightTrench = new Trigger(() -> GeomUtil.applyY(drivetrainS.getPose().getY()) < 2.3);
+		final double trenchHardLockMeters = 0.6;
+		final double hoodSafeDownDeg = 13.0;
+		final double hoodDownRateDegPerSec = 38.0;
 		Trigger nearAnyTrench = new Trigger(() -> {
 			Translation2d robotPos = drivetrainS.getPose().getTranslation();
+			ChassisSpeeds robotSpeeds = drivetrainS.getChassisSpeeds();
+			double robotSpeedMps = Math.hypot(robotSpeeds.vxMetersPerSecond, robotSpeeds.vyMetersPerSecond);
+			double maxHoodDeg = Math.max(Math.toDegrees(leftTurret.hoodAngle()), Math.toDegrees(rightTurret.hoodAngle()));
+			double hoodSecondsToDown = Math.max(0.0, (maxHoodDeg - hoodSafeDownDeg) / hoodDownRateDegPerSec);
+			double dynamicTrenchDistanceM = trenchHardLockMeters + robotSpeedMps * hoodSecondsToDown;
 			Translation2d[] trenchCenters = new Translation2d[] {
 					FieldConstants.LeftTrench.openingCenter,
 					FieldConstants.RightTrench.openingCenter,
@@ -981,7 +989,7 @@ public class RobotContainer {
 					GeomUtil.apply(FieldConstants.RightTrench.openingCenter, true)
 			};
 			for (Translation2d center : trenchCenters) {
-				if (robotPos.getDistance(center) < 1.0) {
+				if (robotPos.getDistance(center) < dynamicTrenchDistanceM) {
 					return true;
 				}
 			}
@@ -1270,12 +1278,12 @@ public class RobotContainer {
 					leftTurret.setManualHoodRezeroHeld(false);
 				}));
 		manipUpPov.onTrue(Commands.runOnce(() -> {
-			rightTurret.offsetDistance(.05);
-			leftTurret.offsetDistance(.05);
+			rightTurret.offsetDistance(.125);
+			leftTurret.offsetDistance(.125);
 		}));
 		manipDownPov.onTrue(Commands.runOnce(() -> {
-			rightTurret.offsetDistance(-.05);
-			leftTurret.offsetDistance(-.05);
+			rightTurret.offsetDistance(-.125);
+			leftTurret.offsetDistance(-.125);
 		}));
 		// Automatic Turret Controls -- DISABLED UNTIL TUNING COMPLETE!
 
