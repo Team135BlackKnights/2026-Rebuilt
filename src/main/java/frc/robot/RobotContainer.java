@@ -106,6 +106,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.BooleanSupplier;
 
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
@@ -118,6 +119,7 @@ import com.pathplanner.lib.util.FileVersionException;
 import com.therekrab.autopilot.APTarget;
 
 import edu.wpi.first.math.Pair;
+import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -975,7 +977,8 @@ public class RobotContainer {
 		final double trenchHardLockMeters = 0.6;
 		final double hoodSafeDownDeg = 13.0;
 		final double hoodDownRateDegPerSec = 38.0;
-		Trigger nearAnyTrench = new Trigger(() -> {
+		final double trenchUnlockDebounceSec = 0.4;
+		BooleanSupplier nearAnyTrenchRaw = () -> {
 			Translation2d robotPos = drivetrainS.getPose().getTranslation();
 			ChassisSpeeds fieldSpeeds = drivetrainS.getFieldChassisSpeeds();
 			Translation2d fieldVelocity = new Translation2d(fieldSpeeds.vxMetersPerSecond, fieldSpeeds.vyMetersPerSecond);
@@ -1002,7 +1005,9 @@ public class RobotContainer {
 				}
 			}
 			return false;
-		});
+		};
+		Debouncer trenchUnlockDebouncer = new Debouncer(trenchUnlockDebounceSec, Debouncer.DebounceType.kFalling);
+		Trigger nearAnyTrench = new Trigger(() -> trenchUnlockDebouncer.calculate(nearAnyTrenchRaw.getAsBoolean()));
 		Trigger hoodAboveSafeAngle = new Trigger(
 				() -> leftTurret.isHoodAboveDegrees(14.0) || rightTurret.isHoodAboveDegrees(14.0));
 		Command targetHubBoth = buildTargetHubBothCommand();

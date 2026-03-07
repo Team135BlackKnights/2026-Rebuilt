@@ -4,7 +4,36 @@
  "type":"Swerve",
  "variables":{
   "expressions":{},
-  "poses":{}
+  "poses":{
+   "AltStartPose":{
+    "x":{
+     "exp":"4.398 m",
+     "val":4.398
+    },
+    "y":{
+     "exp":"0.485 m",
+     "val":0.485
+    },
+    "heading":{
+     "exp":"0 deg",
+     "val":0.0
+    }
+   },
+   "StartPose":{
+    "x":{
+     "exp":"4.398 m",
+     "val":4.398
+    },
+    "y":{
+     "exp":"7.586 m",
+     "val":7.586
+    },
+    "heading":{
+     "exp":"0 deg",
+     "val":0.0
+    }
+   }
+  }
  },
  "config":{
   "frontLeft":{

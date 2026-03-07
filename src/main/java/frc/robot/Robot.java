@@ -525,7 +525,7 @@ public class Robot extends LoggedRobot {
 															path.getPoint(0).position,
 															path.getIdealStartingState().rotation()));*/
 						
-			/*if (Constants.currentMode == frc.robot.Constants.Mode.SIM) {
+			if (Constants.currentMode == frc.robot.Constants.Mode.SIM) {
 				RobotContainer.fieldSimulation.resetField(true);
 				if (RobotContainer.currentAuto != null) {
 					try {
@@ -554,7 +554,7 @@ public class Robot extends LoggedRobot {
 					RobotContainer.fieldSimulation.resetField(true);
 					RobotContainer.fieldSimulation.addPoints(3);
 				}
-			}*/
+			}
 			matchHasEnded = false;
 			System.out.println("Scheduling Auto: " + m_autonomousCommand.getName());
 			CommandScheduler.getInstance().schedule(m_autonomousCommand);
