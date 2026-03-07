@@ -60,8 +60,10 @@ public class Rebuilt2026FieldSimulation extends CompetitionFieldSimulation {
 			new LoggableTunedNumber("SimShot/BallSpeedMpsPerRPM", 0.001682, true);
 	private static final LoggableTunedNumber simShotCooldownSec =
 			new LoggableTunedNumber("SimShot/CooldownSec", 0.20, true);
-	private static final LoggableTunedNumber simHoodPitchOffsetDeg =
-			new LoggableTunedNumber("SimShot/HoodPitchOffsetDeg", -13.0, true);
+	private static final LoggableTunedNumber simHoodToPitchScale =
+			new LoggableTunedNumber("SimShot/HoodToPitchScale", 1.0, true);
+	private static final LoggableTunedNumber simHoodToPitchOffsetDeg =
+			new LoggableTunedNumber("SimShot/HoodToPitchOffsetDeg", 0.0, true);
 	private static final LoggableTunedNumber simMuzzleHeightMeters =
 			new LoggableTunedNumber("SimShot/MuzzleHeightM", 0.479, true);
 	private static final LoggableTunedNumber simMuzzleForwardMeters =
@@ -169,7 +171,9 @@ public class Rebuilt2026FieldSimulation extends CompetitionFieldSimulation {
 		final Rotation2d turretRelativeHeading = new Rotation2d(turret.turretAngle());
 		final Rotation2d shotHeading = robotHeading.plus(turretRelativeHeading);
 
-		double hoodPitchRad = turret.hoodAngle() + Math.toRadians(simHoodPitchOffsetDeg.get());
+		final double hoodRawRad = turret.hoodAngle();
+		double hoodPitchRad =
+				(hoodRawRad * simHoodToPitchScale.get()) + Math.toRadians(simHoodToPitchOffsetDeg.get());
 		hoodPitchRad = MathUtil.clamp(hoodPitchRad, Math.toRadians(1.0), Math.toRadians(85.0));
 
 		final double flywheelRpm = turret.getCharFlywheelRPM();
@@ -214,6 +218,7 @@ public class Rebuilt2026FieldSimulation extends CompetitionFieldSimulation {
 				totalHorizontalVelocity,
 				launchVerticalMps,
 				shotHeading,
+				hoodRawRad,
 				hoodPitchRad,
 				flywheelRpm,
 				launchSpeedMps,
@@ -227,6 +232,7 @@ public class Rebuilt2026FieldSimulation extends CompetitionFieldSimulation {
 			Translation2d horizontalVelocity,
 			double verticalVelocityMps,
 			Rotation2d shotHeading,
+			double hoodRawRad,
 			double hoodPitchRad,
 			double flywheelRpm,
 			double launchSpeedMps,
@@ -240,6 +246,7 @@ public class Rebuilt2026FieldSimulation extends CompetitionFieldSimulation {
 		Logger.recordOutput("SimShot/Count", simTurretShotCount);
 		Logger.recordOutput("SimShot/Last/Turret", turretName);
 		Logger.recordOutput("SimShot/Last/FlywheelRPM", flywheelRpm);
+		Logger.recordOutput("SimShot/Last/HoodRawDeg", Math.toDegrees(hoodRawRad));
 		Logger.recordOutput("SimShot/Last/HoodPitchDeg", Math.toDegrees(hoodPitchRad));
 		Logger.recordOutput("SimShot/Last/ShotHeadingDeg", shotHeading.getDegrees());
 		Logger.recordOutput("SimShot/Last/LaunchSpeedMps", launchSpeedMps);
