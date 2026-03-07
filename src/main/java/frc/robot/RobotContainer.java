@@ -977,11 +977,10 @@ public class RobotContainer {
 		final double hoodDownRateDegPerSec = 38.0;
 		Trigger nearAnyTrench = new Trigger(() -> {
 			Translation2d robotPos = drivetrainS.getPose().getTranslation();
-			ChassisSpeeds robotSpeeds = drivetrainS.getChassisSpeeds();
-			double robotSpeedMps = Math.hypot(robotSpeeds.vxMetersPerSecond, robotSpeeds.vyMetersPerSecond);
+			ChassisSpeeds fieldSpeeds = drivetrainS.getFieldChassisSpeeds();
+			Translation2d fieldVelocity = new Translation2d(fieldSpeeds.vxMetersPerSecond, fieldSpeeds.vyMetersPerSecond);
 			double maxHoodDeg = Math.max(Math.toDegrees(leftTurret.hoodAngle()), Math.toDegrees(rightTurret.hoodAngle()));
 			double hoodSecondsToDown = Math.max(0.0, (maxHoodDeg - hoodSafeDownDeg) / hoodDownRateDegPerSec);
-			double dynamicTrenchDistanceM = trenchHardLockMeters + robotSpeedMps * hoodSecondsToDown;
 			Translation2d[] trenchCenters = new Translation2d[] {
 					FieldConstants.LeftTrench.openingCenter,
 					FieldConstants.RightTrench.openingCenter,
@@ -989,7 +988,16 @@ public class RobotContainer {
 					GeomUtil.apply(FieldConstants.RightTrench.openingCenter, true)
 			};
 			for (Translation2d center : trenchCenters) {
-				if (robotPos.getDistance(center) < dynamicTrenchDistanceM) {
+				Translation2d robotToTrench = center.minus(robotPos);
+				double distanceToTrench = robotToTrench.getNorm();
+				if (distanceToTrench < 1e-6) {
+					return true;
+				}
+				Translation2d towardUnit = robotToTrench.div(distanceToTrench);
+				double towardSpeedMps = Math.max(0.0,
+						fieldVelocity.getX() * towardUnit.getX() + fieldVelocity.getY() * towardUnit.getY());
+				double dynamicTrenchDistanceM = trenchHardLockMeters + towardSpeedMps * hoodSecondsToDown;
+				if (distanceToTrench < dynamicTrenchDistanceM) {
 					return true;
 				}
 			}
