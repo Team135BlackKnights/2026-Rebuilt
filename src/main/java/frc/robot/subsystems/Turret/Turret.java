@@ -158,8 +158,8 @@ public class Turret extends SubsystemChecker {
       hood_kD = new LoggableTunedNumber(name + "/Hood/kD", 0.01, TuningConstants.isTuningShooter); // 1.5
       hood_kS = new LoggableTunedNumber(name + "/Hood/kS", 0.0, TuningConstants.isTuningShooter);
       hood_kV = new LoggableTunedNumber(name + "/Hood/kV", 0.0, TuningConstants.isTuningShooter);
-      offsetRPM = new LoggableTunedNumber(name + "/Flywheel/offset", 200, TuningConstants.isTuningShooter);
-      offsetHoodAngle = new LoggableTunedNumber(name + "/Hood/DONOTTOUCH", -2, TuningConstants.isTuningShooter);
+      offsetRPM = new LoggableTunedNumber(name + "/Flywheel/offset", 0, TuningConstants.isTuningShooter);
+      offsetHoodAngle = new LoggableTunedNumber(name + "/Hood/DONOTTOUCH", -1, TuningConstants.isTuningShooter);
 
     } else {
       // right turret
@@ -179,7 +179,7 @@ public class Turret extends SubsystemChecker {
       flywheel_kV = new LoggableTunedNumber(name + "/Flywheel/kV", 0.097, TuningConstants.isTuningShooter); // .098
       flywheel_kA = new LoggableTunedNumber(name + "/Flywheel/kA", 0.0, TuningConstants.isTuningShooter);
       flywheel_ramp = new LoggableTunedNumber(name + "/Flywheel/Ramp", 0.25, TuningConstants.isTuningShooter);
-      offsetRPM = new LoggableTunedNumber(name + "/Flywheel/Offset", 200, TuningConstants.isTuningShooter);
+      offsetRPM = new LoggableTunedNumber(name + "/Flywheel/Offset", 0, TuningConstants.isTuningShooter);
       offsetHoodAngle = new LoggableTunedNumber(name + "/Hood/DONOTTOUCH", 0, TuningConstants.isTuningShooter);
 
       hood_kP = new LoggableTunedNumber(name + "/Hood/kP", 15, TuningConstants.isTuningShooter); // 15
@@ -384,7 +384,7 @@ public class Turret extends SubsystemChecker {
         && !isHoodForcedDown()
         && Math.abs(turretAngleErrorRads()) < aimToleranceRads.get()
         && Math.abs(hoodInputs.positionRads - desiredHoodRads
-            + Units.degreesToRadians(offsetHoodAngle.get())) < hoodToleranceRads.get()
+           - Units.degreesToRadians(offsetHoodAngle.get())) < hoodToleranceRads.get()
         && Math.abs(flywheelInputs.velocityRadsPerSec - desiredFlywheelRadsPerSec
             + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get())) < flywheelToleranceRadsPerSec.get();
   }
