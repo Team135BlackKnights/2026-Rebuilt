@@ -127,8 +127,8 @@ public class Turret extends SubsystemChecker {
   private double lastManualRezeroSec = Double.NEGATIVE_INFINITY;
 
   private static final double SAFE_HOOD_DOWN_RADS = Units.degreesToRadians(13.0);
-  private static final double AUTO_REZERO_INTERVAL_SEC = 1.0;
-  private static final double MANUAL_REZERO_INTERVAL_SEC = 0.5;
+  private static final double AUTO_REZERO_INTERVAL_SEC = 2.5;
+  private static final double MANUAL_REZERO_INTERVAL_SEC = 1;
 
   public Turret(AzimuthIO azimuthIO, FlywheelIO flywheelIO, HoodIO hoodIO, Transform2d robotToTurret, String name) {
     this.azimuthIO = azimuthIO;
@@ -370,7 +370,7 @@ public class Turret extends SubsystemChecker {
   }
 
   public boolean isHoodAboveDegrees(double degrees) {
-    return hoodInputs.positionRads > Units.degreesToRadians(degrees);
+    return desiredHoodRads > Units.degreesToRadians(degrees) && !isHoodForcedDown();
   }
 
   public double turretAngle() {

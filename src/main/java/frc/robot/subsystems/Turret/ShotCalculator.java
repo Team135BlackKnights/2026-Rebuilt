@@ -74,7 +74,7 @@ public class ShotCalculator {
     }
 
     private double getTimeOfFlight(double distanceMeters) {
-      return timeOfFlightMap.get(distanceMeters);
+      return timeOfFlightMap.get(distanceMeters)/3;
     }
   }
 
