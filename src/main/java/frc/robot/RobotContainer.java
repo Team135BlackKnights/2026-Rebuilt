@@ -211,6 +211,7 @@ public class RobotContainer {
 	Trigger manipRightTrigger = manipController.rightTrigger(.1);
 	Trigger manipLeftTrigger = manipController.leftTrigger(.1);
 	Trigger manipAButton = manipController.a();
+	Trigger manipXButton = manipController.x();
 	Trigger manipUpPov = manipController.pov(0);
 	Trigger manipDownPov = manipController.pov(180);
 	Trigger manipBButton = manipController.b();
@@ -1065,36 +1066,25 @@ public class RobotContainer {
 				() -> new AutoIntake(drivetrainS, intake, CameraID.INTAKE_CAM), Set.of(intake, drivetrainS),
 				() -> buildTargetHubBothCommand().andThen(buildShootTurretsCommand()).withName("Shoot Turrets Auto"),
 				Set.of(leftTurret, rightTurret, kickup, intake));
-		Command teleAutoIntake = Commands.defer(
-				() -> new AutoIntake(
-						drivetrainS,
-						intake,
-						CameraID.INTAKE_CAM),
-				Set.of(drivetrainS, intake));
 
 		// Start of actual DRIVER bindings
 		// Start = zero chassis
 		// Select = zero robot
 		// Left Stick Button = orient modules to circle for pushing
 		// Right Stick Button = play megolovania because why not
-		// POV-Up / BR paddle = manual turret control for aiming at hub
+		// POV-Up / BR paddle = vomit
 		// POV-Right / TR paddle = manual turret control for aiming at right trench
-		// POV-Down / BL paddle = manual turret control for aiming at BOTH trenches
+		// POV-Down / BL paddle = vomit
 		// POV-Left / TL paddle = manual turret control for aiming at left trench
 		// Left Trigger = auto align THRU the trench with velocity
 		// Right Trigger = fire while aiming at target
 		// Left Bumper = hold to intake from ground
-		// Right Bumper = hold to intake with AI
-		// A button = PRESS to either extend or retract climber
-		// B button = hold to move climber down
-		// Y button = hold to move climber up
+		// Right Bumper = hold to agitate intake (oscillate arm 0-25deg)
+		// A button = vomit
+		// B button = clear logged shots
+		// Y button = (reserved)
 		// X button = jackhammer intake/indexer/Vindexer
-		// Whenever the user ISN'T holding a POV/paddle, the following is true
-		// - If we're in the score area, the turrets aim at the hub
-		// - If we're in the opponent area, the turrets aim staight down to our alliance
-		// zone / neutral zone
-		// - If we're in the neutral zone, the turrets aim at the trench we're closer to
-		// (or both if we're in the middle)
+		// NOTE: Intake defaults DOWN (out). Manip X holds it UP (stow).
 
 		startButtonDrive
 				.onTrue(new InstantCommand(() -> {
@@ -1142,8 +1132,10 @@ public class RobotContainer {
 		// Intake controls (gated: disabled when manip left trigger is held for manual voltage override)
 		leftBumperDrive.and(rightTriggerDriveFull.negate()).and(manipLeftTrigger.negate()).whileTrue(
 				Commands.run(() -> intake.setGoal(Goal.INTAKE_GROUND))
-						.finallyDo(() -> intake.setGoal(Goal.STOW)));
-		rightBumperDrive.and(manipLeftTrigger.negate()).whileTrue(teleAutoIntake);
+						.finallyDo(() -> intake.setGoal(Goal.INTAKE_OUTER_IDLE)));
+		rightBumperDrive.and(rightTriggerDriveFull.negate()).and(manipLeftTrigger.negate()).whileTrue(
+				(Commands.runOnce(() -> intake.setGoal(Goal.AGITATING), intake).andThen(Commands.waitSeconds(999)))
+						.finallyDo(() -> intake.setGoal(Goal.INTAKE_OUTER_IDLE)));
 		// leftBumperDrive.onTrue(Commands.runOnce(()));
 		xButtonDrive.and(manipLeftTrigger.negate()).
 		whileTrue(Commands.either(
@@ -1153,7 +1145,7 @@ public class RobotContainer {
 						.finallyDo(() -> {intake.setGoal(Goal.INTAKE_OUTER_IDLE); kickup.setGoal(frc.robot.subsystems.Turret.kickup.Kickup.Goal.IDLING);}),
 				Commands.run(() -> {intake.setGoal(Goal.JACKHAMMERING_IN);
 				kickup.setGoal(frc.robot.subsystems.Turret.kickup.Kickup.Goal.JACKHAMMER);}, intake,kickup)
-						.finallyDo(() -> {intake.setGoal(Goal.STOW); kickup.setGoal(frc.robot.subsystems.Turret.kickup.Kickup.Goal.IDLING);}),
+						.finallyDo(() -> {intake.setGoal(Goal.INTAKE_OUTER_IDLE); kickup.setGoal(frc.robot.subsystems.Turret.kickup.Kickup.Goal.IDLING);}),
 				() -> intake.isIntakeDeployed())); // jackhammer
 
 
@@ -1206,33 +1198,46 @@ public class RobotContainer {
 				() -> driveController.getHID().setRumble(RumbleType.kBothRumble, 1.0),
 				() -> driveController.getHID().setRumble(RumbleType.kBothRumble, 0.0)));
 		// Turret Controls
-		rightTriggerDriveFull.and(leftBumperDrive.negate()).and(xButtonDrive.negate()).whileTrue(shootTurrets);
+		rightTriggerDriveFull.and(leftBumperDrive.negate()).and(rightBumperDrive.negate()).and(xButtonDrive.negate()).whileTrue(shootTurrets);
 		rightTriggerDriveFull.and(leftBumperDrive).and(xButtonDrive.negate()).whileTrue(shootTurretsWhileIntaking);
+		// Right trigger + right bumper = shoot while agitating intake
+		rightTriggerDriveFull.and(rightBumperDrive).and(leftBumperDrive.negate()).and(xButtonDrive.negate()).whileTrue(
+				Commands.run(() -> {
+					leftTurret.setGoal(Turret.Goal.SHOOTING);
+					rightTurret.setGoal(Turret.Goal.SHOOTING);
+					intake.setGoal(Goal.AGITATING);
+					if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints()) {
+						kickup.setGoal(Kickup.Goal.SHOOTING);
+					} else {
+						kickup.setGoal(Kickup.Goal.IDLING);
+					}
+				}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
+					leftTurret.setGoal(Turret.Goal.AIMING);
+					rightTurret.setGoal(Turret.Goal.AIMING);
+					intake.setGoal(Goal.INTAKE_OUTER_IDLE);
+					kickup.setGoal(Kickup.Goal.IDLING);
+				}));
 		povUp.whileTrue(Commands.run(() -> {
 			intake.setGoal(Goal.VOMITING);
 			kickup.setGoal(Kickup.Goal.VOMITING);
 		}, intake, kickup).finallyDo(() -> {
-			if (intake.isIntakeDeployed()) {
-				intake.setGoal(Goal.INTAKE_OUTER_IDLE);
-			} else {
-				intake.setGoal(Goal.STOW);
-			}
+			intake.setGoal(Goal.INTAKE_OUTER_IDLE);
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}));
 		povDown.whileTrue(Commands.run(() -> {
 			intake.setGoal(Goal.VOMITING);
 			kickup.setGoal(Kickup.Goal.VOMITING);
 		}, intake, kickup).finallyDo(() -> {
-			if (intake.isIntakeDeployed()) {
-				intake.setGoal(Goal.INTAKE_OUTER_IDLE);
-			} else {
-				intake.setGoal(Goal.STOW);
-			}
+			intake.setGoal(Goal.INTAKE_OUTER_IDLE);
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}));
 		povLeft.onTrue(targetHubBoth);
 		povRight.onTrue(targetSplitTrenches);
 		//Manip Controls
+		// Manip X = hold intake up (stow), release to go back down
+		manipXButton.whileTrue(
+				Commands.run(() -> intake.setGoal(Goal.STOW), intake)
+						.finallyDo(() -> intake.setGoal(Goal.INTAKE_OUTER_IDLE)));
 		Trigger manipManualTurret = new Trigger(() -> Math.abs(manipController.getLeftX()) > .1 || Math.abs(manipController.getLeftY()) > .1);
 		//manipManualTurret.whileTrue(());
 		manipManualTurret.whileTrue(Commands.run(() -> {
@@ -1423,7 +1428,7 @@ public class RobotContainer {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
 			kickup.setGoal(Kickup.Goal.IDLING);
-			intake.setGoal(Intake.Goal.STOW);
+			intake.setGoal(Intake.Goal.INTAKE_OUTER_IDLE);
 			shootTimer.stop();
 		})))).withName("Shoot Turrets with Intake In");
 	}
@@ -1443,11 +1448,7 @@ public class RobotContainer {
 		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
-			if (intake.isIntakeDeployed()) {
-				intake.setGoal(Goal.INTAKE_OUTER_IDLE);
-			} else {
-				intake.setGoal(Goal.STOW);
-			}
+			intake.setGoal(Goal.INTAKE_OUTER_IDLE);
 			kickup.setGoal(Kickup.Goal.IDLING);
 			shootTimer.stop();
 		}));

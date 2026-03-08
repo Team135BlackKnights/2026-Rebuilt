@@ -237,6 +237,13 @@ public class HoodIOKrakenFOC implements HoodIO {
         zeroSpikeStartTimeSec = Double.NaN;
     }
 
+    @Override
+    public void cancelZero() {
+        zeroingActive = false;
+        zeroSpikeStartTimeSec = Double.NaN;
+        openLoop = false;
+    }
+
     private void processZeroing() {
         if (!zeroingActive) {
             return;

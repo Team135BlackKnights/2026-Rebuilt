@@ -148,7 +148,7 @@ public class Turret extends SubsystemChecker {
       azimuth_accelMax = new LoggableTunedNumber(name + "/Azimuth/accelMaxRadPerSec2", 150.0, TuningConstants.isTuningShooter);
       azimuth_ramp = new LoggableTunedNumber(name + "/Azimuth/ramp", 0.1, TuningConstants.isTuningShooter);
 
-      flywheel_kP = new LoggableTunedNumber(name + "/Flywheel/kP", 0.05, TuningConstants.isTuningShooter); // 3
+      flywheel_kP = new LoggableTunedNumber(name + "/Flywheel/kP", 0.15, TuningConstants.isTuningShooter); // 3
       flywheel_kD = new LoggableTunedNumber(name + "/Flywheel/kD", 0.0, TuningConstants.isTuningShooter);
       flywheel_kS = new LoggableTunedNumber(name + "/Flywheel/kS", 0.0, TuningConstants.isTuningShooter);
       flywheel_kV = new LoggableTunedNumber(name + "/Flywheel/kV", 0.095, TuningConstants.isTuningShooter); // .098
@@ -174,7 +174,7 @@ public class Turret extends SubsystemChecker {
       azimuth_accelMax = new LoggableTunedNumber(name + "/Azimuth/accelMaxRadPerSec2", 150.0,  TuningConstants.isTuningShooter);
       azimuth_ramp = new LoggableTunedNumber(name + "/Azimuth/ramp", 0.1, TuningConstants.isTuningShooter);
 
-      flywheel_kP = new LoggableTunedNumber(name + "/Flywheel/kP", 0.05, TuningConstants.isTuningShooter); // 3
+      flywheel_kP = new LoggableTunedNumber(name + "/Flywheel/kP", 0.15, TuningConstants.isTuningShooter); // 3
       flywheel_kD = new LoggableTunedNumber(name + "/Flywheel/kD", 0.0, TuningConstants.isTuningShooter);
       flywheel_kS = new LoggableTunedNumber(name + "/Flywheel/kS", 0.0, TuningConstants.isTuningShooter);
       flywheel_kV = new LoggableTunedNumber(name + "/Flywheel/kV", 0.097, TuningConstants.isTuningShooter); // .098
@@ -208,8 +208,14 @@ public class Turret extends SubsystemChecker {
   }
 
   public void setGoal(Goal goal) {
-    if (goal != null && canChangeGoal)
+    if (goal != null && canChangeGoal) {
       this.goal = goal;
+      // When entering SHOOTING, cancel any in-progress hood zeroing immediately
+      // so the hood can move to the shooting angle without waiting for zero to finish.
+      if (goal == Goal.SHOOTING) {
+        hoodIO.cancelZero();
+      }
+    }
   }
 
   public Goal getGoal() {

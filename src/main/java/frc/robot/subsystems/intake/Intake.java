@@ -52,6 +52,8 @@ public class Intake extends SubsystemChecker {
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber time_jackhammer = new LoggableTunedNumber("Intake/JackhammerTimeSecs",
             .25, TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber angle_agitate = new LoggableTunedNumber("Intake/Setpoints/AgitateDeg",
+            25.0, TuningConstants.isTuningIntake);
 
     // Tolerance
     private static final LoggableTunedNumber arm_tolerance = new LoggableTunedNumber("Intake/ToleranceRads", 0.2,
@@ -79,12 +81,14 @@ public class Intake extends SubsystemChecker {
         VOMITING,
         SHOOTING, // Don't mess with the arm, but run the rollers at shooting speed
         HOLD, // Hold the arm at its current position (used after manual control)
+        AGITATING, // Oscillate arm between ground and agitate angle
         TUNING,
     }
 
     private Goal goal = Goal.START;
     private double currentArmSetpoint = 0.0;
     private double currentRollerVolts = 0.0;
+    private boolean agitatingGoingUp = true;
     @Getter
     private boolean intakeDeployed = false;
     public Intake(ArmIO armIO, Indexer indexer, FrontRollers frontRollers) {
@@ -109,7 +113,7 @@ public class Intake extends SubsystemChecker {
 
         // 3. Safety Check
         if (DriverStation.isDisabled()) {
-            goal = Goal.STOW; // Reset state on disable
+            goal = Goal.INTAKE_OUTER_IDLE; // Reset state on disable — intake stays down
             armIO.stop();
             indexer.setGoal(Indexer.Goal.STOPPED);
             frontRollers.setGoal(FrontRollers.Goal.STOPPED);
@@ -127,7 +131,7 @@ public class Intake extends SubsystemChecker {
                 frontRollers.setGoal(FrontRollers.Goal.STOPPED);
             }
             case START -> {
-                currentArmSetpoint = angle_stow.get();
+                currentArmSetpoint = angle_ground.get();
                 indexer.setGoal(Indexer.Goal.STOPPED);
                 frontRollers.setGoal(FrontRollers.Goal.STOPPED);
             }
@@ -189,6 +193,23 @@ public class Intake extends SubsystemChecker {
                 indexer.setGoal(Indexer.Goal.STOPPED);
                 frontRollers.setGoal(FrontRollers.Goal.STOPPED);
             }
+            case AGITATING -> {
+                // Oscillate between ground (0) and agitate angle; arm goes up, then back down
+                double agitateRads = Math.toRadians(angle_agitate.get());
+                if (agitatingGoingUp) {
+                    currentArmSetpoint = agitateRads;
+                    if (Math.abs(armInputs.positionRads - agitateRads) < arm_tolerance.get()) {
+                        agitatingGoingUp = false;
+                    }
+                } else {
+                    currentArmSetpoint = angle_ground.get();
+                    if (Math.abs(armInputs.positionRads - angle_ground.get()) < arm_tolerance.get()) {
+                        agitatingGoingUp = true;
+                    }
+                }
+                indexer.setGoal(Indexer.Goal.STOPPED);
+                frontRollers.setGoal(FrontRollers.Goal.IDLING);
+            }
 
         }
         if (goal != Goal.TUNING)
@@ -204,7 +225,10 @@ public class Intake extends SubsystemChecker {
 
     public void setGoal(Goal goal) {
         this.goal = goal;
-        if (goal == Goal.INTAKE_GROUND || goal == Goal.INTAKE_OUTER_IDLE) {
+        if (goal == Goal.AGITATING) {
+            agitatingGoingUp = true; // Reset agitate cycle on re-entry
+        }
+        if (goal == Goal.INTAKE_GROUND || goal == Goal.INTAKE_OUTER_IDLE || goal == Goal.AGITATING) {
             intakeDeployed = true;
         } else if (goal == Goal.STOW) {
             intakeDeployed = false;

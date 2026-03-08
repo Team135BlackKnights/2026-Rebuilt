@@ -24,6 +24,8 @@ public interface HoodIO {
     default void stop() {}
     /** Start the zeroing routine (if supported by implementation). */
     default void zero() {}
+    /** Cancel any in-progress zeroing routine immediately. */
+    default void cancelZero() {}
     default void setPID(
         double p,
         double d,
