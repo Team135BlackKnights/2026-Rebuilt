@@ -69,6 +69,11 @@ public class Turret extends SubsystemChecker {
   private final LoggableTunedNumber aimToleranceRads;
   private final LoggableTunedNumber hoodToleranceRads;
   private final LoggableTunedNumber flywheelToleranceRadsPerSec;
+  
+  //Shots
+
+  private final LoggableTunedNumber shot_HUB_TOP_CENTER_RPM;
+  private final LoggableTunedNumber shot_HUB_TOP_CENTER_HOOD_DEG;
 
   private final AzimuthIO azimuthIO;
   private final FlywheelIO flywheelIO;
@@ -86,6 +91,7 @@ public class Turret extends SubsystemChecker {
     AIMING, // hub top center + pre-spin
     SHOOTING, // hub top center using HUB profile
     SHOOTING_CUSTOM,
+    SHOOTING_FROM_HUB,
     IDLE,
     TUNING_FLYWHEEL,
     TUNING_AZIMUTH,
@@ -194,6 +200,8 @@ public class Turret extends SubsystemChecker {
     hoodToleranceRads = new LoggableTunedNumber(name + "/Tolerance/HoodRads", Math.toRadians(2), TuningConstants.isTuningShooter);
     flywheelToleranceRadsPerSec = new LoggableTunedNumber(name + "/Tolerance/FlywheelRadsPerSec",
         Units.rotationsPerMinuteToRadiansPerSecond(1000), TuningConstants.isTuningShooter);
+    shot_HUB_TOP_CENTER_RPM = new LoggableTunedNumber(name + "/Shot/HUB_TOP_CENTER_RPM", 4500, TuningConstants.isTuningShooter);
+    shot_HUB_TOP_CENTER_HOOD_DEG = new LoggableTunedNumber(name + "/Shot/HUB_TOP_CENTER_HOOD_DEG", 13, TuningConstants.isTuningShooter);
 
     // Apply initial PIDs once
     applyAllPIDs();
@@ -470,7 +478,13 @@ public class Turret extends SubsystemChecker {
         flywheelIO.setVelocity(desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
       }
       case SHOOTING_CUSTOM -> {
-        
+
+      }
+      case SHOOTING_FROM_HUB -> {
+        var params = shotCalculator.getParameters(target, robotToTurret, profile, distanceOffset);
+        desiredTurretRads = params.turretAngle().getRadians();
+        azimuthIO.setDesiredPosition(desiredTurretRads);
+        flywheelIO.setVelocity(shot_HUB_TOP_CENTER_RPM.get() + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
       }
 
       case TUNING_FLYWHEEL -> {
@@ -553,7 +567,11 @@ public class Turret extends SubsystemChecker {
         }
       }
     } else {
+      if (goal == Goal.SHOOTING_FROM_HUB){
+        hoodIO.setPosition(shot_HUB_TOP_CENTER_HOOD_DEG.get() + offsetHoodAngle.get());
+      }else{
       hoodIO.setPosition(desiredHoodRads + Units.degreesToRadians(offsetHoodAngle.get()));
+      }
     }
     hoodForcedDownLastLoop = forceDown;
     Logger.recordOutput(name + "/Hood/ForceDown", forceDown);

@@ -224,7 +224,7 @@ public class HoodIOKrakenFOC implements HoodIO {
             return;
         }
         openLoop = true;
-        talon.setControl(voltageOut.withOutput(volts));
+        //talon.setControl(voltageOut.withOutput(volts));
     }
 
     @Override
@@ -251,7 +251,7 @@ public class HoodIOKrakenFOC implements HoodIO {
 
         double now = Timer.getFPGATimestamp();
         // push gently into the reverse/hardstop direction
-        talon.setControl(voltageOut.withOutput(ZERO_VOLTS.get()));
+        //talon.setControl(voltageOut.withOutput(ZERO_VOLTS.get()));
         BaseStatusSignal.refreshAll(supplyCurrent, torqueCurrent);
         double observedCurrentAmps = Math.max(
                 Math.abs(supplyCurrent.getValueAsDouble()),

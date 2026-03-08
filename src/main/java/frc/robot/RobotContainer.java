@@ -45,15 +45,6 @@ import frc.robot.subsystems.drive.Tank.TankIO;
 import frc.robot.subsystems.drive.Tank.TankIOSim;
 import frc.robot.subsystems.drive.Tank.TankIOSparkBase;
 import frc.robot.subsystems.drive.Tank.TankIOTalonFX;
-import frc.robot.subsystems.hang.Hang;
-import frc.robot.subsystems.hang.Hang.HangState;
-import frc.robot.subsystems.hang.climber.Climber;
-import frc.robot.subsystems.hang.climber.ClimberIO;
-import frc.robot.subsystems.hang.climber.ClimberIOKrakenFOC;
-import frc.robot.subsystems.hang.climber.ClimberIOSim;
-import frc.robot.subsystems.hang.wedgeArm.WedgeArmIO;
-import frc.robot.subsystems.hang.wedgeArm.WedgeArmIOKrakenFOC;
-import frc.robot.subsystems.hang.wedgeArm.WedgeArmIOSim;
 import frc.robot.subsystems.intake.Intake;
 import frc.robot.subsystems.intake.Intake.Goal;
 import frc.robot.subsystems.intake.arm.ArmIO;
@@ -145,7 +136,6 @@ import frc.robot.Constants.TuningConstants;
 
 import frc.robot.subsystems.drive.FastSwerve.Swerve.ModuleLimits;
 
-import frc.robot.utils.DriverStationHID;
 import frc.robot.utils.GeomUtil;
 import frc.robot.utils.IntakeConstants;
 import frc.robot.utils.LoggableTunedNumber;
@@ -155,7 +145,6 @@ import frc.robot.utils.robotToggles.Toggles;
 import frc.robot.utils.robotToggles.TogglesIO;
 import frc.robot.utils.robotToggles.TogglesIOHardware;
 import frc.robot.utils.robotToggles.TogglesIONetworkTables;
-import frc.robot.utils.simpleMechanisms.SimpleMechanismConstants;
 
 import frc.robot.utils.Touchboard.PosePlotterUtil;
 import frc.robot.utils.Touchboard.TouchboardAutoFactory;
@@ -215,6 +204,7 @@ public class RobotContainer {
 	Trigger manipUpPov = manipController.pov(0);
 	Trigger manipDownPov = manipController.pov(180);
 	Trigger manipBButton = manipController.b();
+	Trigger manipYButton = manipController.y();
 	public static int currentTest = 0;
 	public static String piConnection = "DISCONNECTED";
 	@AutoLogOutput(key = "RobotState/currentPath")
@@ -1308,6 +1298,17 @@ public class RobotContainer {
 		manipDownPov.onTrue(Commands.runOnce(() -> {
 			rightTurret.offsetDistance(-.125);
 			leftTurret.offsetDistance(-.125);
+		}));
+		manipYButton.whileTrue(Commands.run(() -> {
+			rightTurret.setGoal(Turret.Goal.SHOOTING_FROM_HUB);
+			leftTurret.setGoal(Turret.Goal.SHOOTING_FROM_HUB);
+			intake.setGoal(Intake.Goal.INTAKE_GROUND_SHOOT);
+			kickup.setGoal(Kickup.Goal.SHOOTING);
+		}, rightTurret, leftTurret, intake, kickup).finallyDo(() -> {
+			rightTurret.setGoal(Turret.Goal.AIMING);
+			leftTurret.setGoal(Turret.Goal.AIMING);
+			intake.setGoal(Intake.Goal.INTAKE_OUTER_IDLE);
+			kickup.setGoal(Kickup.Goal.IDLING);
 		}));
 		// Automatic Turret Controls -- DISABLED UNTIL TUNING COMPLETE!
 
