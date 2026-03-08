@@ -165,7 +165,7 @@ public class Turret extends SubsystemChecker {
       hood_kD = new LoggableTunedNumber(name + "/Hood/kD", 0.01, TuningConstants.isTuningShooter); // 1.5
       hood_kS = new LoggableTunedNumber(name + "/Hood/kS", 0.0, TuningConstants.isTuningShooter);
       hood_kV = new LoggableTunedNumber(name + "/Hood/kV", 0.0, TuningConstants.isTuningShooter);
-      offsetRPM = new LoggableTunedNumber(name + "/Flywheel/offset", 500, TuningConstants.isTuningShooter);
+      offsetRPM = new LoggableTunedNumber(name + "/Flywheel/offset", 0, TuningConstants.isTuningShooter);
       offsetHoodAngle = new LoggableTunedNumber(name + "/Hood/DONOTTOUCH", 0, TuningConstants.isTuningShooter);
 
     } else {
@@ -186,7 +186,7 @@ public class Turret extends SubsystemChecker {
       flywheel_kV = new LoggableTunedNumber(name + "/Flywheel/kV", 0.097, TuningConstants.isTuningShooter); // .098
       flywheel_kA = new LoggableTunedNumber(name + "/Flywheel/kA", 0.0, TuningConstants.isTuningShooter);
       flywheel_ramp = new LoggableTunedNumber(name + "/Flywheel/Ramp", 0.25, TuningConstants.isTuningShooter);
-      offsetRPM = new LoggableTunedNumber(name + "/Flywheel/Offset", 200, TuningConstants.isTuningShooter);
+      offsetRPM = new LoggableTunedNumber(name + "/Flywheel/Offset", 0, TuningConstants.isTuningShooter);
       offsetHoodAngle = new LoggableTunedNumber(name + "/Hood/DONOTTOUCH", 0, TuningConstants.isTuningShooter);
 
       hood_kP = new LoggableTunedNumber(name + "/Hood/kP", 15, TuningConstants.isTuningShooter); // 15
@@ -200,7 +200,7 @@ public class Turret extends SubsystemChecker {
     hoodToleranceRads = new LoggableTunedNumber(name + "/Tolerance/HoodRads", Math.toRadians(9989), TuningConstants.isTuningShooter);
     flywheelToleranceRadsPerSec = new LoggableTunedNumber(name + "/Tolerance/FlywheelRadsPerSec",
         Units.rotationsPerMinuteToRadiansPerSecond(1000), TuningConstants.isTuningShooter);
-    shot_HUB_TOP_CENTER_RPM = new LoggableTunedNumber(name + "/Shot/HUB_TOP_CENTER_RPM", 4500, TuningConstants.isTuningShooter);
+    shot_HUB_TOP_CENTER_RPM = new LoggableTunedNumber(name + "/Shot/HUB_TOP_CENTER_RPM", 3500, TuningConstants.isTuningShooter);
     shot_HUB_TOP_CENTER_HOOD_DEG = new LoggableTunedNumber(name + "/Shot/HUB_TOP_CENTER_HOOD_DEG", 13, TuningConstants.isTuningShooter);
 
     // Apply initial PIDs once
@@ -323,6 +323,7 @@ public class Turret extends SubsystemChecker {
   public void setCharHoodPos(double radians) {
     goal = Goal.TUNING_HOOD;
     desiredHoodRads = radians;
+    
   }
 
   public double getCharTurretPos() {
@@ -484,7 +485,7 @@ public class Turret extends SubsystemChecker {
         var params = shotCalculator.getParameters(target, robotToTurret, profile, distanceOffset);
         desiredTurretRads = params.turretAngle().getRadians();
         azimuthIO.setDesiredPosition(desiredTurretRads);
-        flywheelIO.setVelocity(shot_HUB_TOP_CENTER_RPM.get() + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
+        flywheelIO.setVelocity(Units.rotationsPerMinuteToRadiansPerSecond(shot_HUB_TOP_CENTER_RPM.get()) + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
       }
 
       case TUNING_FLYWHEEL -> {

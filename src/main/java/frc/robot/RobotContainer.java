@@ -166,7 +166,7 @@ public class RobotContainer {
 	public static Toggles toggles;
 	public static LocalADStarAK pathFinder = new LocalADStarAK();
 	public static TouchboardAutoFactory touchboardAutoFactory;
-	//public static Hang hang;
+	// public static Hang hang;
 	public static Kickup kickup;
 	public static Turret leftTurret;
 	public static Turret rightTurret;
@@ -175,11 +175,16 @@ public class RobotContainer {
 	// [Map<String,>,]
 	public static CommandXboxController driveController = new CommandXboxController(0);
 	public static CommandXboxController manipController = new CommandXboxController(1);
-	//public static DriverStationHID dsHIDHandler = new DriverStationHID(2);
+	// public static DriverStationHID dsHIDHandler = new DriverStationHID(2);
 	public static XboxController testingController = new XboxController(5);
 	public static Optional<Rotation2d> angleOverrider = Optional.empty();
 	/** Timer used to force a shot after 0.25 s even if setpoints aren't reached */
 	private final Timer shootTimer = new Timer();
+	// Auto-jackhammer during shooting: shoot for this long, then jackhammer for the rest of the cycle
+	private static final LoggableTunedNumber shootCycleShootSec = new LoggableTunedNumber(
+			"Shooting/CycleShootSec", 1.5, TuningConstants.isTuningMacros);
+	private static final LoggableTunedNumber shootCycleJackhammerSec = new LoggableTunedNumber(
+			"Shooting/CycleJackhammerSec", 0.5, TuningConstants.isTuningMacros);
 	public static double angularSpeed = 0;
 	public static double xSpeed = 0;
 	public static double ySpeed = 0;
@@ -291,7 +296,7 @@ public class RobotContainer {
 		// If we get something wacky, throw an error
 		String raw = PosePlotterUtil.getAutoString();
 		Pose2d startingPose = new Pose2d();
-	
+
 		if (raw != null) {
 			var planOpt = PosePlotterUtil.tryGetPlan();
 			if (planOpt.isPresent()) {
@@ -483,26 +488,31 @@ public class RobotContainer {
 				// Advanced Mechs Require Toggles
 				toggles = new Toggles(new TogglesIOHardware());
 				System.out.println("REAL SETUP DONE!");
-				/*switch (SimpleMechanismConstants.Climber.climbMotorType) {
-					case CTRE_ON_RIO:
-					case CTRE_ON_CANIVORE:
-						hang = new Hang(new Climber(new ClimberIOKrakenFOC(SimpleMechanismConstants.Climber.climberId,
-								SimpleMechanismConstants.Climber.bus, SimpleMechanismConstants.Climber.climberName,
-								SimpleMechanismConstants.Climber.climbCurrentLimit,
-								SimpleMechanismConstants.Climber.climbInverted, true,
-								SimpleMechanismConstants.Climber.climbReductionToClimbRollers)),
-								new WedgeArmIOKrakenFOC(SimpleMechanismConstants.Climber.bus,
-										SimpleMechanismConstants.Climber.wedgeArmId,
-										SimpleMechanismConstants.Climber.wedgeArmServoId,
-										SimpleMechanismConstants.Climber.wedgeArmName,
-										SimpleMechanismConstants.Climber.wedgeArmCurrentLimit,
-										SimpleMechanismConstants.Climber.wedgeArmInverted, true,
-										SimpleMechanismConstants.Climber.wedgeReduction));
-						break;
-					default:
-						throw new IllegalArgumentException(
-								"Unknown implementation type for climber (REV NOT SUPPORTED!), please check SimpleMechanismConstants.java!");
-				}*/
+				/*
+				 * switch (SimpleMechanismConstants.Climber.climbMotorType) {
+				 * case CTRE_ON_RIO:
+				 * case CTRE_ON_CANIVORE:
+				 * hang = new Hang(new Climber(new
+				 * ClimberIOKrakenFOC(SimpleMechanismConstants.Climber.climberId,
+				 * SimpleMechanismConstants.Climber.bus,
+				 * SimpleMechanismConstants.Climber.climberName,
+				 * SimpleMechanismConstants.Climber.climbCurrentLimit,
+				 * SimpleMechanismConstants.Climber.climbInverted, true,
+				 * SimpleMechanismConstants.Climber.climbReductionToClimbRollers)),
+				 * new WedgeArmIOKrakenFOC(SimpleMechanismConstants.Climber.bus,
+				 * SimpleMechanismConstants.Climber.wedgeArmId,
+				 * SimpleMechanismConstants.Climber.wedgeArmServoId,
+				 * SimpleMechanismConstants.Climber.wedgeArmName,
+				 * SimpleMechanismConstants.Climber.wedgeArmCurrentLimit,
+				 * SimpleMechanismConstants.Climber.wedgeArmInverted, true,
+				 * SimpleMechanismConstants.Climber.wedgeReduction));
+				 * break;
+				 * default:
+				 * throw new IllegalArgumentException(
+				 * "Unknown implementation type for climber (REV NOT SUPPORTED!), please check SimpleMechanismConstants.java!"
+				 * );
+				 * }
+				 */
 				// Intake
 				ArmIO armIO = new ArmIOKrakenFOC(Robot.rioCanBus,
 						IntakeConstants.intakeMotorID,
@@ -709,10 +719,13 @@ public class RobotContainer {
 								GeomUtil.poseToTransform3d(VisionConstants.cameras[2].getPose().get()),
 								() -> fieldSimulation.getMainDriveSimulation().getPose3d().toPose2d()));
 				toggles = new Toggles(new TogglesIONetworkTables());
-				/*hang = new Hang(new Climber(new ClimberIOSim(DCMotor.getKrakenX44Foc(1), "Climber",
-						SimpleMechanismConstants.Climber.climbReductionToClimbRollers,
-						SimpleMechanismConstants.Climber.climbMOI)),
-						new WedgeArmIOSim());*/
+				/*
+				 * hang = new Hang(new Climber(new ClimberIOSim(DCMotor.getKrakenX44Foc(1),
+				 * "Climber",
+				 * SimpleMechanismConstants.Climber.climbReductionToClimbRollers,
+				 * SimpleMechanismConstants.Climber.climbMOI)),
+				 * new WedgeArmIOSim());
+				 */
 				intake = new Intake(new ArmIOSim(), new Indexer(new IndexerIOSim(DCMotor.getKrakenX44Foc(1), "Indexer",
 						IntakeConstants.intakeReductionToIndexerRollers, IntakeConstants.intakeMOI)),
 						new FrontRollers(
@@ -823,9 +836,11 @@ public class RobotContainer {
 						}); // MUST be same number of cameras as in real robot
 				toggles = new Toggles(new TogglesIO() {
 				});
-				/*hang = new Hang(new Climber(new ClimberIO() {
-				}), new WedgeArmIO() {
-				});*/
+				/*
+				 * hang = new Hang(new Climber(new ClimberIO() {
+				 * }), new WedgeArmIO() {
+				 * });
+				 */
 				intake = new Intake(new ArmIO() {
 				}, new Indexer(new IndexerIO() {
 				}), new FrontRollers(new FrontRollersIO() {
@@ -851,7 +866,7 @@ public class RobotContainer {
 				"ShootWithIntakeOut", buildShootTurretsHubIntakeOutCommand());
 		NamedCommands.registerCommand(
 				"Shoot", buildShootTurretsHubIntakeOutCommand());
-		//NamedCommands.registerCommand("Hang", buildHangCommand());
+		// NamedCommands.registerCommand("Hang", buildHangCommand());
 		NamedCommands.registerCommand("UseDrive", Commands.run(() -> {
 			drivetrainS.stopModules();
 		}, drivetrainS).withName("UseDrive").ignoringDisable(true));
@@ -975,8 +990,10 @@ public class RobotContainer {
 		BooleanSupplier nearAnyTrenchRaw = () -> {
 			Translation2d robotPos = drivetrainS.getPose().getTranslation();
 			ChassisSpeeds fieldSpeeds = drivetrainS.getFieldChassisSpeeds();
-			Translation2d fieldVelocity = new Translation2d(fieldSpeeds.vxMetersPerSecond, fieldSpeeds.vyMetersPerSecond);
-			double maxHoodDeg = Math.max(Math.toDegrees(leftTurret.hoodAngle()), Math.toDegrees(rightTurret.hoodAngle()));
+			Translation2d fieldVelocity = new Translation2d(fieldSpeeds.vxMetersPerSecond,
+					fieldSpeeds.vyMetersPerSecond);
+			double maxHoodDeg = Math.max(Math.toDegrees(leftTurret.hoodAngle()),
+					Math.toDegrees(rightTurret.hoodAngle()));
 			double hoodSecondsToDown = Math.max(0.0, (maxHoodDeg - hoodSafeDownDeg) / hoodDownRateDegPerSec);
 			Translation2d[] trenchCenters = new Translation2d[] {
 					FieldConstants.LeftTrench.openingCenter,
@@ -1038,12 +1055,7 @@ public class RobotContainer {
 		}).andThen(Commands.run(() -> {
 			leftTurret.setGoal(Turret.Goal.SHOOTING);
 			rightTurret.setGoal(Turret.Goal.SHOOTING);
-			intake.setGoal(Goal.INTAKE_GROUND_SHOOT);
-			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints() || shootTimer.hasElapsed(0.75)) {
-				kickup.setGoal(Kickup.Goal.SHOOTING);
-			} else {
-				kickup.setGoal(Kickup.Goal.IDLING);
-			}
+			applyShootCycleGoals(Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5));
 		}, leftTurret, rightTurret, intake, kickup).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
@@ -1083,15 +1095,15 @@ public class RobotContainer {
 					// drivetrainS.resetPose(GeomUtil.apply(startingPose.get(), false));
 				}));
 		selectButtonDrive
-			.onTrue(new InstantCommand(() -> {
-				System.out.println("Zeroing Intake/Stopping Turrets/Hoods");
-				intake.zero();
-				leftTurret.zeroHood();
-				rightTurret.zeroHood();
-				leftTurret.setGoal(Turret.Goal.IDLE);
-				rightTurret.setGoal(Turret.Goal.IDLE);
-			
-			}));
+				.onTrue(new InstantCommand(() -> {
+					System.out.println("Zeroing Intake/Stopping Turrets/Hoods");
+					intake.zero();
+					leftTurret.zeroHood();
+					rightTurret.zeroHood();
+					leftTurret.setGoal(Turret.Goal.IDLE);
+					rightTurret.setGoal(Turret.Goal.IDLE);
+
+				}));
 		leftStickButtonDrive.onTrue(drivetrainS.orientModules(Swerve.getXOrientations()));
 		leftStickButtonDrive.onFalse(Commands.runOnce(() -> drivetrainS.stopModules(), drivetrainS));
 		rightStickButtonDrive.onTrue(new OrchestraC("speed").withName("Play Megolovania"));
@@ -1100,7 +1112,7 @@ public class RobotContainer {
 			intake.setGoal(Goal.VOMITING);
 			kickup.setGoal(Kickup.Goal.VOMITING);
 			// flywheel go to 5000 rpm
-			//leftTurret.setCharHoodPos(0);(4.1);
+			// leftTurret.setCharHoodPos(0);(4.1);
 			// leftTurret.setCharHoodPos(Units.degreesToRadians(12));
 			// rightTurret.setCharHoodPos(Units.degreesToRadians(12));
 			// intake.setGoal(Goal.STOW);
@@ -1116,10 +1128,16 @@ public class RobotContainer {
 			rightTurret.enterShotTuning();
 		}));
 		// Climber controls
-		//aButtonDrive.onTrue(Commands.either(Commands.runOnce(() -> hang.setGoal(HangState.EXTENDED)), Commands.runOnce(() -> hang.setGoal(HangState.STOWED)), () -> hang.getHangState() == HangState.STOWED));
-		//yButtonDrive.whileTrue(Commands.run(() -> hang.setGoal(HangState.MOVING_UP)));
-		//bButtonDrive.whileTrue(Commands.run(() -> hang.setGoal(HangState.MOVING_DOWN)));
-		// Intake controls (gated: disabled when manip left trigger is held for manual voltage override)
+		// aButtonDrive.onTrue(Commands.either(Commands.runOnce(() ->
+		// hang.setGoal(HangState.EXTENDED)), Commands.runOnce(() ->
+		// hang.setGoal(HangState.STOWED)), () -> hang.getHangState() ==
+		// HangState.STOWED));
+		// yButtonDrive.whileTrue(Commands.run(() ->
+		// hang.setGoal(HangState.MOVING_UP)));
+		// bButtonDrive.whileTrue(Commands.run(() ->
+		// hang.setGoal(HangState.MOVING_DOWN)));
+		// Intake controls (gated: disabled when manip left trigger is held for manual
+		// voltage override)
 		leftBumperDrive.and(rightTriggerDriveFull.negate()).and(manipLeftTrigger.negate()).whileTrue(
 				Commands.run(() -> intake.setGoal(Goal.INTAKE_GROUND))
 						.finallyDo(() -> intake.setGoal(Goal.INTAKE_OUTER_IDLE)));
@@ -1127,17 +1145,24 @@ public class RobotContainer {
 				(Commands.runOnce(() -> intake.setGoal(Goal.AGITATING), intake).andThen(Commands.waitSeconds(999)))
 						.finallyDo(() -> intake.setGoal(Goal.INTAKE_OUTER_IDLE)));
 		// leftBumperDrive.onTrue(Commands.runOnce(()));
-		xButtonDrive.and(manipLeftTrigger.negate()).
-		whileTrue(Commands.either(
-				Commands.run(() -> {intake.setGoal(Goal.JACKHAMMERING_OUT);
-				kickup.setGoal(frc.robot.subsystems.Turret.kickup.Kickup.Goal.JACKHAMMER);
-				}, intake,kickup)
-						.finallyDo(() -> {intake.setGoal(Goal.INTAKE_OUTER_IDLE); kickup.setGoal(frc.robot.subsystems.Turret.kickup.Kickup.Goal.IDLING);}),
-				Commands.run(() -> {intake.setGoal(Goal.JACKHAMMERING_IN);
-				kickup.setGoal(frc.robot.subsystems.Turret.kickup.Kickup.Goal.JACKHAMMER);}, intake,kickup)
-						.finallyDo(() -> {intake.setGoal(Goal.INTAKE_OUTER_IDLE); kickup.setGoal(frc.robot.subsystems.Turret.kickup.Kickup.Goal.IDLING);}),
+		xButtonDrive.and(manipLeftTrigger.negate()).whileTrue(Commands.either(
+				Commands.run(() -> {
+					intake.setGoal(Goal.JACKHAMMERING_OUT);
+					kickup.setGoal(frc.robot.subsystems.Turret.kickup.Kickup.Goal.JACKHAMMER);
+				}, intake, kickup)
+						.finallyDo(() -> {
+							intake.setGoal(Goal.INTAKE_OUTER_IDLE);
+							kickup.setGoal(frc.robot.subsystems.Turret.kickup.Kickup.Goal.IDLING);
+						}),
+				Commands.run(() -> {
+					intake.setGoal(Goal.JACKHAMMERING_IN);
+					kickup.setGoal(frc.robot.subsystems.Turret.kickup.Kickup.Goal.JACKHAMMER);
+				}, intake, kickup)
+						.finallyDo(() -> {
+							intake.setGoal(Goal.INTAKE_OUTER_IDLE);
+							kickup.setGoal(frc.robot.subsystems.Turret.kickup.Kickup.Goal.IDLING);
+						}),
 				() -> intake.isIntakeDeployed())); // jackhammer
-
 
 		// Auto Driving To Alliance
 		// If we're before the right, go to the right trench with 3 m/s going DOWN (up
@@ -1188,15 +1213,21 @@ public class RobotContainer {
 				() -> driveController.getHID().setRumble(RumbleType.kBothRumble, 1.0),
 				() -> driveController.getHID().setRumble(RumbleType.kBothRumble, 0.0)));
 		// Turret Controls
-		rightTriggerDriveFull.and(leftBumperDrive.negate()).and(rightBumperDrive.negate()).and(xButtonDrive.negate()).whileTrue(shootTurrets);
+		rightTriggerDriveFull.and(leftBumperDrive.negate()).and(rightBumperDrive.negate()).and(xButtonDrive.negate())
+				.whileTrue(shootTurrets);
 		rightTriggerDriveFull.and(leftBumperDrive).and(xButtonDrive.negate()).whileTrue(shootTurretsWhileIntaking);
 		// Right trigger + right bumper = shoot while agitating intake
 		rightTriggerDriveFull.and(rightBumperDrive).and(leftBumperDrive.negate()).and(xButtonDrive.negate()).whileTrue(
-				Commands.run(() -> {
+				Commands.runOnce(() -> {
+					shootTimer.restart();
+				}).andThen(Commands.run(() -> {
 					leftTurret.setGoal(Turret.Goal.SHOOTING);
 					rightTurret.setGoal(Turret.Goal.SHOOTING);
+					// Agitate arm while cycling jackhammer on rollers/kickup
 					intake.setGoal(Goal.AGITATING);
-					if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints()) {
+					if (isInJackhammerPhase()) {
+						kickup.setGoal(Kickup.Goal.JACKHAMMER);
+					} else if (shootTimer.hasElapsed(0.5)) {
 						kickup.setGoal(Kickup.Goal.SHOOTING);
 					} else {
 						kickup.setGoal(Kickup.Goal.IDLING);
@@ -1206,7 +1237,8 @@ public class RobotContainer {
 					rightTurret.setGoal(Turret.Goal.AIMING);
 					intake.setGoal(Goal.INTAKE_OUTER_IDLE);
 					kickup.setGoal(Kickup.Goal.IDLING);
-				}));
+					shootTimer.stop();
+				})));
 		povUp.whileTrue(Commands.run(() -> {
 			intake.setGoal(Goal.VOMITING);
 			kickup.setGoal(Kickup.Goal.VOMITING);
@@ -1223,13 +1255,14 @@ public class RobotContainer {
 		}));
 		povLeft.onTrue(targetHubBoth);
 		povRight.onTrue(targetSplitTrenches);
-		//Manip Controls
+		// Manip Controls
 		// Manip X = hold intake up (stow), release to go back down
 		manipXButton.whileTrue(
 				Commands.run(() -> intake.setGoal(Goal.STOW), intake)
 						.finallyDo(() -> intake.setGoal(Goal.INTAKE_OUTER_IDLE)));
-		Trigger manipManualTurret = new Trigger(() -> Math.abs(manipController.getLeftX()) > .1 || Math.abs(manipController.getLeftY()) > .1);
-		//manipManualTurret.whileTrue(());
+		Trigger manipManualTurret = new Trigger(
+				() -> Math.abs(manipController.getLeftX()) > .1 || Math.abs(manipController.getLeftY()) > .1);
+		// manipManualTurret.whileTrue(());
 		manipManualTurret.whileTrue(Commands.run(() -> {
 			// Read stick
 			double x = -manipController.getLeftX();
@@ -1240,8 +1273,10 @@ public class RobotContainer {
 			}
 
 			double stickAngleField = Math.atan2(y, x) - Math.PI / 2.0;
-			if (stickAngleField > Math.PI) stickAngleField -= 2.0 * Math.PI;
-			else if (stickAngleField < -Math.PI) stickAngleField += 2.0 * Math.PI;
+			if (stickAngleField > Math.PI)
+				stickAngleField -= 2.0 * Math.PI;
+			else if (stickAngleField < -Math.PI)
+				stickAngleField += 2.0 * Math.PI;
 
 			// Map magnitude [deadband..1] to distance [1m .. 10m]
 			double magNorm = Math.max(0.0, Math.min(1.0, (mag - 0.07) / (1.0 - 0.07)));
@@ -1249,36 +1284,36 @@ public class RobotContainer {
 
 			Pose2d robotPose = drivetrainS.getPose();
 			Translation2d targetField = new Translation2d(
-				robotPose.getX() + rangeMeters * Math.cos(stickAngleField),
-				robotPose.getY() + rangeMeters * Math.sin(stickAngleField));
+					robotPose.getX() + rangeMeters * Math.cos(stickAngleField),
+					robotPose.getY() + rangeMeters * Math.sin(stickAngleField));
 
 			ShotCalculator calc = ShotCalculator.getInstance();
 
 			// Left turret
 			ShootingParameters leftParams = calc.getParameters(
-				targetField, leftTurret.getRobotToTurret(), ShotCalculator.HUB_PROFILE, 0);
+					targetField, leftTurret.getRobotToTurret(), ShotCalculator.HUB_PROFILE, 0);
 			leftTurret.setCharTurretPos(leftParams.turretAngle().getRadians());
 			leftTurret.setCharHoodPos(leftParams.hoodAngle());
 			leftTurret.setCharRPM(leftParams.flywheelSpeed() * 60.0 / (2.0 * Math.PI)); // rad/s -> RPM
 
 			// Right turret
 			ShootingParameters rightParams = calc.getParameters(
-				targetField, rightTurret.getRobotToTurret(), ShotCalculator.HUB_PROFILE, 0);
+					targetField, rightTurret.getRobotToTurret(), ShotCalculator.HUB_PROFILE, 0);
 			rightTurret.setCharTurretPos(rightParams.turretAngle().getRadians());
 			rightTurret.setCharHoodPos(rightParams.hoodAngle());
 			rightTurret.setCharRPM(rightParams.flywheelSpeed() * 60.0 / (2.0 * Math.PI)); // rad/s -> RPM
 		}));
 		manipLeftTrigger.whileTrue(Commands.run(() -> {
-			double stickY = manipController.getLeftY(); 
-			double volts = -stickY * 3.0; 
-			intake.runCharacterization(volts); 
+			double stickY = manipController.getLeftY();
+			double volts = -stickY * 3.0;
+			intake.runCharacterization(volts);
 		}, intake).finallyDo(() -> {
 			intake.holdAtCurrentPosition();
 		}));
 		manipRightTrigger.whileTrue(Commands.run(() -> {
-			double stickY = manipController.getLeftY(); 
-			double volts = stickY * 3.0; 
-			intake.runCharacterization(volts); 
+			double stickY = manipController.getLeftY();
+			double volts = stickY * 3.0;
+			intake.runCharacterization(volts);
 		}, intake).finallyDo(() -> {
 			intake.holdAtCurrentPosition();
 		}));
@@ -1299,29 +1334,41 @@ public class RobotContainer {
 			rightTurret.offsetDistance(-.125);
 			leftTurret.offsetDistance(-.125);
 		}));
-		manipYButton.whileTrue(Commands.run(() -> {
+		manipYButton.whileTrue(Commands.runOnce(() -> {
+			shootTimer.restart();
+			kickup.setGoal(Kickup.Goal.IDLING);
+		}).andThen(Commands.run(() -> {
 			rightTurret.setGoal(Turret.Goal.SHOOTING_FROM_HUB);
 			leftTurret.setGoal(Turret.Goal.SHOOTING_FROM_HUB);
-			intake.setGoal(Intake.Goal.INTAKE_GROUND_SHOOT);
-			kickup.setGoal(Kickup.Goal.SHOOTING);
-		}, rightTurret, leftTurret, intake, kickup).finallyDo(() -> {
-			rightTurret.setGoal(Turret.Goal.AIMING);
+			applyShootCycleGoals(Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5));
+		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
-			intake.setGoal(Intake.Goal.INTAKE_OUTER_IDLE);
+			rightTurret.setGoal(Turret.Goal.AIMING);
 			kickup.setGoal(Kickup.Goal.IDLING);
-		}));
+			intake.setGoal(Intake.Goal.INTAKE_OUTER_IDLE);
+			shootTimer.stop();
+		})));
 		// Automatic Turret Controls -- DISABLED UNTIL TUNING COMPLETE!
 
-		//manualTurretControl.negate().and(inScoreArea).and(inTeleOp).whileTrue(targetHubBoth);
-		/*manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.negate()).and(beforeRightTrench).and(inTeleOp)
-				.whileTrue(targetBothRightTrench);
-		manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.negate()).and(beyondLeftTrench).and(inTeleOp)
-				.whileTrue(targetBothLeftTrench);*/
-		/*manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.negate()).and(inTeleOp)
-				.and(beyondLeftTrench.negate()).and(beforeRightTrench.negate()).whileTrue(
-						targetSplitTrenches);*/
-		/*manualTurretControl.negate().and(inOpponentArea).and(inTeleOp).whileTrue(
-				targetBothOverNeutral);*/ 
+		// manualTurretControl.negate().and(inScoreArea).and(inTeleOp).whileTrue(targetHubBoth);
+		/*
+		 * manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.
+		 * negate()).and(beforeRightTrench).and(inTeleOp)
+		 * .whileTrue(targetBothRightTrench);
+		 * manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.
+		 * negate()).and(beyondLeftTrench).and(inTeleOp)
+		 * .whileTrue(targetBothLeftTrench);
+		 */
+		/*
+		 * manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.
+		 * negate()).and(inTeleOp)
+		 * .and(beyondLeftTrench.negate()).and(beforeRightTrench.negate()).whileTrue(
+		 * targetSplitTrenches);
+		 */
+		/*
+		 * manualTurretControl.negate().and(inOpponentArea).and(inTeleOp).whileTrue(
+		 * targetBothOverNeutral);
+		 */
 
 		// - If in score area AND not manually holding POV: aim both turrets at hub
 		/*
@@ -1371,6 +1418,45 @@ public class RobotContainer {
 	}
 
 	/**
+	 * Returns true when the shoot cycle is in the jackhammer phase.
+	 * Call every loop during any shooting command to auto-jackhammer.
+	 * Uses FPGA timestamp so all commands share the same global cycle.
+	 */
+	private boolean isInJackhammerPhase() {
+		double cyclePeriod = shootCycleShootSec.get() + shootCycleJackhammerSec.get();
+		double tInCycle = Timer.getFPGATimestamp() % cyclePeriod;
+		return tInCycle >= shootCycleShootSec.get();
+	}
+
+	/**
+	 * Sets intake and kickup goals for the current shoot cycle phase.
+	 * During the shoot phase: intake gets shootGoal, kickup gets SHOOTING (if allowed).
+	 * During the jackhammer phase: intake jackhammers, kickup jackhammers.
+	 *
+	 * @param shootGoal     the intake goal to use during normal shooting (e.g. SHOOTING or INTAKE_GROUND_SHOOT)
+	 * @param allowKickup   whether the kickup is allowed to shoot (e.g. after shootTimer delay)
+	 */
+	private void applyShootCycleGoals(Goal shootGoal, boolean allowKickup) {
+		if (isInJackhammerPhase()) {
+			// Jackhammer phase — cycle intake and kickup
+			if (intake.isIntakeDeployed()) {
+				intake.setGoal(Goal.JACKHAMMERING_OUT);
+			} else {
+				intake.setGoal(Goal.JACKHAMMERING_IN);
+			}
+			kickup.setGoal(Kickup.Goal.JACKHAMMER);
+		} else {
+			// Normal shooting phase
+			intake.setGoal(shootGoal);
+			if (allowKickup) {
+				kickup.setGoal(Kickup.Goal.SHOOTING);
+			} else {
+				kickup.setGoal(Kickup.Goal.IDLING);
+			}
+		}
+	}
+
+	/**
 	 * Use this to pass the autonomous command to the main {@link Robot} class.
 	 *
 	 * @return the command to run in autonomous
@@ -1387,15 +1473,11 @@ public class RobotContainer {
 	private Command buildShootTurretsHubIntakeOutCommand() {
 		return (buildTargetHubBothCommand().andThen(Commands.runOnce(() -> {
 			shootTimer.restart();
+			kickup.setGoal(Kickup.Goal.IDLING);
 		}).andThen(Commands.run(() -> {
-			leftTurret.setGoal(Turret.Goal.SHOOTING);
-			rightTurret.setGoal(Turret.Goal.SHOOTING);
-			intake.setGoal(Intake.Goal.INTAKE_GROUND_SHOOT);
-			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints() || shootTimer.hasElapsed(0.75)) {
-				kickup.setGoal(Kickup.Goal.SHOOTING);
-			} else {
-				kickup.setGoal(Kickup.Goal.IDLING);
-			}
+			rightTurret.setGoal(Turret.Goal.SHOOTING_FROM_HUB);
+			leftTurret.setGoal(Turret.Goal.SHOOTING_FROM_HUB);
+			applyShootCycleGoals(Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5));
 		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
@@ -1405,26 +1487,24 @@ public class RobotContainer {
 		})))).withName("Shoot Turrets with Intake Out");
 	}
 
-	/*private Command buildHangCommand() {
-		return Commands.defer(() -> Commands.sequence(Commands.runOnce(() -> {
-			hang.setGoal(HangState.EXTENDED);
-		}).andThen(
-			//go into wall, then climb up, then we ball TODO.
-		)), Set.of(hang, drivetrainS)).withName("Auto Hang");
-	}*/
+	/*
+	 * private Command buildHangCommand() {
+	 * return Commands.defer(() -> Commands.sequence(Commands.runOnce(() -> {
+	 * hang.setGoal(HangState.EXTENDED);
+	 * }).andThen(
+	 * //go into wall, then climb up, then we ball TODO.
+	 * )), Set.of(hang, drivetrainS)).withName("Auto Hang");
+	 * }
+	 */
 
 	private Command buildShootTurretsHubIntakeInCommand() {
 		return (buildTargetHubBothCommand().andThen(Commands.runOnce(() -> {
 			shootTimer.restart();
+			kickup.setGoal(Kickup.Goal.IDLING);
 		}).andThen(Commands.run(() -> {
 			leftTurret.setGoal(Turret.Goal.SHOOTING);
 			rightTurret.setGoal(Turret.Goal.SHOOTING);
-			intake.setGoal(Goal.SHOOTING);
-			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints() || shootTimer.hasElapsed(0.75)) {
-				kickup.setGoal(Kickup.Goal.SHOOTING);
-			} else {
-				kickup.setGoal(Kickup.Goal.IDLING);
-			}
+			applyShootCycleGoals(Goal.SHOOTING, shootTimer.hasElapsed(0.5));
 		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
@@ -1437,15 +1517,11 @@ public class RobotContainer {
 	private Command buildShootTurretsCommand() {
 		return Commands.runOnce(() -> {
 			shootTimer.restart();
+			kickup.setGoal(Kickup.Goal.IDLING);
 		}).andThen(Commands.run(() -> {
-			leftTurret.setGoal(Turret.Goal.SHOOTING);
-			rightTurret.setGoal(Turret.Goal.SHOOTING);
-			intake.setGoal(Goal.INTAKE_GROUND_SHOOT);
-			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints() || shootTimer.hasElapsed(0.75)) {
-				kickup.setGoal(Kickup.Goal.SHOOTING);
-			} else {
-				kickup.setGoal(Kickup.Goal.IDLING);
-			}
+			leftTurret.setGoal(Turret.Goal.SHOOTING_FROM_HUB);
+			rightTurret.setGoal(Turret.Goal.SHOOTING_FROM_HUB);
+			applyShootCycleGoals(Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5));
 		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
@@ -1471,7 +1547,7 @@ public class RobotContainer {
 	 */
 	public static double[] getCurrentDraw() {
 
-		return new double[] { Math.min(drivetrainS.getCurrent(), 200),/* hang.getCurrent(),*/ intake.getCurrent(),
+		return new double[] { Math.min(drivetrainS.getCurrent(), 200), /* hang.getCurrent(), */ intake.getCurrent(),
 				leftTurret.getCurrent(), rightTurret.getCurrent() };
 		// superStructure.getCurrent() };
 	}
@@ -1494,7 +1570,7 @@ public class RobotContainer {
 				drivetrainS.getRunnableSystemCheckCommand(),
 				visionS.getSystemCheckCommand(),
 				// leds.getSystemCheckCommand(),
-				//hang.getSystemCheckCommand(),
+				// hang.getSystemCheckCommand(),
 				intake.getSystemCheckCommand(),
 				leftTurret.getSystemCheckCommand(),
 				rightTurret.getSystemCheckCommand(),
@@ -1514,7 +1590,7 @@ public class RobotContainer {
 
 	public static HashMap<String, Double> getAllTemps() {
 		// List of HashMaps
-		List<HashMap<String, Double>> maps = List.of(drivetrainS.getTemps(), visionS.getTemps(),/*  hang.getTemps(),*/
+		List<HashMap<String, Double>> maps = List.of(drivetrainS.getTemps(), visionS.getTemps(), /* hang.getTemps(), */
 				intake.getTemps(), leftTurret.getTemps(), rightTurret.getTemps(), kickup.getTemps());
 		// Combine all maps
 		HashMap<String, Double> combinedMap = combineMaps(maps);
@@ -1530,7 +1606,7 @@ public class RobotContainer {
 		return drivetrainS.getTrueSystemStatus() == SubsystemChecker.SystemStatus.OK
 				// && leds.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& visionS.getSystemStatus() == SubsystemChecker.SystemStatus.OK
-				//&& hang.getSystemStatus() == SubsystemChecker.SystemStatus.OK
+				// && hang.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& intake.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& leftTurret.getSystemStatus() == SubsystemChecker.SystemStatus.OK
 				&& rightTurret.getSystemStatus() == SubsystemChecker.SystemStatus.OK
@@ -1542,7 +1618,7 @@ public class RobotContainer {
 
 		Collection<ParentDevice> devices = new ArrayList<>();
 		devices.addAll(drivetrainS.getDriveOrchestraDevices());
-		//devices.addAll(hang.getOrchestraDevices());
+		// devices.addAll(hang.getOrchestraDevices());
 		devices.addAll(intake.getOrchestraDevices());
 		devices.addAll(kickup.getOrchestraDevices());
 		devices.addAll(leftTurret.getOrchestraDevices());
@@ -1565,7 +1641,7 @@ public class RobotContainer {
 				break;
 		}
 		subsystems[1] = visionS;
-		//subsystems[2] = hang;
+		// subsystems[2] = hang;
 		subsystems[2] = intake;
 		subsystems[3] = leftTurret;
 		subsystems[4] = rightTurret;

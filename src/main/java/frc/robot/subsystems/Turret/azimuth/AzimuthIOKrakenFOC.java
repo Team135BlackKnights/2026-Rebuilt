@@ -349,7 +349,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         Logger.recordOutput(name + "/Turret/DesiredTurretRads", desiredTurret);
         Logger.recordOutput(name + "/Turret/DesStatus", "OK");
 
-        talon.setControl(motionMagicRequest.withPosition(desiredRotorRots));
+       // talon.setControl(motionMagicRequest.withPosition(desiredRotorRots));
     }
 
     @Override
@@ -359,7 +359,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
     @Override
     public void runVolts(double volts) {
-        talon.setControl(voltageRequest.withOutput(volts * turretSign));
+        //talon.setControl(voltageRequest.withOutput(volts * turretSign));
     }
 
     @Override
