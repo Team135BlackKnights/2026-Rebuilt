@@ -196,8 +196,8 @@ public class Turret extends SubsystemChecker {
 
     }
     flywheel_idle = new LoggableTunedNumber(name+"/Flywheel/AimingSpeedRPM",3000,TuningConstants.isTuningShooter);
-    aimToleranceRads = new LoggableTunedNumber(name + "/Tolerance/AimRads", Math.toRadians(7),  TuningConstants.isTuningShooter);
-    hoodToleranceRads = new LoggableTunedNumber(name + "/Tolerance/HoodRads", Math.toRadians(2), TuningConstants.isTuningShooter);
+    aimToleranceRads = new LoggableTunedNumber(name + "/Tolerance/AimRads", Math.toRadians(999),  TuningConstants.isTuningShooter);
+    hoodToleranceRads = new LoggableTunedNumber(name + "/Tolerance/HoodRads", Math.toRadians(9989), TuningConstants.isTuningShooter);
     flywheelToleranceRadsPerSec = new LoggableTunedNumber(name + "/Tolerance/FlywheelRadsPerSec",
         Units.rotationsPerMinuteToRadiansPerSecond(1000), TuningConstants.isTuningShooter);
     shot_HUB_TOP_CENTER_RPM = new LoggableTunedNumber(name + "/Shot/HUB_TOP_CENTER_RPM", 4500, TuningConstants.isTuningShooter);

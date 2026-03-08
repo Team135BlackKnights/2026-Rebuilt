@@ -1039,7 +1039,7 @@ public class RobotContainer {
 			leftTurret.setGoal(Turret.Goal.SHOOTING);
 			rightTurret.setGoal(Turret.Goal.SHOOTING);
 			intake.setGoal(Goal.INTAKE_GROUND_SHOOT);
-			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints() || shootTimer.hasElapsed(0.25)) {
+			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints() || shootTimer.hasElapsed(0.75)) {
 				kickup.setGoal(Kickup.Goal.SHOOTING);
 			} else {
 				kickup.setGoal(Kickup.Goal.IDLING);
@@ -1112,8 +1112,8 @@ public class RobotContainer {
 			rightTurret.clearLoggedShots();
 		}));
 		yButtonDrive.onTrue(Commands.runOnce(() -> {
-			//leftTurret.enterShotTuning();
-			//rightTurret.enterShotTuning();
+			leftTurret.enterShotTuning();
+			rightTurret.enterShotTuning();
 		}));
 		// Climber controls
 		//aButtonDrive.onTrue(Commands.either(Commands.runOnce(() -> hang.setGoal(HangState.EXTENDED)), Commands.runOnce(() -> hang.setGoal(HangState.STOWED)), () -> hang.getHangState() == HangState.STOWED));
@@ -1391,7 +1391,7 @@ public class RobotContainer {
 			leftTurret.setGoal(Turret.Goal.SHOOTING);
 			rightTurret.setGoal(Turret.Goal.SHOOTING);
 			intake.setGoal(Intake.Goal.INTAKE_GROUND_SHOOT);
-			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints() || shootTimer.hasElapsed(0.25)) {
+			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints() || shootTimer.hasElapsed(0.75)) {
 				kickup.setGoal(Kickup.Goal.SHOOTING);
 			} else {
 				kickup.setGoal(Kickup.Goal.IDLING);
@@ -1420,7 +1420,7 @@ public class RobotContainer {
 			leftTurret.setGoal(Turret.Goal.SHOOTING);
 			rightTurret.setGoal(Turret.Goal.SHOOTING);
 			intake.setGoal(Goal.SHOOTING);
-			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints() || shootTimer.hasElapsed(0.25)) {
+			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints() || shootTimer.hasElapsed(0.75)) {
 				kickup.setGoal(Kickup.Goal.SHOOTING);
 			} else {
 				kickup.setGoal(Kickup.Goal.IDLING);
@@ -1441,7 +1441,7 @@ public class RobotContainer {
 			leftTurret.setGoal(Turret.Goal.SHOOTING);
 			rightTurret.setGoal(Turret.Goal.SHOOTING);
 			intake.setGoal(Goal.INTAKE_GROUND_SHOOT);
-			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints() || shootTimer.hasElapsed(0.25)) {
+			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints() || shootTimer.hasElapsed(0.75)) {
 				kickup.setGoal(Kickup.Goal.SHOOTING);
 			} else {
 				kickup.setGoal(Kickup.Goal.IDLING);
