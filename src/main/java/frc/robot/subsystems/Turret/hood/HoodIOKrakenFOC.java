@@ -79,8 +79,8 @@ public class HoodIOKrakenFOC implements HoodIO {
     private final StatusSignal<Temperature> tempCelsius;
 
     private static final LoggableTunedNumber ZERO_VOLTS = new LoggableTunedNumber("Hood/zeroVolts", -8, TuningConstants.isTuningIntake);
-    private static final LoggableTunedNumber ZERO_CURRENT_AMPS = new LoggableTunedNumber("Hood/zeroAmps", 4.0, TuningConstants.isTuningIntake);
-    private static final LoggableTunedNumber ZERO_HOLD_SEC = new LoggableTunedNumber("Hood/zeroTime", 0.15, TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber ZERO_CURRENT_AMPS = new LoggableTunedNumber("Hood/zeroAmps", 2.5, TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber ZERO_HOLD_SEC = new LoggableTunedNumber("Hood/zeroTime", 0.06, TuningConstants.isTuningIntake);
 
     protected boolean zeroingActive = false;
     protected boolean openLoop = false;

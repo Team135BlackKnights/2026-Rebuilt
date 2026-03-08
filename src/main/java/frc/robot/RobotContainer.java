@@ -130,6 +130,7 @@ import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Filesystem;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.GenericHID.RumbleType;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
@@ -188,6 +189,8 @@ public class RobotContainer {
 	//public static DriverStationHID dsHIDHandler = new DriverStationHID(2);
 	public static XboxController testingController = new XboxController(5);
 	public static Optional<Rotation2d> angleOverrider = Optional.empty();
+	/** Timer used to force a shot after 0.25 s even if setpoints aren't reached */
+	private final Timer shootTimer = new Timer();
 	public static double angularSpeed = 0;
 	public static double xSpeed = 0;
 	public static double ySpeed = 0;
@@ -856,7 +859,7 @@ public class RobotContainer {
 		NamedCommands.registerCommand(
 				"ShootWithIntakeOut", buildShootTurretsHubIntakeOutCommand());
 		NamedCommands.registerCommand(
-				"Shoot", buildShootTurretsHubIntakeInCommand());
+				"Shoot", buildShootTurretsHubIntakeOutCommand());
 		//NamedCommands.registerCommand("Hang", buildHangCommand());
 		NamedCommands.registerCommand("UseDrive", Commands.run(() -> {
 			drivetrainS.stopModules();
@@ -1039,11 +1042,13 @@ public class RobotContainer {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
 		}, leftTurret, rightTurret);
-		var shootTurretsWhileIntaking = Commands.run(() -> {
+		var shootTurretsWhileIntaking = Commands.runOnce(() -> {
+			shootTimer.restart();
+		}).andThen(Commands.run(() -> {
 			leftTurret.setGoal(Turret.Goal.SHOOTING);
 			rightTurret.setGoal(Turret.Goal.SHOOTING);
 			intake.setGoal(Goal.INTAKE_GROUND_SHOOT);
-			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints()) {
+			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints() || shootTimer.hasElapsed(0.25)) {
 				kickup.setGoal(Kickup.Goal.SHOOTING);
 			} else {
 				kickup.setGoal(Kickup.Goal.IDLING);
@@ -1053,7 +1058,8 @@ public class RobotContainer {
 			rightTurret.setGoal(Turret.Goal.AIMING);
 			intake.setGoal(Goal.INTAKE_OUTER_IDLE);
 			kickup.setGoal(Kickup.Goal.IDLING);
-		});
+			shootTimer.stop();
+		}));
 		// Auto factory setup
 		touchboardAutoFactory = new TouchboardAutoFactory(pathFinder, drivetrainS,
 				() -> new AutoIntake(drivetrainS, intake, CameraID.INTAKE_CAM), Set.of(intake, drivetrainS),
@@ -1300,16 +1306,16 @@ public class RobotContainer {
 		}));
 		// Automatic Turret Controls -- DISABLED UNTIL TUNING COMPLETE!
 
-		/*manualTurretControl.negate().and(inScoreArea).and(inTeleOp).whileTrue(targetHubBoth);
-		manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.negate()).and(beforeRightTrench).and(inTeleOp)
+		//manualTurretControl.negate().and(inScoreArea).and(inTeleOp).whileTrue(targetHubBoth);
+		/*manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.negate()).and(beforeRightTrench).and(inTeleOp)
 				.whileTrue(targetBothRightTrench);
 		manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.negate()).and(beyondLeftTrench).and(inTeleOp)
-				.whileTrue(targetBothLeftTrench);
-		manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.negate()).and(inTeleOp)
+				.whileTrue(targetBothLeftTrench);*/
+		/*manualTurretControl.negate().and(inScoreArea.negate()).and(inOpponentArea.negate()).and(inTeleOp)
 				.and(beyondLeftTrench.negate()).and(beforeRightTrench.negate()).whileTrue(
-						targetSplitTrenches);
-		manualTurretControl.negate().and(inOpponentArea).and(inTeleOp).whileTrue(
-				targetBothOverNeutral);*/
+						targetSplitTrenches);*/
+		/*manualTurretControl.negate().and(inOpponentArea).and(inTeleOp).whileTrue(
+				targetBothOverNeutral);*/ 
 
 		// - If in score area AND not manually holding POV: aim both turrets at hub
 		/*
@@ -1373,11 +1379,13 @@ public class RobotContainer {
 	}
 
 	private Command buildShootTurretsHubIntakeOutCommand() {
-		return (buildTargetHubBothCommand().andThen(Commands.run(() -> {
+		return (buildTargetHubBothCommand().andThen(Commands.runOnce(() -> {
+			shootTimer.restart();
+		}).andThen(Commands.run(() -> {
 			leftTurret.setGoal(Turret.Goal.SHOOTING);
 			rightTurret.setGoal(Turret.Goal.SHOOTING);
 			intake.setGoal(Intake.Goal.INTAKE_GROUND_SHOOT);
-			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints()) {
+			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints() || shootTimer.hasElapsed(0.25)) {
 				kickup.setGoal(Kickup.Goal.SHOOTING);
 			} else {
 				kickup.setGoal(Kickup.Goal.IDLING);
@@ -1387,7 +1395,8 @@ public class RobotContainer {
 			rightTurret.setGoal(Turret.Goal.AIMING);
 			kickup.setGoal(Kickup.Goal.IDLING);
 			intake.setGoal(Intake.Goal.INTAKE_OUTER_IDLE);
-		}))).withName("Shoot Turrets with Intake Out");
+			shootTimer.stop();
+		})))).withName("Shoot Turrets with Intake Out");
 	}
 
 	/*private Command buildHangCommand() {
@@ -1399,11 +1408,13 @@ public class RobotContainer {
 	}*/
 
 	private Command buildShootTurretsHubIntakeInCommand() {
-		return (buildTargetHubBothCommand().andThen(Commands.run(() -> {
+		return (buildTargetHubBothCommand().andThen(Commands.runOnce(() -> {
+			shootTimer.restart();
+		}).andThen(Commands.run(() -> {
 			leftTurret.setGoal(Turret.Goal.SHOOTING);
 			rightTurret.setGoal(Turret.Goal.SHOOTING);
 			intake.setGoal(Goal.SHOOTING);
-			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints()) {
+			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints() || shootTimer.hasElapsed(0.25)) {
 				kickup.setGoal(Kickup.Goal.SHOOTING);
 			} else {
 				kickup.setGoal(Kickup.Goal.IDLING);
@@ -1413,15 +1424,18 @@ public class RobotContainer {
 			rightTurret.setGoal(Turret.Goal.AIMING);
 			kickup.setGoal(Kickup.Goal.IDLING);
 			intake.setGoal(Intake.Goal.STOW);
-		}))).withName("Shoot Turrets with Intake In");
+			shootTimer.stop();
+		})))).withName("Shoot Turrets with Intake In");
 	}
 
 	private Command buildShootTurretsCommand() {
-		return Commands.run(() -> {
+		return Commands.runOnce(() -> {
+			shootTimer.restart();
+		}).andThen(Commands.run(() -> {
 			leftTurret.setGoal(Turret.Goal.SHOOTING);
 			rightTurret.setGoal(Turret.Goal.SHOOTING);
-			intake.setGoal(Goal.SHOOTING);
-			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints()) {
+			intake.setGoal(Goal.INTAKE_GROUND_SHOOT);
+			if (leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints() || shootTimer.hasElapsed(0.25)) {
 				kickup.setGoal(Kickup.Goal.SHOOTING);
 			} else {
 				kickup.setGoal(Kickup.Goal.IDLING);
@@ -1435,7 +1449,8 @@ public class RobotContainer {
 				intake.setGoal(Goal.STOW);
 			}
 			kickup.setGoal(Kickup.Goal.IDLING);
-		});
+			shootTimer.stop();
+		}));
 	}
 
 	public Command getAutonomousCommand() {

@@ -47,12 +47,12 @@ public class VisionConstants {
 
 	public static final boolean debug = true;
 
-	public static final double ambiguityThreshold = 0.5;
+	public static final double ambiguityThreshold = 0.6;
 	public static final double objDetectConfidenceThreshold = .6;
 	public static final double maxZError = 0.75;
 	public static final double maxObjZError = 0.25;
 	public static final double maxYawError = 15.0;
-	public static final double linearStdDevBaseline = 0.08;
+	public static final double linearStdDevBaseline = 0.025;
 	public static final double angularStdDevBaseline = 0.04;
 
 	public static final LoggableTunedNumber offsetPoseX = new LoggableTunedNumber("Cams/X",.05,true);
@@ -120,7 +120,7 @@ public class VisionConstants {
 
 										.width(1600)
 					.height(1304)
-					.exposure(25)
+					.exposure(16)
 					.saturation(0)
 					.hue(0)
 					.whiteBalance(4000)
@@ -142,7 +142,7 @@ public class VisionConstants {
 					.location("0x00200000 / 1")
 					.width(1600)
 					.height(1304)
-					.exposure(30)
+					.exposure(20)
 					.saturation(0)
 					.hue(0)
 					.whiteBalance(4000)

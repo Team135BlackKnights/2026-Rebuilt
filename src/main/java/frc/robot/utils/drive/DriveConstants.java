@@ -256,7 +256,7 @@ public class DriveConstants {
 		public static final MotorConstantContainer pathplannerTranslationConstantContainer = new MotorConstantContainer(
 				0.001, 0.001, 0.001, 1,.125, 0), //.675,.125.0
 				pathplannerRotationConstantContainer = new MotorConstantContainer(
-						0.001, 0.001, 0.001, 5, 0, 0);
+						0.001, 0.001, 0.001, 2, 0, .05);
 
 	}
 

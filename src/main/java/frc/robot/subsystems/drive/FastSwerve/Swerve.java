@@ -485,7 +485,7 @@ public class Swerve extends SubsystemChecker implements DrivetrainS {
 					if (Math.abs(omega) > currentModuleLimits.maxSteeringVelocity()
 							* 5.0
 							|| Math.abs(velocity) > currentModuleLimits
-									.maxDriveVelocity() * 5.0 || isSkidding[j]) {
+									.maxDriveVelocity() * 5.0) {
 						includeMeasurement = false;
 						break;
 					}

@@ -74,7 +74,7 @@ public class ShotCalculator {
     }
 
     private double getTimeOfFlight(double distanceMeters) {
-      return timeOfFlightMap.get(distanceMeters);
+      return timeOfFlightMap.get(distanceMeters)/10;
     }
   }
 
@@ -181,12 +181,12 @@ public class ShotCalculator {
         .putTimeOfFlight(7.0, 1.82);
   }
   public static final ShotProfile TRENCH_PROFILE = new ShotProfile("Trench")
-      .putHoodAngle(2.00, Rotation2d.fromDegrees(0.0))
+      .putHoodAngle(2.00, Rotation2d.fromDegrees(35.0))
       .putFlywheelSpeed(2.00, 140.0)
       .putTimeOfFlight(2.00, 0.75);
   public static final ShotProfile NEUTRAL_ZONE_PROFILE = new ShotProfile("NeutralZone")
       .putHoodAngle(3.50, Rotation2d.fromDegrees(40))
-      .putFlywheelSpeed(3.50, Units.rotationsPerMinuteToRadiansPerSecond(3000))
+      .putFlywheelSpeed(3.50, Units.rotationsPerMinuteToRadiansPerSecond(5000))
       .putTimeOfFlight(3.50, .2);
 
   private final LinearFilter turretAngleFilter =
