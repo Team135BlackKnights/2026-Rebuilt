@@ -183,7 +183,8 @@ public class RobotContainer {
 	 * Used so the cycle always begins with SHOOTING when the command starts.
 	 */
 	private double shootCycleStartSec = Double.NaN;
-	// Auto-jackhammer during shooting: shoot for this long, then jackhammer for the rest of the cycle
+	public static final LoggableTunedNumber shootMaxWaitSec = new LoggableTunedNumber(
+			"Shooting/ShootMaxWaitSec", 0.5, TuningConstants.isTuningMacros);
 	private static final LoggableTunedNumber shootCycleShootSec = new LoggableTunedNumber(
 			"Shooting/CycleShootSec", 3.5, TuningConstants.isTuningMacros);
 	private static final LoggableTunedNumber shootCycleJackhammerSec = new LoggableTunedNumber(
@@ -1055,22 +1056,22 @@ public class RobotContainer {
 		Command shootTurrets = buildShootTurretsCommand();
 
 		var targetSplitTrenches = Commands.runOnce(() -> {
-			leftTurret.setPresetTarget(Turret.PresetTarget.OVER_NEUTRAL_ZONE);
-			rightTurret.setPresetTarget(Turret.PresetTarget.OVER_NEUTRAL_ZONE);
+			leftTurret.setPresetTarget(Turret.PresetTarget.LEFT_TRENCH_CENTER);
+			rightTurret.setPresetTarget(Turret.PresetTarget.RIGHT_TRENCH_CENTER);
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
 		}, leftTurret, rightTurret);
 
 		var targetBothLeftTrench = Commands.runOnce(() -> {
-			leftTurret.setPresetTarget(Turret.PresetTarget.HUB_TOP_CENTER);
-			rightTurret.setPresetTarget(Turret.PresetTarget.HUB_TOP_CENTER);
+			leftTurret.setPresetTarget(Turret.PresetTarget.LEFT_TRENCH_CENTER);
+			rightTurret.setPresetTarget(Turret.PresetTarget.LEFT_TRENCH_CENTER);
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
 		}, leftTurret, rightTurret);
 
 		var targetBothRightTrench = Commands.runOnce(() -> {
-			leftTurret.setPresetTarget(Turret.PresetTarget.HUB_TOP_CENTER);
-			rightTurret.setPresetTarget(Turret.PresetTarget.HUB_TOP_CENTER);
+			leftTurret.setPresetTarget(Turret.PresetTarget.RIGHT_TRENCH_CENTER);
+			rightTurret.setPresetTarget(Turret.PresetTarget.RIGHT_TRENCH_CENTER);
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
 		}, leftTurret, rightTurret);
@@ -1259,9 +1260,9 @@ public class RobotContainer {
 				Commands.runOnce(() -> {
 					shootTimer.restart();
 					resetShootCycle();
+					intake.setGoal(Goal.AGITATING);
 				}).andThen(Commands.run(() -> {
 					// Agitate arm while cycling jackhammer on rollers/kickup
-					intake.setGoal(Goal.AGITATING);
 					if (isInJackhammerPhase()) {
 						leftTurret.setGoal(Turret.Goal.JACKHAMMER);
 						rightTurret.setGoal(Turret.Goal.JACKHAMMER);
@@ -1298,7 +1299,7 @@ public class RobotContainer {
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}));
 		povLeft.onTrue(targetHubBoth);
-		povRight.onTrue(targetSplitTrenches);
+		povRight.onTrue(targetBothOverNeutral);
 		// Manip Controls
 		// Manip X = hold intake up (stow), release to go back down
 		manipXButton.whileTrue(

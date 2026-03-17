@@ -70,7 +70,6 @@ public class Turret extends SubsystemChecker {
   private final LoggableTunedNumber aimToleranceRads;
   private final LoggableTunedNumber hoodToleranceRads;
   private final LoggableTunedNumber flywheelToleranceRadsPerSec;
-  private final LoggableTunedNumber kickupWaitBaseSec;
   
   //Shots
 
@@ -112,7 +111,6 @@ public class Turret extends SubsystemChecker {
 
   private Goal goal = Goal.IDLE;
   private Goal lastGoal = Goal.IDLE;
-  private Goal previousGoal = Goal.IDLE;
   private Goal previousControlGoal = Goal.IDLE;
   private double kickupWaitStartSec = Double.NaN;
 
@@ -215,7 +213,6 @@ public class Turret extends SubsystemChecker {
     hoodToleranceRads = new LoggableTunedNumber(name + "/Tolerance/HoodRads", Math.toRadians(9989), TuningConstants.isTuningShooter);
     flywheelToleranceRadsPerSec = new LoggableTunedNumber(name + "/Tolerance/FlywheelRadsPerSec",
         Units.rotationsPerMinuteToRadiansPerSecond(1000), TuningConstants.isTuningShooter);
-  kickupWaitBaseSec = new LoggableTunedNumber(name + "/Kickup/WaitBaseSec", 0.5, TuningConstants.isTuningShooter);
     shot_HUB_TOP_CENTER_RPM = new LoggableTunedNumber(name + "/Shot/HUB_TOP_CENTER_RPM", 3500, TuningConstants.isTuningShooter);
     shot_HUB_TOP_CENTER_HOOD_DEG = new LoggableTunedNumber(name + "/Shot/HUB_TOP_CENTER_HOOD_DEG", 13, TuningConstants.isTuningShooter);
 
@@ -591,7 +588,6 @@ public class Turret extends SubsystemChecker {
     Logger.recordOutput(name + "/Errors/TurretRads", turretAngleErrorRads());
     Logger.recordOutput(name + "/AtAimAngle", atAimAngle());
     Logger.recordOutput(name + "/AtShootSetpoints", atShootSetpoints());
-    previousGoal = goal;
     previousControlGoal = controlGoal;
   }
 
@@ -623,8 +619,8 @@ public class Turret extends SubsystemChecker {
       // If we just came from JACKHAMMER, satisfy the wait immediately.
       if (previousControlGoal == Goal.JACKHAMMER) {
         double waitSec = switch (controlGoal) {
-          case SHOOTING -> kickupWaitBaseSec.get();
-          case SHOOTING_CUSTOM, SHOOTING_FROM_HUB -> kickupWaitBaseSec.get();
+          case SHOOTING -> RobotContainer.shootMaxWaitSec.get();
+          case SHOOTING_CUSTOM, SHOOTING_FROM_HUB -> RobotContainer.shootMaxWaitSec.get();
           default -> 0.0;
         };
         kickupWaitStartSec -= waitSec;
@@ -637,8 +633,8 @@ public class Turret extends SubsystemChecker {
     }
 
     double waitSec = switch (controlGoal) {
-      case SHOOTING -> kickupWaitBaseSec.get();
-      case SHOOTING_CUSTOM, SHOOTING_FROM_HUB -> kickupWaitBaseSec.get();
+      case SHOOTING -> RobotContainer.shootMaxWaitSec.get();
+      case SHOOTING_CUSTOM, SHOOTING_FROM_HUB -> RobotContainer.shootMaxWaitSec.get();
       default -> 0.0;
     };
 
