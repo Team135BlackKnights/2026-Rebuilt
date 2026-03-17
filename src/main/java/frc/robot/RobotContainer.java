@@ -1085,7 +1085,8 @@ public class RobotContainer {
 			shootTimer.restart();
 			resetShootCycle();
 		}).andThen(Commands.run(() -> {
-			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints());
+			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.INTAKE_GROUND_SHOOT,
+					shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints());
 		}, leftTurret, rightTurret, intake, kickup).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
@@ -1267,7 +1268,8 @@ public class RobotContainer {
 						leftTurret.setGoal(Turret.Goal.JACKHAMMER);
 						rightTurret.setGoal(Turret.Goal.JACKHAMMER);
 						kickup.setGoal(Kickup.Goal.JACKHAMMER);
-					} else if (shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints()) {
+					} else if (shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints()
+							|| rightTurret.atShootSetpoints()) {
 						leftTurret.setGoal(Turret.Goal.SHOOTING);
 						rightTurret.setGoal(Turret.Goal.SHOOTING);
 						kickup.setGoal(Kickup.Goal.SHOOTING);
@@ -1466,7 +1468,8 @@ public class RobotContainer {
 	 * Returns true when the shoot cycle is in the jackhammer phase.
 	 * Call every loop during any shooting command to auto-jackhammer.
 	 * Uses a cycle start timestamp so the cycle always begins with SHOOTING
-	 * when the command starts (prevents starting mid-jackhammer due to global time).
+	 * when the command starts (prevents starting mid-jackhammer due to global
+	 * time).
 	 */
 	private boolean isInJackhammerPhase() {
 		if (!Double.isFinite(shootCycleStartSec)) {
@@ -1483,10 +1486,13 @@ public class RobotContainer {
 	}
 
 	/**
-	 * Sets turret, intake, and center-indexer goals for the current shoot cycle phase.
-	 * During the shoot phase: turrets use turretShootGoal, intake uses intakeShootGoal,
+	 * Sets turret, intake, and center-indexer goals for the current shoot cycle
+	 * phase.
+	 * During the shoot phase: turrets use turretShootGoal, intake uses
+	 * intakeShootGoal,
 	 * and the center indexer shoots if allowed.
-	 * During the jackhammer phase: intake jackhammers, the center indexer jackhammers,
+	 * During the jackhammer phase: intake jackhammers, the center indexer
+	 * jackhammers,
 	 * and both turret kickups jackhammer while preserving their shooter setpoints.
 	 *
 	 * @param turretShootGoal the turret goal to use during normal shooting
@@ -1537,7 +1543,8 @@ public class RobotContainer {
 			resetShootCycle();
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}).andThen(Commands.run(() -> {
-			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints());
+			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.INTAKE_GROUND_SHOOT,
+					shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints());
 		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
@@ -1563,7 +1570,8 @@ public class RobotContainer {
 			shootTimer.restart();
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}).andThen(Commands.run(() -> {
-			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.SHOOTING, shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints());
+			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.SHOOTING,
+					shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints());
 		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
@@ -1579,7 +1587,8 @@ public class RobotContainer {
 			resetShootCycle();
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}).andThen(Commands.run(() -> {
-			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints());
+			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.INTAKE_GROUND_SHOOT,
+					shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints());
 		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);

@@ -538,7 +538,7 @@ public class Robot extends LoggedRobot {
 			if (Constants.currentMode == frc.robot.Constants.Mode.SIM) {
 				RobotContainer.fieldSimulation.resetField(true);
 				try {
-										PathPlannerPath path = PathPlannerAuto
+					PathPlannerPath path = PathPlannerAuto
 							.getPathGroupFromAutoFile(
 									m_autonomousCommand.getName())
 							.get(0);
