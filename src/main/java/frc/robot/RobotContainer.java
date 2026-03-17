@@ -1246,13 +1246,14 @@ public class RobotContainer {
 			intake.setGoal(Goal.INTAKE_OUTER_IDLE);
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}));
-		povDown.whileTrue(Commands.run(() -> {
+		/*povDown.whileTrue(Commands.run(() -> {
 			intake.setGoal(Goal.VOMITING);
 			kickup.setGoal(Kickup.Goal.VOMITING);
 		}, intake, kickup).finallyDo(() -> {
 			intake.setGoal(Goal.INTAKE_OUTER_IDLE);
 			kickup.setGoal(Kickup.Goal.IDLING);
-		}));
+		}));*/
+		povDown.onTrue(targetBothOverNeutral);
 		povLeft.onTrue(targetHubBoth);
 		povRight.onTrue(targetSplitTrenches);
 		// Manip Controls
@@ -1475,8 +1476,8 @@ public class RobotContainer {
 			shootTimer.restart();
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}).andThen(Commands.run(() -> {
-			rightTurret.setGoal(Turret.Goal.SHOOTING_FROM_HUB);
-			leftTurret.setGoal(Turret.Goal.SHOOTING_FROM_HUB);
+			rightTurret.setGoal(Turret.Goal.SHOOTING);
+			leftTurret.setGoal(Turret.Goal.SHOOTING);
 			applyShootCycleGoals(Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5));
 		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
@@ -1519,8 +1520,8 @@ public class RobotContainer {
 			shootTimer.restart();
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}).andThen(Commands.run(() -> {
-			leftTurret.setGoal(Turret.Goal.SHOOTING_FROM_HUB);
-			rightTurret.setGoal(Turret.Goal.SHOOTING_FROM_HUB);
+			leftTurret.setGoal(Turret.Goal.SHOOTING);
+			rightTurret.setGoal(Turret.Goal.SHOOTING);
 			applyShootCycleGoals(Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5));
 		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
