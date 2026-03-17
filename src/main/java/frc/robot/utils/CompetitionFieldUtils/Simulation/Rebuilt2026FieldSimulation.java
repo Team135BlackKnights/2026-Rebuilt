@@ -138,7 +138,7 @@ public class Rebuilt2026FieldSimulation extends CompetitionFieldSimulation {
 	}
 
 	private boolean isTurretReady(Turret turret) {
-		return turret.getGoal() == Turret.Goal.SHOOTING && turret.atShootSetpoints();
+		return turret.isShotModeActive() && turret.atShootSetpoints();
 	}
 
 	private Turret selectTurretForShot(Translation2d hubCenter, boolean leftReady, boolean rightReady) {

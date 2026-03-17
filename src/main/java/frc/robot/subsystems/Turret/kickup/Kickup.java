@@ -4,6 +4,9 @@ import java.util.Optional;
 import java.util.function.BooleanSupplier;
 import java.util.function.DoubleSupplier;
 
+import org.littletonrobotics.junction.Logger;
+
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.utils.LoggableTunedNumber;
@@ -17,45 +20,101 @@ import frc.robot.subsystems.simpleMechanisms.roller.GenericRollerSystem;
 public class Kickup extends GenericRollerSystem<Kickup.Goal> {
     @Getter
     public enum Goal implements GenericRollerSystem.RollGoalSupplier {
-        IDLING(new LoggableTunedNumber("Kickup/IdlingVoltage", 0.0, Constants.TuningConstants.isTuningShooter)),
-        JACKHAMMER(new LoggableTunedNumber("Kickup/JackHammer", 12.0, Constants.TuningConstants.isTuningShooter),.25),
-        SHOOTING(new LoggableTunedNumber("Kickup/ShootingVoltage", 11.0, Constants.TuningConstants.isTuningShooter)),
-        VOMITING(new LoggableTunedNumber("Kickup/VomitingVoltage", -8, Constants.TuningConstants.isTuningShooter)); 
-        private final DoubleSupplier valueSupplier;
-        private final BooleanSupplier isVoltageSupplier;
+        IDLING(0.0, true),
+        JACKHAMMER(12.0, true, 0.25),
+        SHOOTING(11.0, true),
+        VOMITING(-8.0, true);
+
+        private final double defaultValue;
+        private final boolean isVoltage;
         private final Optional<Double> timeout;
 
-        Goal(DoubleSupplier valueSupplier) {
-            this.valueSupplier = valueSupplier;
-            this.isVoltageSupplier = () -> true;
+        Goal(double defaultValue, boolean isVoltage) {
+            this.defaultValue = defaultValue;
+            this.isVoltage = isVoltage;
             this.timeout = Optional.empty();
         }
-        Goal(LoggableTunedNumber valueSupplier) {
-            this.valueSupplier = valueSupplier::get;
-            this.isVoltageSupplier = () -> true;
-            this.timeout = Optional.empty();
-        }
-        Goal(LoggableTunedNumber valueSupplier, double timeout) {
-            this.valueSupplier = valueSupplier::get;
-            this.isVoltageSupplier = () -> true;
+        Goal(double defaultValue, boolean isVoltage, double timeout) {
+            this.defaultValue = defaultValue;
+            this.isVoltage = isVoltage;
             this.timeout = Optional.of(timeout);
         }
 
-        Goal(LoggableTunedNumber valueSupplier, BooleanSupplier isVoltageSupplier, double timeout) {
-            this.valueSupplier = valueSupplier::get;
-            this.isVoltageSupplier = isVoltageSupplier::getAsBoolean;
-            this.timeout = Optional.of(timeout);
+        @Override
+        public DoubleSupplier getValueSupplier() {
+            return () -> defaultValue;
+        }
+
+        @Override
+        public BooleanSupplier getIsVoltageSupplier() {
+            return () -> isVoltage;
         }
     }
 
+    private final LoggableTunedNumber idlingVoltage;
+    private final LoggableTunedNumber jackhammerVoltage;
+    private final LoggableTunedNumber shootingVoltage;
+    private final LoggableTunedNumber vomitingVoltage;
     private Goal goal = Goal.IDLING;
 
     public Kickup(KickupIO io) {
-        super("Kickup", io);
+        this("Kickup", "Kickup", io);
+    }
+
+    public Kickup(String name, String tuningPrefix, KickupIO io) {
+        super(name, io);
+        idlingVoltage = new LoggableTunedNumber(
+                tuningPrefix + "/IdlingVoltage", Goal.IDLING.getValueSupplier().getAsDouble(),
+                Constants.TuningConstants.isTuningShooter);
+        jackhammerVoltage = new LoggableTunedNumber(
+                tuningPrefix + "/JackHammer", Goal.JACKHAMMER.getValueSupplier().getAsDouble(),
+                Constants.TuningConstants.isTuningShooter);
+        shootingVoltage = new LoggableTunedNumber(
+                tuningPrefix + "/ShootingVoltage", Goal.SHOOTING.getValueSupplier().getAsDouble(),
+                Constants.TuningConstants.isTuningShooter);
+        vomitingVoltage = new LoggableTunedNumber(
+                tuningPrefix + "/VomitingVoltage", Goal.VOMITING.getValueSupplier().getAsDouble(),
+                Constants.TuningConstants.isTuningShooter);
     }
 
     public Goal getGoal() {
         return goal;
+    }
+
+    @Override
+    public void periodic() {
+        io.updateInputs(inputs);
+        Logger.processInputs(name, inputs);
+        if (getGoal() != lastGoal) {
+            stateTimer.reset();
+            lastGoal = getGoal();
+        }
+
+        double output = getGoalValue();
+        if (getGoal().getIsVoltageSupplier().getAsBoolean()) {
+            if (getGoal().getTimeout().isPresent()) {
+                double timeoutSec = getGoal().getTimeout().get();
+                double cycleTimeSec = Timer.getFPGATimestamp() % (timeoutSec * 2.0);
+                if (cycleTimeSec < timeoutSec) {
+                    output = -output;
+                }
+            }
+            io.runVolts(output);
+        } else {
+            io.runCurrent(output);
+        }
+
+        Logger.recordOutput("SuperStructure/" + name + "Goal", getGoal().toString());
+        Logger.recordOutput("SuperStructure/" + name + "stateTimer", stateTimer.get());
+    }
+
+    private double getGoalValue() {
+        return switch (goal) {
+            case IDLING -> idlingVoltage.get();
+            case JACKHAMMER -> jackhammerVoltage.get();
+            case SHOOTING -> shootingVoltage.get();
+            case VOMITING -> vomitingVoltage.get();
+        };
     }
 
     @Override
@@ -67,7 +126,7 @@ public class Kickup extends GenericRollerSystem<Kickup.Goal> {
                 Commands.runOnce(() -> goal = Goal.IDLING),
                 Commands.run(() -> goal = Goal.SHOOTING).withTimeout(1),
                 Commands.runOnce(() -> {
-                    if (Math.abs(getAppliedVolts() - Goal.SHOOTING.valueSupplier.getAsDouble()) < .5) {
+                    if (Math.abs(getAppliedVolts() - shootingVoltage.get()) < .5) {
                         addFault(
                                 "[System Check] idling voltage not reached for subsystem:"
                                         + getName(),

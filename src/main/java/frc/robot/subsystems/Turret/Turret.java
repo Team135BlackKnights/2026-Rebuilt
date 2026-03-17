@@ -29,6 +29,7 @@ import frc.robot.subsystems.Turret.ShotCalculator.ShotProfile;
 import frc.robot.subsystems.Turret.azimuth.AzimuthIO;
 import frc.robot.subsystems.Turret.flywheel.FlywheelIO;
 import frc.robot.subsystems.Turret.hood.HoodIO;
+import frc.robot.subsystems.Turret.kickup.Kickup;
 import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.CompetitionFieldUtils.FieldConstants;
 import frc.robot.utils.selfCheck.SelfChecking;
@@ -78,6 +79,7 @@ public class Turret extends SubsystemChecker {
   private final AzimuthIO azimuthIO;
   private final FlywheelIO flywheelIO;
   private final HoodIO hoodIO;
+  private final Kickup kickup;
   private final String name;
 
   private final Transform2d robotToTurret;
@@ -92,6 +94,7 @@ public class Turret extends SubsystemChecker {
     SHOOTING, // hub top center using HUB profile
     SHOOTING_CUSTOM,
     SHOOTING_FROM_HUB,
+    JACKHAMMER,
     IDLE,
     TUNING_FLYWHEEL,
     TUNING_AZIMUTH,
@@ -132,18 +135,26 @@ public class Turret extends SubsystemChecker {
   private boolean hoodForcedDownLastLoop = false;
   private double lastAutoRezeroSec = Double.NEGATIVE_INFINITY;
   private double lastManualRezeroSec = Double.NEGATIVE_INFINITY;
+  private Goal jackhammerBaseGoal = Goal.IDLE;
 
   private static final double SAFE_HOOD_DOWN_RADS = Units.degreesToRadians(13.0);
   private static final double AUTO_REZERO_INTERVAL_SEC = 2.5;
   private static final double MANUAL_REZERO_INTERVAL_SEC = 1;
 
-  public Turret(AzimuthIO azimuthIO, FlywheelIO flywheelIO, HoodIO hoodIO, Transform2d robotToTurret, String name) {
+  public Turret(
+      AzimuthIO azimuthIO,
+      FlywheelIO flywheelIO,
+      HoodIO hoodIO,
+      Kickup kickup,
+      Transform2d robotToTurret,
+      String name) {
     this.azimuthIO = azimuthIO;
     this.flywheelIO = flywheelIO;
     this.hoodIO = hoodIO;
+    this.kickup = kickup;
     this.robotToTurret = robotToTurret;
     this.name = name;
-    if (name == "LeftTurret") {
+    if ("LeftTurret".equals(name)) {
       azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 6.0, TuningConstants.isTuningShooter); // 75
       azimuth_kI = new LoggableTunedNumber(name + "/Azimuth/kI", 0.0, TuningConstants.isTuningShooter);
       azimuth_kD = new LoggableTunedNumber(name + "/Azimuth/kD", 0.5, TuningConstants.isTuningShooter); // .25
@@ -217,10 +228,17 @@ public class Turret extends SubsystemChecker {
 
   public void setGoal(Goal goal) {
     if (goal != null && canChangeGoal) {
+      if (goal == Goal.JACKHAMMER) {
+        if (this.goal != Goal.JACKHAMMER) {
+          jackhammerBaseGoal = this.goal;
+        }
+      } else {
+        jackhammerBaseGoal = goal;
+      }
       this.goal = goal;
-      // When entering SHOOTING, cancel any in-progress hood zeroing immediately
+      // When entering a shooting-style goal, cancel any in-progress hood zeroing immediately
       // so the hood can move to the shooting angle without waiting for zero to finish.
-      if (goal == Goal.SHOOTING) {
+      if (isShootLikeGoal(getShooterControlGoal())) {
         hoodIO.cancelZero();
       }
     }
@@ -228,6 +246,13 @@ public class Turret extends SubsystemChecker {
 
   public Goal getGoal() {
     return goal;
+  }
+
+  public boolean isShotModeActive() {
+    return switch (goal) {
+      case SHOOTING, SHOOTING_CUSTOM, SHOOTING_FROM_HUB -> true;
+      default -> false;
+    };
   }
 
   public void setPresetTarget(PresetTarget preset) {
@@ -304,6 +329,7 @@ public class Turret extends SubsystemChecker {
   }
   public void forceShot(double angle, double hood, double rpm){
       goal = Goal.SHOOTING_CUSTOM;
+      jackhammerBaseGoal = goal;
       desiredFlywheelRadsPerSec = rpm * 2.0 * Math.PI / 60.0; 
       desiredTurretRads = angle;
       desiredHoodRads = hood;
@@ -311,6 +337,7 @@ public class Turret extends SubsystemChecker {
   }
   public void setCharRPM(double rpm) {
     goal = Goal.TUNING_FLYWHEEL;
+    jackhammerBaseGoal = goal;
     desiredFlywheelRadsPerSec = rpm * 2.0 * Math.PI / 60.0;
     flywheelIO.setVelocity(desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
   }
@@ -322,6 +349,7 @@ public class Turret extends SubsystemChecker {
 
   public void setCharHoodPos(double radians) {
     goal = Goal.TUNING_HOOD;
+    jackhammerBaseGoal = goal;
     desiredHoodRads = radians;
     
   }
@@ -344,6 +372,7 @@ public class Turret extends SubsystemChecker {
 
   public void enterShotTuning() {
     goal = Goal.TUNING_SHOT;
+    jackhammerBaseGoal = goal;
     canChangeGoal = false;
   }
 
@@ -392,7 +421,7 @@ public class Turret extends SubsystemChecker {
   }
 
   public boolean isHoodAboveDegrees(double degrees) {
-    return desiredHoodRads > Units.degreesToRadians(degrees) && !isHoodForcedDown();
+    return desiredHoodRads > Units.degreesToRadians(degrees) && !isHoodForcedDown(getShooterControlGoal());
   }
 
   public double turretAngle() {
@@ -403,7 +432,7 @@ public class Turret extends SubsystemChecker {
     return isAzimuthConnected()
         && isHoodConnected()
         && isFlywheelConnected()
-        && !isHoodForcedDown()
+        && !isHoodForcedDown(getShooterControlGoal())
         && Math.abs(turretAngleErrorRads()) < aimToleranceRads.get()
         && Math.abs(hoodInputs.positionRads - desiredHoodRads
            - Units.degreesToRadians(offsetHoodAngle.get())) < hoodToleranceRads.get()
@@ -416,6 +445,8 @@ public class Turret extends SubsystemChecker {
     azimuthIO.updateInputs(azimuthInputs);
     flywheelIO.updateInputs(flywheelInputs);
     hoodIO.updateInputs(hoodInputs);
+    kickup.setGoal(getKickupGoal());
+    kickup.periodic();
 
     Logger.processInputs(name + "/Azimuth", azimuthInputs);
     Logger.processInputs(name + "/Flywheel", flywheelInputs);
@@ -435,7 +466,9 @@ public class Turret extends SubsystemChecker {
       lastGoal = goal;
     }
 
-    switch (goal) {
+    Goal controlGoal = getShooterControlGoal();
+
+    switch (controlGoal) {
       case IDLE -> {
         if (activePreset == PresetTarget.OVER_NEUTRAL_ZONE) {
           target = getPresetTarget2d(PresetTarget.OVER_NEUTRAL_ZONE); // update for the robot pos, since target moves
@@ -479,11 +512,14 @@ public class Turret extends SubsystemChecker {
         flywheelIO.setVelocity(desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
       }
       case SHOOTING_CUSTOM -> {
-
+        azimuthIO.setDesiredPosition(desiredTurretRads);
+        flywheelIO.setVelocity(
+            desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
       }
       case SHOOTING_FROM_HUB -> {
         var params = shotCalculator.getParameters(target, robotToTurret, profile, distanceOffset);
         desiredTurretRads = params.turretAngle().getRadians();
+        desiredHoodRads = Units.degreesToRadians(shot_HUB_TOP_CENTER_HOOD_DEG.get());
         azimuthIO.setDesiredPosition(desiredTurretRads);
         flywheelIO.setVelocity(Units.rotationsPerMinuteToRadiansPerSecond(shot_HUB_TOP_CENTER_RPM.get()) + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
       }
@@ -506,8 +542,10 @@ public class Turret extends SubsystemChecker {
         flywheelIO.setVelocity(desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
         azimuthIO.setDesiredPosition(desiredTurretRads);
       }
+      case JACKHAMMER -> {
+      }
     }
-    applyHoodSafetyControl();
+    applyHoodSafetyControl(controlGoal);
     lastTurretRads = desiredTurretRads;
 
     boolean logNow = tuning_logFlag.get();
@@ -529,6 +567,7 @@ public class Turret extends SubsystemChecker {
     Logger.recordOutput(name + "/ShotTuning/DistToTargetM",
         target.getDistance(currentTurretPose.getTranslation()));
     Logger.recordOutput(name + "/Goal", goal.toString());
+    Logger.recordOutput(name + "/ControlGoal", controlGoal.toString());
     Logger.recordOutput("SuperStructure/" + name + "/Goal", goal.toString());
     Logger.recordOutput("SuperStructure/" + name + "/TargetName", activePreset.toString());
     Logger.recordOutput("SuperStructure/" + name + "/TargetPos", new Pose2d(target, new Rotation2d()));
@@ -546,12 +585,37 @@ public class Turret extends SubsystemChecker {
     Logger.recordOutput(name + "/AtShootSetpoints", atShootSetpoints());
   }
 
-  private boolean isHoodForcedDown() {
-    return manualHoodRezeroHeld || trenchHoodLock || goal != Goal.SHOOTING;
+  private Goal getShooterControlGoal() {
+    if (goal != Goal.JACKHAMMER) {
+      return goal;
+    }
+    return jackhammerBaseGoal == Goal.JACKHAMMER ? Goal.IDLE : jackhammerBaseGoal;
   }
 
-  private void applyHoodSafetyControl() {
-    boolean forceDown = isHoodForcedDown();
+  private Kickup.Goal getKickupGoal() {
+    if (DriverStation.isDisabled()) {
+      return Kickup.Goal.IDLING;
+    }
+    return switch (goal) {
+      case SHOOTING, SHOOTING_CUSTOM, SHOOTING_FROM_HUB -> Kickup.Goal.SHOOTING;
+      case JACKHAMMER -> Kickup.Goal.JACKHAMMER;
+      default -> Kickup.Goal.IDLING;
+    };
+  }
+
+  private boolean isShootLikeGoal(Goal goal) {
+    return switch (goal) {
+      case SHOOTING, SHOOTING_CUSTOM, SHOOTING_FROM_HUB -> true;
+      default -> false;
+    };
+  }
+
+  private boolean isHoodForcedDown(Goal controlGoal) {
+    return manualHoodRezeroHeld || trenchHoodLock || !isShootLikeGoal(controlGoal);
+  }
+
+  private void applyHoodSafetyControl(Goal controlGoal) {
+    boolean forceDown = isHoodForcedDown(controlGoal);
     if (forceDown) {
       hoodIO.setPosition(SAFE_HOOD_DOWN_RADS);
       if (DriverStation.isEnabled()) {
@@ -568,11 +632,7 @@ public class Turret extends SubsystemChecker {
         }
       }
     } else {
-      if (goal == Goal.SHOOTING_FROM_HUB){
-        hoodIO.setPosition(shot_HUB_TOP_CENTER_HOOD_DEG.get() + offsetHoodAngle.get());
-      }else{
       hoodIO.setPosition(desiredHoodRads + Units.degreesToRadians(offsetHoodAngle.get()));
-      }
     }
     hoodForcedDownLastLoop = forceDown;
     Logger.recordOutput(name + "/Hood/ForceDown", forceDown);
@@ -620,6 +680,7 @@ public class Turret extends SubsystemChecker {
     tempMap.put("Azimuth", azimuthInputs.tempCelsius);
     tempMap.put("Flywheel", flywheelInputs.tempCelsius);
     tempMap.put("Hood", hoodInputs.tempCelsius);
+    tempMap.put("Kickup", kickup.getTemps().values().stream().findFirst().orElse(0.0));
     return tempMap;
   }
 
@@ -630,6 +691,7 @@ public class Turret extends SubsystemChecker {
     hardware.addAll(azimuthIO.getSelfCheckingHardware());
     hardware.addAll(flywheelIO.getSelfCheckingHardware());
     hardware.addAll(hoodIO.getSelfCheckingHardware());
+    hardware.addAll(kickup.getHardware());
     for (SelfChecking motor : hardware) {
       if (motor.getHardware() instanceof TalonFX) {
         orchestra.add((TalonFX) motor.getHardware());
@@ -642,25 +704,28 @@ public class Turret extends SubsystemChecker {
   public double getCurrent() {
     return Math.abs(azimuthInputs.supplyCurrentAmps)
         + Math.abs(flywheelInputs.supplyCurrentAmps)
-        + Math.abs(hoodInputs.supplyCurrentAmps);
+        + Math.abs(hoodInputs.supplyCurrentAmps)
+        + Math.abs(kickup.getCurrent());
   }
 
   @Override
   public void setCurrentLimit(int amps) {
     azimuthIO.setCurrentLimit(amps);
+    kickup.setCurrentLimit(amps);
   }
 
   public void setCurrentLimit(int azimuthAmps, int flywheelAmps, int hoodAmps, int kickupAmps) {
     azimuthIO.setCurrentLimit(azimuthAmps);
     flywheelIO.setCurrentLimit(flywheelAmps);
     hoodIO.setCurrentLimit(hoodAmps);
+    kickup.setCurrentLimit(kickupAmps);
   }
 
   @Override
   protected Command systemCheckCommand() {
     return runOnce(() -> {
       // Simple check logic
-      if (isAzimuthConnected() && isFlywheelConnected() && isHoodConnected()) {
+      if (isAzimuthConnected() && isFlywheelConnected() && isHoodConnected() && kickup.isConnected()) {
         Logger.recordOutput(name + "/SystemCheck/Connected", "GOOD");
       } else {
         Logger.recordOutput(name + "/SystemCheck/Connected", "BAD");

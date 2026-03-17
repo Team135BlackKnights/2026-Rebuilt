@@ -26,6 +26,7 @@ import frc.robot.subsystems.Turret.hood.HoodIOKrakenFOC;
 import frc.robot.subsystems.Turret.hood.HoodIOSim;
 import frc.robot.subsystems.Turret.kickup.Kickup;
 import frc.robot.subsystems.Turret.kickup.KickupIO;
+import frc.robot.subsystems.Turret.kickup.KickupIOKrakenFOC;
 import frc.robot.subsystems.Turret.kickup.KickupIOSim;
 import frc.robot.subsystems.Turret.kickup.KickupIOSparkBase;
 import frc.robot.subsystems.drive.DrivetrainS;
@@ -54,10 +55,6 @@ import frc.robot.subsystems.intake.frontRollers.FrontRollers;
 import frc.robot.subsystems.intake.frontRollers.FrontRollersIO;
 import frc.robot.subsystems.intake.frontRollers.FrontRollersIOKrakenFOC;
 import frc.robot.subsystems.intake.frontRollers.FrontRollersIOSim;
-import frc.robot.subsystems.intake.indexer.Indexer;
-import frc.robot.subsystems.intake.indexer.IndexerIO;
-import frc.robot.subsystems.intake.indexer.IndexerIOKrakenFOC;
-import frc.robot.subsystems.intake.indexer.IndexerIOSim;
 import frc.robot.subsystems.drive.Tank.Tank;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.AIRobotInSimulation;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.MecanumDriveSimulation;
@@ -521,21 +518,12 @@ public class RobotContainer {
 						IntakeConstants.intakeInverted,
 						true,
 						IntakeConstants.intakeArmReduction);
-				Indexer indexer = new Indexer(
-						new IndexerIOKrakenFOC(
-								IntakeConstants.indexerMotorID,
-								Robot.rioCanBus,
-								"Indexer",
-								IntakeConstants.indexerCurrentLimit,
-								IntakeConstants.indexerInverted,
-								false,
-								IntakeConstants.intakeReductionToIndexerRollers));
 				FrontRollers frontRollers = new FrontRollers(
 						new FrontRollersIOKrakenFOC(IntakeConstants.frontRollersMotorID, Robot.rioCanBus,
 								IntakeConstants.frontRollersName, IntakeConstants.frontRollersCurrentLimit,
 								IntakeConstants.frontRollersInverted, false,
 								IntakeConstants.frontRollersReduction));
-				intake = new Intake(armIO, indexer, frontRollers);
+				intake = new Intake(armIO, frontRollers);
 				// Left Turret
 				AzimuthIO azimuthIOLeftTurret = new AzimuthIOKrakenFOC(Robot.rioCanBus,
 						AdvancedMechanismConstants.Turret.leftAzimuthID,
@@ -567,14 +555,25 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.minHoodAngle,
 						AdvancedMechanismConstants.Turret.maxHoodAngle);
 
-				leftTurret = new Turret(azimuthIOLeftTurret, flywheelIOLeftTurret,
-						hoodIOLeftTurret,
-						AdvancedMechanismConstants.Turret.robotToLeftTurretHoleCenter, "LeftTurret");
 				kickup = new Kickup(
-						new KickupIOSparkBase(AdvancedMechanismConstants.Turret.leftKickupID, Robot.rioCanBus,
+						new KickupIOSparkBase(AdvancedMechanismConstants.Turret.centerIndexerID, Robot.rioCanBus,
 								"Kickup", AdvancedMechanismConstants.Turret.currentLimitKickup,
 								AdvancedMechanismConstants.Turret.invertKickup, false,
-								AdvancedMechanismConstants.Turret.kickerRatio));
+								AdvancedMechanismConstants.Turret.centerIndexerRatio));
+				leftTurret = new Turret(azimuthIOLeftTurret, flywheelIOLeftTurret,
+						hoodIOLeftTurret,
+						new Kickup(
+								"LeftTurret/Kickup",
+								"LeftTurret/Kickup",
+								new KickupIOKrakenFOC(
+										AdvancedMechanismConstants.Turret.leftTurretKickupID,
+										Robot.rioCanBus,
+										"LeftTurretKickup",
+										AdvancedMechanismConstants.Turret.currentLimitKickup,
+										AdvancedMechanismConstants.Turret.invertKickup,
+										false,
+										AdvancedMechanismConstants.Turret.turretKickupRatio)),
+						AdvancedMechanismConstants.Turret.robotToLeftTurretHoleCenter, "LeftTurret");
 				// Right Turret
 				AzimuthIO azimuthIORightTurret = new AzimuthIOKrakenFOC(Robot.rioCanBus,
 						AdvancedMechanismConstants.Turret.rightAzimuthID,
@@ -605,6 +604,17 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.minHoodAngle,
 						AdvancedMechanismConstants.Turret.maxHoodAngle);
 				rightTurret = new Turret(azimuthIORightTurret, flywheelIORightTurret, hoodIORightTurret,
+						new Kickup(
+								"RightTurret/Kickup",
+								"RightTurret/Kickup",
+								new KickupIOKrakenFOC(
+										AdvancedMechanismConstants.Turret.rightTurretKickupID,
+										Robot.rioCanBus,
+										"RightTurretKickup",
+										AdvancedMechanismConstants.Turret.currentLimitKickup,
+										AdvancedMechanismConstants.Turret.invertKickup,
+										false,
+										AdvancedMechanismConstants.Turret.turretKickupRatio)),
 						AdvancedMechanismConstants.Turret.robotToRightTurretHoleCenter, "RightTurret");
 				break;
 			case SIM:
@@ -726,15 +736,14 @@ public class RobotContainer {
 				 * SimpleMechanismConstants.Climber.climbMOI)),
 				 * new WedgeArmIOSim());
 				 */
-				intake = new Intake(new ArmIOSim(), new Indexer(new IndexerIOSim(DCMotor.getKrakenX44Foc(1), "Indexer",
-						IntakeConstants.intakeReductionToIndexerRollers, IntakeConstants.intakeMOI)),
+				intake = new Intake(
+						new ArmIOSim(),
 						new FrontRollers(
 								new FrontRollersIOSim(DCMotor.getKrakenX44Foc(1), IntakeConstants.frontRollersName,
 										IntakeConstants.frontRollersReduction, IntakeConstants.frontRollersMOI)));
-				kickup = new Kickup(new KickupIOSim(AdvancedMechanismConstants.Turret.kickupMotor, "Kickup",
-						AdvancedMechanismConstants.Turret.kickerRatio,
-
-						AdvancedMechanismConstants.Turret.kickupMOI));
+				kickup = new Kickup(new KickupIOSim(AdvancedMechanismConstants.Turret.centerIndexerMotor, "Kickup",
+						AdvancedMechanismConstants.Turret.centerIndexerRatio,
+						AdvancedMechanismConstants.Turret.centerIndexerMOI));
 				leftTurret = new Turret(
 						new AzimuthIOSim(
 								Robot.rioCanBus,
@@ -760,7 +769,14 @@ public class RobotContainer {
 								Robot.rioCanBus,
 								AdvancedMechanismConstants.Turret.leftHoodID,
 								AdvancedMechanismConstants.Turret.leftName + "Hood"),
-
+						new Kickup(
+								"LeftTurret/Kickup",
+								"LeftTurret/Kickup",
+								new KickupIOSim(
+										AdvancedMechanismConstants.Turret.turretKickupMotor,
+										"LeftTurretKickup",
+										AdvancedMechanismConstants.Turret.turretKickupRatio,
+										AdvancedMechanismConstants.Turret.turretKickupMOI)),
 						AdvancedMechanismConstants.Turret.robotToLeftTurretHoleCenter, "LeftTurret");
 				rightTurret = new Turret(
 						new AzimuthIOSim(
@@ -787,7 +803,14 @@ public class RobotContainer {
 								Robot.rioCanBus,
 								AdvancedMechanismConstants.Turret.rightHoodID,
 								AdvancedMechanismConstants.Turret.rightName + "Hood"),
-
+						new Kickup(
+								"RightTurret/Kickup",
+								"RightTurret/Kickup",
+								new KickupIOSim(
+										AdvancedMechanismConstants.Turret.turretKickupMotor,
+										"RightTurretKickup",
+										AdvancedMechanismConstants.Turret.turretKickupRatio,
+										AdvancedMechanismConstants.Turret.turretKickupMOI)),
 						AdvancedMechanismConstants.Turret.robotToRightTurretHoleCenter, "RightTurret");
 				/*
 				 * autoCommands.addAll(Arrays.asList(
@@ -842,8 +865,7 @@ public class RobotContainer {
 				 * });
 				 */
 				intake = new Intake(new ArmIO() {
-				}, new Indexer(new IndexerIO() {
-				}), new FrontRollers(new FrontRollersIO() {
+				}, new FrontRollers(new FrontRollersIO() {
 				}));
 				kickup = new Kickup(new KickupIO() {
 				});
@@ -851,12 +873,14 @@ public class RobotContainer {
 				leftTurret = new Turret(new AzimuthIO() {
 				}, new FlywheelIO() {
 				}, new HoodIO() {
-				}, AdvancedMechanismConstants.Turret.robotToLeftTurretHoleCenter,
+				}, new Kickup("LeftTurret/Kickup", "LeftTurret/Kickup", new KickupIO() {
+				}), AdvancedMechanismConstants.Turret.robotToLeftTurretHoleCenter,
 						"LeftTurret");
 				rightTurret = new Turret(new AzimuthIO() {
 				}, new FlywheelIO() {
 				}, new HoodIO() {
-				}, AdvancedMechanismConstants.Turret.robotToRightTurretHoleCenter, "RightTurret");
+				}, new Kickup("RightTurret/Kickup", "RightTurret/Kickup", new KickupIO() {
+				}), AdvancedMechanismConstants.Turret.robotToRightTurretHoleCenter, "RightTurret");
 
 		}
 		NamedCommands.registerCommand(
@@ -947,8 +971,8 @@ public class RobotContainer {
 		autoChooser.addOption("Intake PID Char",
 				new RoughPIDCharacterization(intake, (volts) -> intake.runCharacterization(volts),
 						intake::getCharacterizationMeasurement, intake::getCharVelocity,
-						IntakeConstants.armMinAngleRads, IntakeConstants.armMaxAngleRads, Units.degreesToRadians(10),
-						Units.degreesToRadians(120), 3, 20).beforeStarting(Commands.waitSeconds(3))
+						IntakeConstants.slideMinInches, IntakeConstants.slideMaxInches, 1.0,
+						11.0, 3, 20).beforeStarting(Commands.waitSeconds(3))
 						.withName("Intake PID Characterization"));
 		autoChooser.addOption("Intake FeedForward Characterization",
 				new FeedForwardCharacterization(intake, (volts) -> intake.runCharacterization(volts),
@@ -1053,9 +1077,7 @@ public class RobotContainer {
 		var shootTurretsWhileIntaking = Commands.runOnce(() -> {
 			shootTimer.restart();
 		}).andThen(Commands.run(() -> {
-			leftTurret.setGoal(Turret.Goal.SHOOTING);
-			rightTurret.setGoal(Turret.Goal.SHOOTING);
-			applyShootCycleGoals(Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5));
+			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5));
 		}, leftTurret, rightTurret, intake, kickup).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
@@ -1085,7 +1107,7 @@ public class RobotContainer {
 		// A button = vomit
 		// B button = clear logged shots
 		// Y button = (reserved)
-		// X button = jackhammer intake/indexer/Vindexer
+		// X button = jackhammer intake/center indexer/turret kickups
 		// NOTE: Intake defaults DOWN (out). Manip X holds it UP (stow).
 
 		startButtonDrive
@@ -1149,18 +1171,26 @@ public class RobotContainer {
 				Commands.run(() -> {
 					intake.setGoal(Goal.JACKHAMMERING_OUT);
 					kickup.setGoal(frc.robot.subsystems.Turret.kickup.Kickup.Goal.JACKHAMMER);
-				}, intake, kickup)
+					leftTurret.setGoal(Turret.Goal.JACKHAMMER);
+					rightTurret.setGoal(Turret.Goal.JACKHAMMER);
+				}, intake, kickup, leftTurret, rightTurret)
 						.finallyDo(() -> {
 							intake.setGoal(Goal.INTAKE_OUTER_IDLE);
 							kickup.setGoal(frc.robot.subsystems.Turret.kickup.Kickup.Goal.IDLING);
+							leftTurret.setGoal(Turret.Goal.AIMING);
+							rightTurret.setGoal(Turret.Goal.AIMING);
 						}),
 				Commands.run(() -> {
 					intake.setGoal(Goal.JACKHAMMERING_IN);
 					kickup.setGoal(frc.robot.subsystems.Turret.kickup.Kickup.Goal.JACKHAMMER);
-				}, intake, kickup)
+					leftTurret.setGoal(Turret.Goal.JACKHAMMER);
+					rightTurret.setGoal(Turret.Goal.JACKHAMMER);
+				}, intake, kickup, leftTurret, rightTurret)
 						.finallyDo(() -> {
 							intake.setGoal(Goal.INTAKE_OUTER_IDLE);
 							kickup.setGoal(frc.robot.subsystems.Turret.kickup.Kickup.Goal.IDLING);
+							leftTurret.setGoal(Turret.Goal.AIMING);
+							rightTurret.setGoal(Turret.Goal.AIMING);
 						}),
 				() -> intake.isIntakeDeployed())); // jackhammer
 
@@ -1221,15 +1251,19 @@ public class RobotContainer {
 				Commands.runOnce(() -> {
 					shootTimer.restart();
 				}).andThen(Commands.run(() -> {
-					leftTurret.setGoal(Turret.Goal.SHOOTING);
-					rightTurret.setGoal(Turret.Goal.SHOOTING);
 					// Agitate arm while cycling jackhammer on rollers/kickup
 					intake.setGoal(Goal.AGITATING);
 					if (isInJackhammerPhase()) {
+						leftTurret.setGoal(Turret.Goal.JACKHAMMER);
+						rightTurret.setGoal(Turret.Goal.JACKHAMMER);
 						kickup.setGoal(Kickup.Goal.JACKHAMMER);
 					} else if (shootTimer.hasElapsed(0.5)) {
+						leftTurret.setGoal(Turret.Goal.SHOOTING);
+						rightTurret.setGoal(Turret.Goal.SHOOTING);
 						kickup.setGoal(Kickup.Goal.SHOOTING);
 					} else {
+						leftTurret.setGoal(Turret.Goal.SHOOTING);
+						rightTurret.setGoal(Turret.Goal.SHOOTING);
 						kickup.setGoal(Kickup.Goal.IDLING);
 					}
 				}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
@@ -1338,9 +1372,7 @@ public class RobotContainer {
 			shootTimer.restart();
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}).andThen(Commands.run(() -> {
-			rightTurret.setGoal(Turret.Goal.SHOOTING_FROM_HUB);
-			leftTurret.setGoal(Turret.Goal.SHOOTING_FROM_HUB);
-			applyShootCycleGoals(Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5));
+			applyShootCycleGoals(Turret.Goal.SHOOTING_FROM_HUB, Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5));
 		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
@@ -1429,16 +1461,20 @@ public class RobotContainer {
 	}
 
 	/**
-	 * Sets intake and kickup goals for the current shoot cycle phase.
-	 * During the shoot phase: intake gets shootGoal, kickup gets SHOOTING (if allowed).
-	 * During the jackhammer phase: intake jackhammers, kickup jackhammers.
+	 * Sets turret, intake, and center-indexer goals for the current shoot cycle phase.
+	 * During the shoot phase: turrets use turretShootGoal, intake uses intakeShootGoal,
+	 * and the center indexer shoots if allowed.
+	 * During the jackhammer phase: intake jackhammers, the center indexer jackhammers,
+	 * and both turret kickups jackhammer while preserving their shooter setpoints.
 	 *
-	 * @param shootGoal     the intake goal to use during normal shooting (e.g. SHOOTING or INTAKE_GROUND_SHOOT)
-	 * @param allowKickup   whether the kickup is allowed to shoot (e.g. after shootTimer delay)
+	 * @param turretShootGoal the turret goal to use during normal shooting
+	 * @param intakeShootGoal the intake goal to use during normal shooting
+	 * @param allowKickup     whether the center indexer is allowed to shoot
 	 */
-	private void applyShootCycleGoals(Goal shootGoal, boolean allowKickup) {
+	private void applyShootCycleGoals(Turret.Goal turretShootGoal, Goal intakeShootGoal, boolean allowKickup) {
 		if (isInJackhammerPhase()) {
-			// Jackhammer phase — cycle intake and kickup
+			leftTurret.setGoal(Turret.Goal.JACKHAMMER);
+			rightTurret.setGoal(Turret.Goal.JACKHAMMER);
 			if (intake.isIntakeDeployed()) {
 				intake.setGoal(Goal.JACKHAMMERING_OUT);
 			} else {
@@ -1446,8 +1482,9 @@ public class RobotContainer {
 			}
 			kickup.setGoal(Kickup.Goal.JACKHAMMER);
 		} else {
-			// Normal shooting phase
-			intake.setGoal(shootGoal);
+			leftTurret.setGoal(turretShootGoal);
+			rightTurret.setGoal(turretShootGoal);
+			intake.setGoal(intakeShootGoal);
 			if (allowKickup) {
 				kickup.setGoal(Kickup.Goal.SHOOTING);
 			} else {
@@ -1475,9 +1512,7 @@ public class RobotContainer {
 			shootTimer.restart();
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}).andThen(Commands.run(() -> {
-			rightTurret.setGoal(Turret.Goal.SHOOTING_FROM_HUB);
-			leftTurret.setGoal(Turret.Goal.SHOOTING_FROM_HUB);
-			applyShootCycleGoals(Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5));
+			applyShootCycleGoals(Turret.Goal.SHOOTING_FROM_HUB, Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5));
 		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
@@ -1502,9 +1537,7 @@ public class RobotContainer {
 			shootTimer.restart();
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}).andThen(Commands.run(() -> {
-			leftTurret.setGoal(Turret.Goal.SHOOTING);
-			rightTurret.setGoal(Turret.Goal.SHOOTING);
-			applyShootCycleGoals(Goal.SHOOTING, shootTimer.hasElapsed(0.5));
+			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.SHOOTING, shootTimer.hasElapsed(0.5));
 		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
@@ -1519,9 +1552,7 @@ public class RobotContainer {
 			shootTimer.restart();
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}).andThen(Commands.run(() -> {
-			leftTurret.setGoal(Turret.Goal.SHOOTING_FROM_HUB);
-			rightTurret.setGoal(Turret.Goal.SHOOTING_FROM_HUB);
-			applyShootCycleGoals(Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5));
+			applyShootCycleGoals(Turret.Goal.SHOOTING_FROM_HUB, Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5));
 		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);

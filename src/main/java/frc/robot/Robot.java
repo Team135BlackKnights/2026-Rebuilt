@@ -23,6 +23,7 @@ import frc.robot.subsystems.drive.FastSwerve.Swerve.ModuleLimits;
 import frc.robot.utils.Elastic;
 import frc.robot.utils.drive.DriveConstants;
 import frc.robot.utils.drive.DriveConstants.DriveTrainType;
+import frc.robot.utils.IntakeConstants;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.CANBus.CANBusStatus;
 import com.ctre.phoenix6.SignalLogger;
@@ -370,17 +371,13 @@ public class Robot extends LoggedRobot {
 
 	private void updateAdvantageScopePiecesLive() {
 		Logger.recordOutput("RobotState/AdvantageScope/modelPose", RobotContainer.drivetrainS.getPose());
-		double armAngle = RobotContainer.intake.getArmAngle();
-		// if less than 120 deg, interp until <45 so that hopper is at 12 inches
-		// (.3048m)
-		double hopperOffset = 0;
-		if (armAngle < Math.toRadians(120)) {
-			hopperOffset = GeomUtil.interp(.3048, 0, armAngle, Math.toRadians(45), Math.toRadians(120));
-		} else {
-			hopperOffset = 0;
-		}
+		double slidePositionInches = RobotContainer.intake.getSlidePositionInches();
+		double intakeX = GeomUtil.interp(.253, 0.05, slidePositionInches,
+				IntakeConstants.slideMinInches, IntakeConstants.slideMaxInches);
+		double hopperOffset = GeomUtil.interp(.3048, 0.0, slidePositionInches,
+				IntakeConstants.slideMinInches, IntakeConstants.slideMaxInches);
 		Logger.recordOutput("RobotState/AdvantageScope/model_0Pose",
-				new Pose3d(.253, 0, 0.228, new Rotation3d(0, -armAngle, 0)));// intake
+				new Pose3d(intakeX, 0, 0.228, new Rotation3d()));// intake
 		Logger.recordOutput("RobotState/AdvantageScope/model_1Pose",
 				new Pose3d(-0.043 + hopperOffset, 0, 0.284 + .235 / 2, new Rotation3d()));// hopper
 		Pose3d model_2Pose = new Pose3d(-.163, .227, 0.419,
