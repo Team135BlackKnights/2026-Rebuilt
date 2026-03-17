@@ -177,9 +177,15 @@ public class RobotContainer {
 	public static Optional<Rotation2d> angleOverrider = Optional.empty();
 	/** Timer used to force a shot after 0.25 s even if setpoints aren't reached */
 	private final Timer shootTimer = new Timer();
+	public static boolean forceKickup = false;
+	/**
+	 * Start time (FPGA timestamp) of the current shoot/jackhammer cycle.
+	 * Used so the cycle always begins with SHOOTING when the command starts.
+	 */
+	private double shootCycleStartSec = Double.NaN;
 	// Auto-jackhammer during shooting: shoot for this long, then jackhammer for the rest of the cycle
 	private static final LoggableTunedNumber shootCycleShootSec = new LoggableTunedNumber(
-			"Shooting/CycleShootSec", 1.5, TuningConstants.isTuningMacros);
+			"Shooting/CycleShootSec", 3.5, TuningConstants.isTuningMacros);
 	private static final LoggableTunedNumber shootCycleJackhammerSec = new LoggableTunedNumber(
 			"Shooting/CycleJackhammerSec", 0.5, TuningConstants.isTuningMacros);
 	public static double angularSpeed = 0;
@@ -1076,14 +1082,16 @@ public class RobotContainer {
 		}, leftTurret, rightTurret);
 		var shootTurretsWhileIntaking = Commands.runOnce(() -> {
 			shootTimer.restart();
+			resetShootCycle();
 		}).andThen(Commands.run(() -> {
-			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5));
+			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints());
 		}, leftTurret, rightTurret, intake, kickup).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
 			intake.setGoal(Goal.INTAKE_OUTER_IDLE);
 			kickup.setGoal(Kickup.Goal.IDLING);
 			shootTimer.stop();
+			shootCycleStartSec = Double.NaN;
 		}));
 		// Auto factory setup
 		touchboardAutoFactory = new TouchboardAutoFactory(pathFinder, drivetrainS,
@@ -1250,6 +1258,7 @@ public class RobotContainer {
 		rightTriggerDriveFull.and(rightBumperDrive).and(leftBumperDrive.negate()).and(xButtonDrive.negate()).whileTrue(
 				Commands.runOnce(() -> {
 					shootTimer.restart();
+					resetShootCycle();
 				}).andThen(Commands.run(() -> {
 					// Agitate arm while cycling jackhammer on rollers/kickup
 					intake.setGoal(Goal.AGITATING);
@@ -1257,7 +1266,7 @@ public class RobotContainer {
 						leftTurret.setGoal(Turret.Goal.JACKHAMMER);
 						rightTurret.setGoal(Turret.Goal.JACKHAMMER);
 						kickup.setGoal(Kickup.Goal.JACKHAMMER);
-					} else if (shootTimer.hasElapsed(0.5)) {
+					} else if (shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints()) {
 						leftTurret.setGoal(Turret.Goal.SHOOTING);
 						rightTurret.setGoal(Turret.Goal.SHOOTING);
 						kickup.setGoal(Kickup.Goal.SHOOTING);
@@ -1272,6 +1281,7 @@ public class RobotContainer {
 					intake.setGoal(Goal.INTAKE_OUTER_IDLE);
 					kickup.setGoal(Kickup.Goal.IDLING);
 					shootTimer.stop();
+					shootCycleStartSec = Double.NaN;
 				})));
 		povUp.whileTrue(Commands.run(() -> {
 			intake.setGoal(Goal.VOMITING);
@@ -1370,6 +1380,7 @@ public class RobotContainer {
 		}));
 		manipYButton.whileTrue(Commands.runOnce(() -> {
 			shootTimer.restart();
+			resetShootCycle();
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}).andThen(Commands.run(() -> {
 			applyShootCycleGoals(Turret.Goal.SHOOTING_FROM_HUB, Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5));
@@ -1379,6 +1390,7 @@ public class RobotContainer {
 			kickup.setGoal(Kickup.Goal.IDLING);
 			intake.setGoal(Intake.Goal.INTAKE_OUTER_IDLE);
 			shootTimer.stop();
+			shootCycleStartSec = Double.NaN;
 		})));
 		// Automatic Turret Controls -- DISABLED UNTIL TUNING COMPLETE!
 
@@ -1452,12 +1464,21 @@ public class RobotContainer {
 	/**
 	 * Returns true when the shoot cycle is in the jackhammer phase.
 	 * Call every loop during any shooting command to auto-jackhammer.
-	 * Uses FPGA timestamp so all commands share the same global cycle.
+	 * Uses a cycle start timestamp so the cycle always begins with SHOOTING
+	 * when the command starts (prevents starting mid-jackhammer due to global time).
 	 */
 	private boolean isInJackhammerPhase() {
+		if (!Double.isFinite(shootCycleStartSec)) {
+			shootCycleStartSec = Timer.getFPGATimestamp();
+		}
 		double cyclePeriod = shootCycleShootSec.get() + shootCycleJackhammerSec.get();
-		double tInCycle = Timer.getFPGATimestamp() % cyclePeriod;
+		double tInCycle = (Timer.getFPGATimestamp() - shootCycleStartSec) % cyclePeriod;
 		return tInCycle >= shootCycleShootSec.get();
+	}
+
+	/** Reset shoot/jackhammer cycle so it restarts at the SHOOTING phase. */
+	private void resetShootCycle() {
+		shootCycleStartSec = Timer.getFPGATimestamp();
 	}
 
 	/**
@@ -1486,8 +1507,10 @@ public class RobotContainer {
 			rightTurret.setGoal(turretShootGoal);
 			intake.setGoal(intakeShootGoal);
 			if (allowKickup) {
+				forceKickup = true;
 				kickup.setGoal(Kickup.Goal.SHOOTING);
 			} else {
+				forceKickup = false;
 				kickup.setGoal(Kickup.Goal.IDLING);
 			}
 		}
@@ -1510,15 +1533,17 @@ public class RobotContainer {
 	private Command buildShootTurretsHubIntakeOutCommand() {
 		return (buildTargetHubBothCommand().andThen(Commands.runOnce(() -> {
 			shootTimer.restart();
+			resetShootCycle();
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}).andThen(Commands.run(() -> {
-			applyShootCycleGoals(Turret.Goal.SHOOTING_FROM_HUB, Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5));
+			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints());
 		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
 			kickup.setGoal(Kickup.Goal.IDLING);
 			intake.setGoal(Intake.Goal.INTAKE_OUTER_IDLE);
 			shootTimer.stop();
+			shootCycleStartSec = Double.NaN;
 		})))).withName("Shoot Turrets with Intake Out");
 	}
 
@@ -1537,7 +1562,7 @@ public class RobotContainer {
 			shootTimer.restart();
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}).andThen(Commands.run(() -> {
-			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.SHOOTING, shootTimer.hasElapsed(0.5));
+			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.SHOOTING, shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints());
 		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
@@ -1550,15 +1575,17 @@ public class RobotContainer {
 	private Command buildShootTurretsCommand() {
 		return Commands.runOnce(() -> {
 			shootTimer.restart();
+			resetShootCycle();
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}).andThen(Commands.run(() -> {
-			applyShootCycleGoals(Turret.Goal.SHOOTING_FROM_HUB, Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5));
+			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints());
 		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
 			intake.setGoal(Goal.INTAKE_OUTER_IDLE);
 			kickup.setGoal(Kickup.Goal.IDLING);
 			shootTimer.stop();
+			shootCycleStartSec = Double.NaN;
 		}));
 	}
 

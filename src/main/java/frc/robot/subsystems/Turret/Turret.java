@@ -70,6 +70,7 @@ public class Turret extends SubsystemChecker {
   private final LoggableTunedNumber aimToleranceRads;
   private final LoggableTunedNumber hoodToleranceRads;
   private final LoggableTunedNumber flywheelToleranceRadsPerSec;
+  private final LoggableTunedNumber kickupWaitBaseSec;
   
   //Shots
 
@@ -111,6 +112,9 @@ public class Turret extends SubsystemChecker {
 
   private Goal goal = Goal.IDLE;
   private Goal lastGoal = Goal.IDLE;
+  private Goal previousGoal = Goal.IDLE;
+  private Goal previousControlGoal = Goal.IDLE;
+  private double kickupWaitStartSec = Double.NaN;
 
   private PresetTarget activePreset = PresetTarget.HUB_TOP_CENTER;
 
@@ -211,6 +215,7 @@ public class Turret extends SubsystemChecker {
     hoodToleranceRads = new LoggableTunedNumber(name + "/Tolerance/HoodRads", Math.toRadians(9989), TuningConstants.isTuningShooter);
     flywheelToleranceRadsPerSec = new LoggableTunedNumber(name + "/Tolerance/FlywheelRadsPerSec",
         Units.rotationsPerMinuteToRadiansPerSecond(1000), TuningConstants.isTuningShooter);
+  kickupWaitBaseSec = new LoggableTunedNumber(name + "/Kickup/WaitBaseSec", 0.5, TuningConstants.isTuningShooter);
     shot_HUB_TOP_CENTER_RPM = new LoggableTunedNumber(name + "/Shot/HUB_TOP_CENTER_RPM", 3500, TuningConstants.isTuningShooter);
     shot_HUB_TOP_CENTER_HOOD_DEG = new LoggableTunedNumber(name + "/Shot/HUB_TOP_CENTER_HOOD_DEG", 13, TuningConstants.isTuningShooter);
 
@@ -445,8 +450,6 @@ public class Turret extends SubsystemChecker {
     azimuthIO.updateInputs(azimuthInputs);
     flywheelIO.updateInputs(flywheelInputs);
     hoodIO.updateInputs(hoodInputs);
-    kickup.setGoal(getKickupGoal());
-    kickup.periodic();
 
     Logger.processInputs(name + "/Azimuth", azimuthInputs);
     Logger.processInputs(name + "/Flywheel", flywheelInputs);
@@ -461,12 +464,9 @@ public class Turret extends SubsystemChecker {
 
     shotCalculator.clearShootingParameters();
 
-    if (goal != lastGoal) {
-      shotCalculator.clearShootingParameters();
-      lastGoal = goal;
-    }
 
-    Goal controlGoal = getShooterControlGoal();
+
+  Goal controlGoal = getShooterControlGoal();
 
     switch (controlGoal) {
       case IDLE -> {
@@ -545,6 +545,14 @@ public class Turret extends SubsystemChecker {
       case JACKHAMMER -> {
       }
     }
+
+    // Decide kickup goal after updating shooter/turret/hood setpoints for this loop.
+    kickup.setGoal(getKickupGoal(controlGoal, previousControlGoal));
+    kickup.periodic();
+    if (goal != lastGoal) {
+      shotCalculator.clearShootingParameters();
+      lastGoal = goal;
+    }
     applyHoodSafetyControl(controlGoal);
     lastTurretRads = desiredTurretRads;
 
@@ -583,6 +591,8 @@ public class Turret extends SubsystemChecker {
     Logger.recordOutput(name + "/Errors/TurretRads", turretAngleErrorRads());
     Logger.recordOutput(name + "/AtAimAngle", atAimAngle());
     Logger.recordOutput(name + "/AtShootSetpoints", atShootSetpoints());
+    previousGoal = goal;
+    previousControlGoal = controlGoal;
   }
 
   private Goal getShooterControlGoal() {
@@ -592,15 +602,52 @@ public class Turret extends SubsystemChecker {
     return jackhammerBaseGoal == Goal.JACKHAMMER ? Goal.IDLE : jackhammerBaseGoal;
   }
 
-  private Kickup.Goal getKickupGoal() {
+  private Kickup.Goal getKickupGoal(Goal controlGoal, Goal previousControlGoal) {
     if (DriverStation.isDisabled()) {
       return Kickup.Goal.IDLING;
     }
-    return switch (goal) {
-      case SHOOTING, SHOOTING_CUSTOM, SHOOTING_FROM_HUB -> Kickup.Goal.SHOOTING;
-      case JACKHAMMER -> Kickup.Goal.JACKHAMMER;
-      default -> Kickup.Goal.IDLING;
+
+    if (controlGoal == Goal.JACKHAMMER) {
+      return Kickup.Goal.JACKHAMMER;
+    }
+
+    if (!isShootLikeGoal(controlGoal)) {
+      kickupWaitStartSec = Double.NaN;
+      return Kickup.Goal.IDLING;
+    }
+
+    boolean enteredShootLike = !isShootLikeGoal(previousControlGoal);
+    if (enteredShootLike) {
+      kickupWaitStartSec = Timer.getFPGATimestamp();
+
+      // If we just came from JACKHAMMER, satisfy the wait immediately.
+      if (previousControlGoal == Goal.JACKHAMMER) {
+        double waitSec = switch (controlGoal) {
+          case SHOOTING -> kickupWaitBaseSec.get();
+          case SHOOTING_CUSTOM, SHOOTING_FROM_HUB -> kickupWaitBaseSec.get();
+          default -> 0.0;
+        };
+        kickupWaitStartSec -= waitSec;
+      }
+    }
+
+    // SHOOTING can bypass timeout immediately once fully at setpoints.
+    if ((controlGoal == Goal.SHOOTING && atShootSetpoints()) || RobotContainer.forceKickup) {
+      return Kickup.Goal.SHOOTING;
+    }
+
+    double waitSec = switch (controlGoal) {
+      case SHOOTING -> kickupWaitBaseSec.get();
+      case SHOOTING_CUSTOM, SHOOTING_FROM_HUB -> kickupWaitBaseSec.get();
+      default -> 0.0;
     };
+
+    if (!Double.isFinite(kickupWaitStartSec)) {
+      kickupWaitStartSec = Timer.getFPGATimestamp();
+    }
+
+    double elapsedSec = Timer.getFPGATimestamp() - kickupWaitStartSec;
+    return elapsedSec >= waitSec ? Kickup.Goal.SHOOTING : Kickup.Goal.IDLING;
   }
 
   private boolean isShootLikeGoal(Goal goal) {

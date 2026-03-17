@@ -59,7 +59,7 @@ public class Rebuilt2026FieldSimulation extends CompetitionFieldSimulation {
 	private static final LoggableTunedNumber simBallSpeedMetersPerSecPerRPM =
 			new LoggableTunedNumber("SimShot/BallSpeedMpsPerRPM", 0.001682, true);
 	private static final LoggableTunedNumber simShotCooldownSec =
-			new LoggableTunedNumber("SimShot/CooldownSec", 0.20, true);
+			new LoggableTunedNumber("SimShot/CooldownSec", 3, true);
 	private static final LoggableTunedNumber simHoodToPitchScale =
 			new LoggableTunedNumber("SimShot/HoodToPitchScale", 1.0, true);
 	private static final LoggableTunedNumber simHoodToPitchOffsetDeg =
