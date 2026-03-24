@@ -28,8 +28,8 @@ import frc.robot.utils.selfCheck.SelfChecking;
 import frc.robot.utils.selfCheck.drive.SelfCheckingTalonFX;
 
 public class ArmIOKrakenFOC implements ArmIO {
-    protected static final LoggableTunedNumber ZERO_VOLTS = new LoggableTunedNumber("Intake/Arm/zeroVolts",-2,TuningConstants.isTuningIntake);
-    protected static final LoggableTunedNumber ZERO_CURRENT_AMPS = new LoggableTunedNumber("Intake/Arm/zeroAmps",10,TuningConstants.isTuningIntake);
+    protected static final LoggableTunedNumber ZERO_VOLTS = new LoggableTunedNumber("Intake/Arm/zeroVolts",-4,TuningConstants.isTuningIntake);
+    protected static final LoggableTunedNumber ZERO_CURRENT_AMPS = new LoggableTunedNumber("Intake/Arm/zeroAmps",20,TuningConstants.isTuningIntake);
     protected static final LoggableTunedNumber ZERO_HOLD_SEC = new LoggableTunedNumber("Intake/Arm/zeroTime",.4,TuningConstants.isTuningIntake);
 
     protected final String name;
@@ -73,9 +73,9 @@ public class ArmIOKrakenFOC implements ArmIO {
 
         talon = new TalonFX(motorID, bus);
 
-        talonConfig.CurrentLimits.StatorCurrentLimitEnable = false;
+        talonConfig.CurrentLimits.StatorCurrentLimitEnable = true;
         talonConfig.CurrentLimits.StatorCurrentLimit = currentLimitAmps;
-        talonConfig.CurrentLimits.SupplyCurrentLimitEnable = false;
+        talonConfig.CurrentLimits.SupplyCurrentLimitEnable = true;
         talonConfig.CurrentLimits.SupplyCurrentLimit = currentLimitAmps;
 
         talonConfig.MotorOutput.NeutralMode = brake ? NeutralModeValue.Brake : NeutralModeValue.Coast;

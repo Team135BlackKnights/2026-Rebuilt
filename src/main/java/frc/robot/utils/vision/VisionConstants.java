@@ -17,7 +17,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import frc.robot.utils.GeomUtil.ApproachDirection;
 import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.Constants;
@@ -115,9 +114,8 @@ public class VisionConstants {
 										Math.toRadians(0.0),
 										Math.toRadians(-25),
 										Math.toRadians(160))))
-										.id("SPCA2630 PC Camera:usb_05c8_0a00_000_001")
-										.location("0x02220000 / 3")
-
+					.id("SPCA2630 PC Camera:usb_05c8_0a00_002_003")
+					.location("0x02210000 / 3")
 										.width(1600)
 					.height(1304)
 					.exposure(16)
@@ -138,8 +136,8 @@ public class VisionConstants {
 											Math.toRadians(0.0),
 											Math.toRadians(-25),
 											Math.toRadians(-160))))
-					.id("SPCA2630 PC Camera:usb_05c8_0a00_002_003")
-					.location("0x00200000 / 1")
+															.id("SPCA2630 PC Camera:usb_05c8_0a00_003_001")
+										.location("0x03200000 / 1")
 					.width(1600)
 					.height(1304)
 					.exposure(20)

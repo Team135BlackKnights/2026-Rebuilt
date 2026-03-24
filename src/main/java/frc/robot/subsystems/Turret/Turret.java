@@ -587,7 +587,8 @@ public class Turret extends SubsystemChecker {
 
     // Decide kickup goal after updating shooter/turret/hood setpoints for this
     // loop.
-    kickup.setGoal(getKickupGoal(controlGoal, previousControlGoal));
+  Kickup.Goal kickupGoal = getKickupGoal(controlGoal, previousControlGoal);
+  kickup.setGoal(kickupGoal);
     kickup.periodic();
     if (goal != lastGoal) {
       shotCalculator.clearShootingParameters();
@@ -631,6 +632,8 @@ public class Turret extends SubsystemChecker {
     Logger.recordOutput(name + "/Errors/TurretRads", turretAngleErrorRads());
     Logger.recordOutput(name + "/AtAimAngle", atAimAngle());
     Logger.recordOutput(name + "/AtShootSetpoints", atShootSetpoints());
+    Logger.recordOutput(name + "/KickupGoal", kickupGoal.toString());
+    Logger.recordOutput("SuperStructure/" + name + "/KickupGoal", kickupGoal.toString());
     previousControlGoal = controlGoal;
   }
 
@@ -646,7 +649,7 @@ public class Turret extends SubsystemChecker {
       return Kickup.Goal.IDLING;
     }
 
-    if (controlGoal == Goal.JACKHAMMER) {
+    if (controlGoal == Goal.JACKHAMMER || goal == Goal.JACKHAMMER) {
       return Kickup.Goal.JACKHAMMER;
     }
 

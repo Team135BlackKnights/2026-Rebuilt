@@ -28,7 +28,6 @@ import frc.robot.subsystems.Turret.kickup.Kickup;
 import frc.robot.subsystems.Turret.kickup.KickupIO;
 import frc.robot.subsystems.Turret.kickup.KickupIOKrakenFOC;
 import frc.robot.subsystems.Turret.kickup.KickupIOSim;
-import frc.robot.subsystems.Turret.kickup.KickupIOSparkBase;
 import frc.robot.subsystems.drive.DrivetrainS;
 import frc.robot.subsystems.drive.FastSwerve.Swerve;
 import frc.robot.subsystems.drive.Mecanum.Mecanum;
@@ -523,7 +522,7 @@ public class RobotContainer {
 						"IntakeArm",
 						IntakeConstants.intakeCurrentLimit,
 						IntakeConstants.intakeInverted,
-						true,
+						false,
 						IntakeConstants.intakeArmReduction);
 				FrontRollers frontRollers = new FrontRollers(
 						new FrontRollersIOKrakenFOC(IntakeConstants.frontRollersMotorID, Robot.rioCanBus,
@@ -563,7 +562,7 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.maxHoodAngle);
 
 				kickup = new Kickup(
-						new KickupIOSparkBase(AdvancedMechanismConstants.Turret.centerIndexerID, Robot.rioCanBus,
+						new KickupIOKrakenFOC(AdvancedMechanismConstants.Turret.centerIndexerID, Robot.rioCanBus,
 								"Kickup", AdvancedMechanismConstants.Turret.currentLimitKickup,
 								AdvancedMechanismConstants.Turret.invertKickup, false,
 								AdvancedMechanismConstants.Turret.centerIndexerRatio));
@@ -1095,6 +1094,12 @@ public class RobotContainer {
 			shootTimer.stop();
 			shootCycleStartSec = Double.NaN;
 		}));
+		Command teleAutoIntake = Commands.defer(
+				() -> new AutoIntake(
+						drivetrainS,
+						intake,
+						CameraID.INTAKE_CAM),
+				Set.of(drivetrainS, intake));
 		// Auto factory setup
 		touchboardAutoFactory = new TouchboardAutoFactory(pathFinder, drivetrainS,
 				() -> new AutoIntake(drivetrainS, intake, CameraID.INTAKE_CAM), Set.of(intake, drivetrainS),
@@ -1138,11 +1143,12 @@ public class RobotContainer {
 				}));
 		leftStickButtonDrive.onTrue(drivetrainS.orientModules(Swerve.getXOrientations()));
 		leftStickButtonDrive.onFalse(Commands.runOnce(() -> drivetrainS.stopModules(), drivetrainS));
-		rightStickButtonDrive.onTrue(new OrchestraC("speed").withName("Play Megolovania"));
+		rightStickButtonDrive.onTrue(new OrchestraC("megolovania").withName("Play Megolovania"));
 		// Test Commands
 		aButtonDrive.whileTrue(Commands.run(() -> {
-			intake.setGoal(Goal.VOMITING);
-			kickup.setGoal(Kickup.Goal.VOMITING);
+			intake.setGoal(Goal.STOW);
+			//intake.setGoal(Goal.VOMITING);
+			//kickup.setGoal(Kickup.Goal.VOMITING);
 			// flywheel go to 5000 rpm
 			// leftTurret.setCharHoodPos(0);(4.1);
 			// leftTurret.setCharHoodPos(Units.degreesToRadians(12));
@@ -1152,8 +1158,9 @@ public class RobotContainer {
 			// hang.setGoal(HangState.STOWED);
 		}));
 		bButtonDrive.onTrue(Commands.runOnce(() -> {
-			leftTurret.clearLoggedShots();
-			rightTurret.clearLoggedShots();
+			intake.setGoal(Goal.INTAKE_OUTER_IDLE);
+			//leftTurret.clearLoggedShots();
+			//rightTurret.clearLoggedShots();
 		}));
 		yButtonDrive.onTrue(Commands.runOnce(() -> {
 			leftTurret.enterShotTuning();
@@ -1286,13 +1293,7 @@ public class RobotContainer {
 					shootTimer.stop();
 					shootCycleStartSec = Double.NaN;
 				})));
-		povUp.whileTrue(Commands.run(() -> {
-			intake.setGoal(Goal.VOMITING);
-			kickup.setGoal(Kickup.Goal.VOMITING);
-		}, intake, kickup).finallyDo(() -> {
-			intake.setGoal(Goal.INTAKE_OUTER_IDLE);
-			kickup.setGoal(Kickup.Goal.IDLING);
-		}));
+		povUp.and(manipLeftTrigger.negate()).whileTrue(teleAutoIntake);
 		povDown.whileTrue(Commands.run(() -> {
 			intake.setGoal(Goal.VOMITING);
 			kickup.setGoal(Kickup.Goal.VOMITING);

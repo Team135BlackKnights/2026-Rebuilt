@@ -24,35 +24,35 @@ import lombok.Getter;
 
 public class Intake extends SubsystemChecker {
 
-    private static final LoggableTunedNumber arm_kP = new LoggableTunedNumber("Intake/Arm/kP", 20,
+    private static final LoggableTunedNumber arm_kP = new LoggableTunedNumber("Intake/Arm/kP", 3,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_kI = new LoggableTunedNumber("Intake/Arm/kI", 0.0,
             TuningConstants.isTuningIntake);
-    private static final LoggableTunedNumber arm_kD = new LoggableTunedNumber("Intake/Arm/kD", 0.5,
+    private static final LoggableTunedNumber arm_kD = new LoggableTunedNumber("Intake/Arm/kD", 0.1,
             TuningConstants.isTuningIntake);
-    private static final LoggableTunedNumber arm_kS = new LoggableTunedNumber("Intake/Arm/kS", 0.25,
+    private static final LoggableTunedNumber arm_kS = new LoggableTunedNumber("Intake/Arm/kS", 3.1,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_kV = new LoggableTunedNumber("Intake/Arm/kV", 0,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_kG = new LoggableTunedNumber("Intake/Arm/kG", 0,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_motionSpeed = new LoggableTunedNumber(
-            "Intake/Arm/MotionCruiseInchesPerSec", 8, TuningConstants.isTuningIntake);
+            "Intake/Arm/MotionCruiseInchesPerSec", 200, TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_motionAccel = new LoggableTunedNumber(
-            "Intake/Arm/MotionAccelInchesPerSec2", 16, TuningConstants.isTuningIntake);
+            "Intake/Arm/MotionAccelInchesPerSec2", 180, TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_neutralBand = new LoggableTunedNumber("Intake/Arm/NeutralBand", .15,
             TuningConstants.isTuningIntake);
 
     private static final LoggableTunedNumber slide_stow = new LoggableTunedNumber("Intake/Setpoints/StowInches",
-            IntakeConstants.slideMaxInches, TuningConstants.isTuningIntake);
+            IntakeConstants.slideMinInches+1, TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber slide_ground = new LoggableTunedNumber("Intake/Setpoints/GroundInches",
-            0.0, TuningConstants.isTuningIntake);
+            11.0, TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber time_jackhammer = new LoggableTunedNumber("Intake/JackhammerTimeSecs",
             .25, TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber slide_agitate = new LoggableTunedNumber("Intake/Setpoints/AgitateInches",
-            2.0, TuningConstants.isTuningIntake);
+            6.0, TuningConstants.isTuningIntake);
 
-    private static final LoggableTunedNumber arm_tolerance = new LoggableTunedNumber("Intake/ToleranceInches", 0.25,
+    private static final LoggableTunedNumber arm_tolerance = new LoggableTunedNumber("Intake/ToleranceInches", 0.5,
             TuningConstants.isTuningIntake);
 
     private final ArmIO armIO;
