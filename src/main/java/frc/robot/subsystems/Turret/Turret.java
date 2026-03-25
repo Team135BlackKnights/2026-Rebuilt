@@ -171,10 +171,10 @@ public class Turret extends SubsystemChecker {
           TuningConstants.isTuningShooter);
       azimuth_ramp = new LoggableTunedNumber(name + "/Azimuth/ramp", 0.1, TuningConstants.isTuningShooter);
 
-      flywheel_kP = new LoggableTunedNumber(name + "/Flywheel/kP", 0.15, TuningConstants.isTuningShooter); // 3
+      flywheel_kP = new LoggableTunedNumber(name + "/Flywheel/kP", 0.098, TuningConstants.isTuningShooter); // 3
       flywheel_kD = new LoggableTunedNumber(name + "/Flywheel/kD", 0.0, TuningConstants.isTuningShooter);
       flywheel_kS = new LoggableTunedNumber(name + "/Flywheel/kS", 0.0, TuningConstants.isTuningShooter);
-      flywheel_kV = new LoggableTunedNumber(name + "/Flywheel/kV", 0.095, TuningConstants.isTuningShooter); // .098
+      flywheel_kV = new LoggableTunedNumber(name + "/Flywheel/kV", 0.115, TuningConstants.isTuningShooter); // .098
       flywheel_kA = new LoggableTunedNumber(name + "/Flywheel/kA", 0.0, TuningConstants.isTuningShooter);
       flywheel_ramp = new LoggableTunedNumber(name + "/Flywheel/Ramp", 0.25, TuningConstants.isTuningShooter);
 
@@ -198,10 +198,10 @@ public class Turret extends SubsystemChecker {
           TuningConstants.isTuningShooter);
       azimuth_ramp = new LoggableTunedNumber(name + "/Azimuth/ramp", 0.1, TuningConstants.isTuningShooter);
 
-      flywheel_kP = new LoggableTunedNumber(name + "/Flywheel/kP", 0.15, TuningConstants.isTuningShooter); // 3
+      flywheel_kP = new LoggableTunedNumber(name + "/Flywheel/kP", 0.098, TuningConstants.isTuningShooter); // 3
       flywheel_kD = new LoggableTunedNumber(name + "/Flywheel/kD", 0.0, TuningConstants.isTuningShooter);
       flywheel_kS = new LoggableTunedNumber(name + "/Flywheel/kS", 0.0, TuningConstants.isTuningShooter);
-      flywheel_kV = new LoggableTunedNumber(name + "/Flywheel/kV", 0.097, TuningConstants.isTuningShooter); // .098
+      flywheel_kV = new LoggableTunedNumber(name + "/Flywheel/kV", 0.115, TuningConstants.isTuningShooter); // .098
       flywheel_kA = new LoggableTunedNumber(name + "/Flywheel/kA", 0.0, TuningConstants.isTuningShooter);
       flywheel_ramp = new LoggableTunedNumber(name + "/Flywheel/Ramp", 0.25, TuningConstants.isTuningShooter);
       offsetRPM = new LoggableTunedNumber(name + "/Flywheel/Offset", 0, TuningConstants.isTuningShooter);
@@ -704,6 +704,10 @@ public class Turret extends SubsystemChecker {
   }
 
   private void applyHoodSafetyControl(Goal controlGoal) {
+    if (controlGoal == Goal.TUNING_HOOD){
+      hoodIO.setPosition(desiredHoodRads + Units.degreesToRadians(offsetHoodAngle.get()));
+      return;
+    }
     boolean forceDown = isHoodForcedDown(controlGoal);
     if (forceDown) {
       hoodIO.setPosition(SAFE_HOOD_DOWN_RADS);

@@ -28,8 +28,8 @@ import frc.robot.utils.selfCheck.SelfChecking;
 import frc.robot.utils.selfCheck.drive.SelfCheckingTalonFX;
 
 public class ArmIOKrakenFOC implements ArmIO {
-    protected static final LoggableTunedNumber ZERO_VOLTS = new LoggableTunedNumber("Intake/Arm/zeroVolts",-4,TuningConstants.isTuningIntake);
-    protected static final LoggableTunedNumber ZERO_CURRENT_AMPS = new LoggableTunedNumber("Intake/Arm/zeroAmps",20,TuningConstants.isTuningIntake);
+    protected static final LoggableTunedNumber ZERO_VOLTS = new LoggableTunedNumber("Intake/Arm/zeroVolts",6,TuningConstants.isTuningIntake);
+    protected static final LoggableTunedNumber ZERO_CURRENT_AMPS = new LoggableTunedNumber("Intake/Arm/zeroAmps",35,TuningConstants.isTuningIntake);
     protected static final LoggableTunedNumber ZERO_HOLD_SEC = new LoggableTunedNumber("Intake/Arm/zeroTime",.4,TuningConstants.isTuningIntake);
 
     protected final String name;
@@ -255,7 +255,7 @@ public class ArmIOKrakenFOC implements ArmIO {
         }
 
         if (!Double.isNaN(zeroSpikeStartTimeSec) && (now - zeroSpikeStartTimeSec) >= ZERO_HOLD_SEC.get()) {
-            talon.setPosition(0.0);
+            talon.setPosition(inchesToMechanismRotations(maxPositionInches));
             zeroingActive = false;
             zeroSpikeStartTimeSec = Double.NaN;
             openLoop = false;
