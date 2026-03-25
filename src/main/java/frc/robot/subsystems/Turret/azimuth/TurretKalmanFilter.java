@@ -87,6 +87,7 @@ public class TurretKalmanFilter {
             double turretToIdlerRatio,
             double enc1GearTeeth,
             double enc2GearTeeth,
+            double motorRadPerTurretRad,
             String logPrefix) {
 
         this.logPrefix = logPrefix;
@@ -100,7 +101,7 @@ public class TurretKalmanFilter {
         // C = [1, 0] (observe angle only), D = [0].
         DCMotor motor = AdvancedMechanismConstants.Turret.azimuthMotor;
         double moiKgM2 = AdvancedMechanismConstants.Turret.azimuthMOI;
-        double gearing = AdvancedMechanismConstants.Turret.motorRadPerTurretRad;
+        double gearing = motorRadPerTurretRad;
 
         var fullPlant = LinearSystemId.createSingleJointedArmSystem(motor, moiKgM2, gearing);
 

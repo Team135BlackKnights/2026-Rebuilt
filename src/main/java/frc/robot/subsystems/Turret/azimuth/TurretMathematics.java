@@ -20,7 +20,8 @@ public static double motorSetpointForTurretAngle(
     double motorPositionRad,
     double desiredTurretAngleRad,
     double minTurretAngleRad,
-    double maxTurretAngleRad
+    double maxTurretAngleRad,
+    double motorRadPerTurretRad
 ) {
     // Clamp target to mechanical limits
     double desired = MathUtil.clamp(desiredTurretAngleRad, minTurretAngleRad, maxTurretAngleRad);
@@ -35,7 +36,7 @@ public static double motorSetpointForTurretAngle(
 
     double turretDelta = desired - turretNow;
 
-    return motorPositionRad + turretDelta * AdvancedMechanismConstants.Turret.motorRadPerTurretRad;
+    return motorPositionRad + turretDelta * motorRadPerTurretRad;
 }
     public static double turretAngleFromEncodersRad(double enc1Rad0to2pi, double enc2Rad0to2pi, double tolRad, double enc1GearTeeth, double enc2GearTeeth) {
       return turretAngleFromEncodersRad(enc1Rad0to2pi, enc2Rad0to2pi, 0.0, tolRad, enc1GearTeeth, enc2GearTeeth);

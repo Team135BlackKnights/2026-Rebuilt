@@ -387,6 +387,7 @@ public class Turret extends SubsystemChecker {
   }
 
   public void setCharTurretPos(double radians) {
+    goal = Goal.TUNING_AZIMUTH;
     desiredTurretRads = radians;
     commandTurretPosition(desiredTurretRads);
   }
