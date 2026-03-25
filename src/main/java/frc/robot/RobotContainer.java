@@ -542,7 +542,8 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.leftAzimuthBigEncoderOffset,
 						AdvancedMechanismConstants.Turret.leftAzimuthSmallEncoderOffset,
 						AdvancedMechanismConstants.Turret.enc1GearTeethLeft,
-						AdvancedMechanismConstants.Turret.enc2GearTeethLeft);
+						AdvancedMechanismConstants.Turret.enc2GearTeethLeft,
+						AdvancedMechanismConstants.Turret.leftMotorRadPerTurretRad);
 
 				FlywheelIO flywheelIOLeftTurret = new FlywheelIOKrakenFOC(
 						Robot.rioCanBus,
@@ -592,7 +593,8 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.rightAzimuthSmallEncoderOffset,
 						AdvancedMechanismConstants.Turret.rightAzimuthBigEncoderOffset,
 						AdvancedMechanismConstants.Turret.enc1GearTeethRight,
-						AdvancedMechanismConstants.Turret.enc2GearTeethRight);
+						AdvancedMechanismConstants.Turret.enc2GearTeethRight,
+						AdvancedMechanismConstants.Turret.rightMotorRadPerTurretRad);
 				FlywheelIO flywheelIORightTurret = new FlywheelIOKrakenFOC(
 						Robot.rioCanBus,
 						AdvancedMechanismConstants.Turret.rightFlywheelID,
@@ -761,7 +763,8 @@ public class RobotContainer {
 								AdvancedMechanismConstants.Turret.minTurretAngle,
 								AdvancedMechanismConstants.Turret.maxTurretAngle,
 								AdvancedMechanismConstants.Turret.enc1GearTeethLeft,
-								AdvancedMechanismConstants.Turret.enc2GearTeethLeft),
+								AdvancedMechanismConstants.Turret.enc2GearTeethLeft,
+								AdvancedMechanismConstants.Turret.leftMotorRadPerTurretRad),
 						new FlywheelIOSim(
 								Robot.rioCanBus,
 								AdvancedMechanismConstants.Turret.leftFlywheelID,
@@ -795,7 +798,8 @@ public class RobotContainer {
 								-AdvancedMechanismConstants.Turret.maxTurretAngle,
 								-AdvancedMechanismConstants.Turret.minTurretAngle,
 								AdvancedMechanismConstants.Turret.enc1GearTeethRight,
-								AdvancedMechanismConstants.Turret.enc2GearTeethRight),
+								AdvancedMechanismConstants.Turret.enc2GearTeethRight,
+								AdvancedMechanismConstants.Turret.rightMotorRadPerTurretRad),
 						new FlywheelIOSim(
 								Robot.rioCanBus,
 								AdvancedMechanismConstants.Turret.rightFlywheelID,

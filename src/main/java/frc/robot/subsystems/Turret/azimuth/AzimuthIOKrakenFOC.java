@@ -46,10 +46,6 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
     private static final double MOTOR_UPDATE_HZ = 100.0;
     private static final double ENCODER_ERROR = 1 / 7.7;
 
-    /** Motor rotor rotations per turret rotation (36/10 * 77/10 = 27.72). */
-    private static final double MOTOR_TO_TURRET_RATIO =
-            AdvancedMechanismConstants.Turret.motorRadPerTurretRad;
-
     private static final double BASE_TOLERANCE_ROT = Units.degreesToRadians(6.0) / TWO_PI;
     private static final LoggableTunedNumber SPEED_CUT =
             new LoggableTunedNumber("Turrets/SPEED_CUT", 0.05, TuningConstants.isTuningShooter);
@@ -85,6 +81,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
     private final double turretSign;
     private final boolean rightTurret;
+    private final double motorToTurretRatio;
 
     private double lastTurretAngleRads = 0.0;
     private double lastUpdateTimeSec = -1.0;
@@ -109,7 +106,8 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
             double encoder1Offset,
             double encoder2Offset,
             double enc1GearTeeth,
-            double enc2GearTeeth) {
+            double enc2GearTeeth,
+            double motorToTurretRatio) {
 
         this.name = name;
         this.minAngle = minTurretAngle;
@@ -118,6 +116,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         this.rightTurret =
                 canCoderSmallID == AdvancedMechanismConstants.Turret.rightAzimuthBigEncoderID;
         this.turretSign = rightTurret ? 1.0 : 1.0;
+        this.motorToTurretRatio = motorToTurretRatio;
 
         final double turretToIdlerRatio =
                 (double) AdvancedMechanismConstants.Turret.turretTeeth
@@ -165,8 +164,8 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         talonConfig.Slot0.kV = 0.0;
         talonConfig.Slot0.kA = 0.0;
 
-        talonConfig.MotionMagic.MotionMagicCruiseVelocity = 12.0 * MOTOR_TO_TURRET_RATIO / TWO_PI;
-        talonConfig.MotionMagic.MotionMagicAcceleration = 40.0 * MOTOR_TO_TURRET_RATIO / TWO_PI;
+        talonConfig.MotionMagic.MotionMagicCruiseVelocity = 12.0 * motorToTurretRatio / TWO_PI;
+        talonConfig.MotionMagic.MotionMagicAcceleration = 40.0 * motorToTurretRatio / TWO_PI;
         talonConfig.MotionMagic.MotionMagicJerk = 0; // trapezoidal
 
         talonConfig.ClosedLoopRamps.VoltageClosedLoopRampPeriod = 0.0;
@@ -254,7 +253,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
         final double motorVelRotsPerSec = motorRotorVelocityRotsPerSec.getValueAsDouble();
         final double turretVelRadsPerSec =
-                Units.rotationsToRadians(motorVelRotsPerSec) * turretSign / MOTOR_TO_TURRET_RATIO;
+                Units.rotationsToRadians(motorVelRotsPerSec) * turretSign / motorToTurretRatio;
 
         /*
          * Velocity-integrate lastTurretAngleRads every cycle so the position
@@ -314,7 +313,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
              */
             double currentRotorRots = motorRotorRots.getValueAsDouble();
             motorRotorOffsetRots = currentRotorRots
-                    - (solvedRad / TWO_PI) * MOTOR_TO_TURRET_RATIO * turretSign;
+                    - (solvedRad / TWO_PI) * motorToTurretRatio * turretSign;
             Logger.recordOutput(name + "/Turret/MotorRotorOffsetRots", motorRotorOffsetRots);
         } else if (haveLock) {
             lastTurretAngleRads = predictedTurretRad;
@@ -343,7 +342,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
         // Convert desired turret-space angle to absolute motor rotor rotations
         double desiredRotorRots = motorRotorOffsetRots
-                + (desiredTurret / TWO_PI) * MOTOR_TO_TURRET_RATIO * turretSign;
+                + (desiredTurret / TWO_PI) * motorToTurretRatio * turretSign;
 
         Logger.recordOutput(name + "/Turret/DesMotorSpot", desiredRotorRots);
         Logger.recordOutput(name + "/Turret/DesiredTurretRads", desiredTurret);
@@ -395,9 +394,9 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         talonConfig.Slot0.kA = ka;
 
         talonConfig.MotionMagic.MotionMagicCruiseVelocity =
-                velocityMax * MOTOR_TO_TURRET_RATIO / TWO_PI;
+                velocityMax * motorToTurretRatio / TWO_PI;
         talonConfig.MotionMagic.MotionMagicAcceleration =
-                accelerationMax * MOTOR_TO_TURRET_RATIO / TWO_PI;
+                accelerationMax * motorToTurretRatio / TWO_PI;
 
         talonConfig.ClosedLoopRamps.VoltageClosedLoopRampPeriod = rampRate;
         talonConfig.OpenLoopRamps.VoltageOpenLoopRampPeriod = rampRate;
