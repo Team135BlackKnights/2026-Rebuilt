@@ -362,7 +362,7 @@ public class Turret extends SubsystemChecker {
   private void commandTurretPosition(double targetRads) {
     desiredTurretRads = targetRads;
     double filtered = applyTurretAngleFilter(targetRads);
-    azimuthIO.setDesiredPosition(filtered);
+    azimuthIO.setDesiredPosition(desiredTurretRads);
     Logger.recordOutput(name + "/Setpoints/TurretRadsFiltered", filtered);
   }
 

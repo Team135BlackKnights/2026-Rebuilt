@@ -137,7 +137,7 @@ public class Intake extends SubsystemChecker {
                 frontRollers.setGoal(FrontRollers.Goal.VOMITING);
             }
             case JACKHAMMERING_IN -> {
-                currentSlideSetpointInches = slide_stow.get();
+                currentSlideSetpointInches = slide_ground.get();
                 frontRollers.setGoal(getJackhammerFrontRollerGoal());
             }
             case JACKHAMMERING_OUT -> {
