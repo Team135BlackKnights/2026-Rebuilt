@@ -219,7 +219,7 @@ public class Turret extends SubsystemChecker {
     hoodToleranceRads = new LoggableTunedNumber(name + "/Tolerance/HoodRads", Math.toRadians(2),
         TuningConstants.isTuningShooter);
     flywheelToleranceRadsPerSec = new LoggableTunedNumber(name + "/Tolerance/FlywheelRadsPerSec",
-        Units.rotationsPerMinuteToRadiansPerSecond(1000), TuningConstants.isTuningShooter);
+        Units.rotationsPerMinuteToRadiansPerSecond(1500), TuningConstants.isTuningShooter);
     turretAngleSnapDeadbandDeg = new LoggableTunedNumber(name + "/Turret/SnapDeadbandDeg", 1.0,
         TuningConstants.isTuningShooter);
     turretAngleSnapAlpha = new LoggableTunedNumber(name + "/Turret/SnapAlpha", 0.35, TuningConstants.isTuningShooter);
@@ -485,7 +485,7 @@ public class Turret extends SubsystemChecker {
     return isAzimuthConnected()
         && isHoodConnected()
         && isFlywheelConnected()
-        && !isHoodForcedDown(getShooterControlGoal())
+        //&& !isHoodForcedDown(getShooterControlGoal())
         && Math.abs(turretAngleErrorRads()) < aimToleranceRads.get()
         && Math.abs(hoodInputs.positionRads - desiredHoodRads
             - Units.degreesToRadians(offsetHoodAngle.get())) < hoodToleranceRads.get()
