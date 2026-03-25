@@ -419,11 +419,17 @@ public class Turret extends SubsystemChecker {
     goal = Goal.TUNING_SHOT;
     jackhammerBaseGoal = goal;
     canChangeGoal = false;
+    kickupWaitStartSec = Double.NaN;
+  }
+
+  public boolean isShotTuningActive() {
+    return goal == Goal.TUNING_SHOT && !canChangeGoal;
   }
 
   public void clearLoggedShots() {
     loggedShots.clear();
     canChangeGoal = true;
+    kickupWaitStartSec = Double.NaN;
   }
 
   public double getCharTurretVelocity() {
@@ -654,6 +660,11 @@ public class Turret extends SubsystemChecker {
       return Kickup.Goal.JACKHAMMER;
     }
 
+    if (isShotTuningActive()) {
+      kickupWaitStartSec = Double.NaN;
+      return Kickup.Goal.TESTING;
+    }
+
     if (!isShootLikeGoal(controlGoal)) {
       kickupWaitStartSec = Double.NaN;
       return Kickup.Goal.IDLING;
@@ -705,7 +716,7 @@ public class Turret extends SubsystemChecker {
   }
 
   private void applyHoodSafetyControl(Goal controlGoal) {
-    if (controlGoal == Goal.TUNING_HOOD){
+    if (controlGoal == Goal.TUNING_HOOD || controlGoal == Goal.TUNING_SHOT) {
       hoodIO.setPosition(desiredHoodRads + Units.degreesToRadians(offsetHoodAngle.get()));
       return;
     }

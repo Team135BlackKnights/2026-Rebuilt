@@ -23,6 +23,7 @@ public class Kickup extends GenericRollerSystem<Kickup.Goal> {
         IDLING(0.0, true),
         JACKHAMMER(12.0, true, 0.25),
         SHOOTING(11.0, true),
+        TESTING(6.0, true),
         VOMITING(-8.0, true);
 
         private final double defaultValue;
@@ -55,6 +56,7 @@ public class Kickup extends GenericRollerSystem<Kickup.Goal> {
     private final LoggableTunedNumber jackhammerVoltage;
     private final LoggableTunedNumber shootingVoltage;
     private final LoggableTunedNumber vomitingVoltage;
+    private final LoggableTunedNumber testingVoltage;
     private Goal goal = Goal.IDLING;
 
     public Kickup(KickupIO io) {
@@ -74,6 +76,9 @@ public class Kickup extends GenericRollerSystem<Kickup.Goal> {
                 Constants.TuningConstants.isTuningShooter);
         vomitingVoltage = new LoggableTunedNumber(
                 tuningPrefix + "/VomitingVoltage", Goal.VOMITING.getValueSupplier().getAsDouble(),
+                Constants.TuningConstants.isTuningShooter);
+        testingVoltage = new LoggableTunedNumber(
+                tuningPrefix + "/TestingVoltage", Goal.TESTING.getValueSupplier().getAsDouble(),
                 Constants.TuningConstants.isTuningShooter);
     }
 
@@ -114,6 +119,7 @@ public class Kickup extends GenericRollerSystem<Kickup.Goal> {
             case JACKHAMMER -> jackhammerVoltage.get();
             case SHOOTING -> shootingVoltage.get();
             case VOMITING -> vomitingVoltage.get();
+            case TESTING -> testingVoltage.get();
         };
     }
 

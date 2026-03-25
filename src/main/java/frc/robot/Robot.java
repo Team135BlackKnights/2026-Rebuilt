@@ -345,6 +345,7 @@ public class Robot extends LoggedRobot {
 		// robot's periodic
 		// block in order for anything in the Command-based framework to work.
 		CommandScheduler.getInstance().run();
+		RobotContainer.updateShotTuningIndexerGoals();
 		VirtualSubsystem.periodicAll();
 		for (PeriodicFunction f : periodicFunctions) {
 			f.runIfReady();

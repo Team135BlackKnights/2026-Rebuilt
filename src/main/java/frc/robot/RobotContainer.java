@@ -191,6 +191,20 @@ public class RobotContainer {
 	public static double angularSpeed = 0;
 	public static double xSpeed = 0;
 	public static double ySpeed = 0;
+
+	public static void updateShotTuningIndexerGoals() {
+		if (kickup == null || leftTurret == null || rightTurret == null) {
+			return;
+		}
+
+		boolean shotTuningActive = leftTurret.isShotTuningActive() || rightTurret.isShotTuningActive();
+		if (shotTuningActive) {
+			kickup.setGoal(Kickup.Goal.TESTING);
+		} else if (kickup.getGoal() == Kickup.Goal.TESTING) {
+			kickup.setGoal(Kickup.Goal.IDLING);
+		}
+	}
+
 	Trigger aButtonDrive = driveController.a();
 	Trigger bButtonDrive = driveController.b();
 	Trigger xButtonDrive = driveController.x();
@@ -1163,17 +1177,15 @@ public class RobotContainer {
 			// hang.setGoal(HangState.STOWED);
 		}));
 		bButtonDrive.onTrue(Commands.runOnce(() -> {
-			leftTurret.setCharTurretPos(2);
-			rightTurret.setCharTurretPos(2);
-			//leftTurret.setCharHoodPos(Units.degreesToRadians(40));
-			//rightTurret.setCharHoodPos(Units.degreesToRadians(40));
-			//leftTurret.clearLoggedShots();
-			//rightTurret.clearLoggedShots();
-		}));
+			leftTurret.clearLoggedShots();
+			rightTurret.clearLoggedShots();
+			kickup.setGoal(Kickup.Goal.IDLING);
+		}, leftTurret, rightTurret, kickup));
 		yButtonDrive.onTrue(Commands.runOnce(() -> {
 			leftTurret.enterShotTuning();
 			rightTurret.enterShotTuning();
-		}));
+			kickup.setGoal(Kickup.Goal.TESTING);
+		}, leftTurret, rightTurret, kickup));
 		// Climber controls
 		// aButtonDrive.onTrue(Commands.either(Commands.runOnce(() ->
 		// hang.setGoal(HangState.EXTENDED)), Commands.runOnce(() ->
