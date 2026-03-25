@@ -591,7 +591,7 @@ public class RobotContainer {
 										Robot.rioCanBus,
 										"LeftTurretKickup",
 										AdvancedMechanismConstants.Turret.currentLimitKickup,
-										AdvancedMechanismConstants.Turret.invertKickup,
+										true,
 										false,
 										AdvancedMechanismConstants.Turret.turretKickupRatio)),
 						AdvancedMechanismConstants.Turret.robotToLeftTurretHoleCenter, "LeftTurret");
@@ -634,7 +634,7 @@ public class RobotContainer {
 										Robot.rioCanBus,
 										"RightTurretKickup",
 										AdvancedMechanismConstants.Turret.currentLimitKickup,
-										AdvancedMechanismConstants.Turret.invertKickup,
+										false,
 										false,
 										AdvancedMechanismConstants.Turret.turretKickupRatio)),
 						AdvancedMechanismConstants.Turret.robotToRightTurretHoleCenter, "RightTurret");
