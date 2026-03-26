@@ -41,10 +41,10 @@ public class HoodIOKrakenFOC implements HoodIO {
     private static final double START_ANGLE_DEG_RIGHT = 13.0;
 
     private static final LoggableTunedNumber END_ANGLE_DEG_LEFT =
-        new LoggableTunedNumber("Hood/Left/EndAngleDeg", 42.0, TuningConstants.isTuningIntake);
+        new LoggableTunedNumber("Hood/Left/EndAngleDeg", 45.0, TuningConstants.isTuningIntake);
 
     private static final LoggableTunedNumber END_EXTENSION_IN_LEFT =
-        new LoggableTunedNumber("Hood/Left/EndExtensionIn", 1.69, TuningConstants.isTuningIntake);
+        new LoggableTunedNumber("Hood/Left/EndExtensionIn", 2.0, TuningConstants.isTuningIntake);
 
     private static final LoggableTunedNumber END_ANGLE_DEG_RIGHT =
         new LoggableTunedNumber("Hood/Right/EndAngleDeg", 46.0, TuningConstants.isTuningIntake);

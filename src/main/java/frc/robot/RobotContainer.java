@@ -1164,8 +1164,8 @@ public class RobotContainer {
 		rightStickButtonDrive.onTrue(new OrchestraC("megolovania").withName("Play Megolovania"));
 		// Test Commands
 		aButtonDrive.whileTrue(Commands.run(() -> {
-			leftTurret.setCharTurretPos(0);
-			rightTurret.setCharTurretPos(0);
+			//leftTurret.setCharTurretPos(0);
+			rightTurret.setCharRPM(3000);
 			//intake.setGoal(Goal.VOMITING);
 			//kickup.setGoal(Kickup.Goal.VOMITING);
 			// flywheel go to 5000 rpm
@@ -1177,8 +1177,9 @@ public class RobotContainer {
 			// hang.setGoal(HangState.STOWED);
 		}));
 		bButtonDrive.onTrue(Commands.runOnce(() -> {
-			leftTurret.clearLoggedShots();
-			rightTurret.clearLoggedShots();
+			rightTurret.setCharRPM(5000);
+			//leftTurret.clearLoggedShots();
+			//rightTurret.clearLoggedShots();
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}, leftTurret, rightTurret, kickup));
 		yButtonDrive.onTrue(Commands.runOnce(() -> {
