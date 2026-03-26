@@ -1118,11 +1118,11 @@ public class RobotContainer {
 						intake,
 						CameraID.INTAKE_CAM),
 				Set.of(drivetrainS, intake));
-		// Auto factory setup
-		touchboardAutoFactory = new TouchboardAutoFactory(pathFinder, drivetrainS,
-				() -> new AutoIntake(drivetrainS, intake, CameraID.INTAKE_CAM), Set.of(intake, drivetrainS),
-				() -> buildTargetHubBothCommand().andThen(buildShootTurretsCommand()).withName("Shoot Turrets Auto"),
-				Set.of(leftTurret, rightTurret, kickup, intake));
+			// Auto factory setup
+			touchboardAutoFactory = new TouchboardAutoFactory(pathFinder, drivetrainS,
+					() -> new AutoIntake(drivetrainS, intake, CameraID.INTAKE_CAM), Set.of(intake, drivetrainS),
+					() -> buildTargetHubBothCommand().andThen(buildAutoShootTurretsCommand()).withName("Shoot Turrets Auto"),
+					Set.of(leftTurret, rightTurret, kickup, intake));
 
 		// Start of actual DRIVER bindings
 		// Start = zero chassis
@@ -1560,16 +1560,16 @@ public class RobotContainer {
 	}
 
 	private Command buildShootTurretsHubIntakeOutCommand() {
-		return (buildTargetHubBothCommand().andThen(Commands.runOnce(() -> {
-			shootTimer.restart();
-			resetShootCycle();
-			kickup.setGoal(Kickup.Goal.IDLING);
-		}).andThen(Commands.run(() -> {
-			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.INTAKE_GROUND_SHOOT,
-					shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints());
-		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
-			leftTurret.setGoal(Turret.Goal.AIMING);
-			rightTurret.setGoal(Turret.Goal.AIMING);
+			return (buildTargetHubBothCommand().andThen(Commands.runOnce(() -> {
+				shootTimer.restart();
+				resetShootCycle();
+				kickup.setGoal(Kickup.Goal.IDLING);
+			}).andThen(Commands.run(() -> {
+				applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.AGITATING,
+						shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints());
+			}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
+				leftTurret.setGoal(Turret.Goal.AIMING);
+				rightTurret.setGoal(Turret.Goal.AIMING);
 			kickup.setGoal(Kickup.Goal.IDLING);
 			intake.setGoal(Intake.Goal.INTAKE_OUTER_IDLE);
 			shootTimer.stop();
@@ -1610,6 +1610,24 @@ public class RobotContainer {
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}).andThen(Commands.run(() -> {
 			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.INTAKE_GROUND_SHOOT,
+					shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints());
+		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
+			leftTurret.setGoal(Turret.Goal.AIMING);
+			rightTurret.setGoal(Turret.Goal.AIMING);
+			intake.setGoal(Goal.INTAKE_OUTER_IDLE);
+			kickup.setGoal(Kickup.Goal.IDLING);
+			shootTimer.stop();
+			shootCycleStartSec = Double.NaN;
+		}));
+	}
+
+	private Command buildAutoShootTurretsCommand() {
+		return Commands.runOnce(() -> {
+			shootTimer.restart();
+			resetShootCycle();
+			kickup.setGoal(Kickup.Goal.IDLING);
+		}).andThen(Commands.run(() -> {
+			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.AGITATING,
 					shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints());
 		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
