@@ -44,11 +44,11 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
     private static final double TWO_PI = 2.0 * Math.PI;
     private static final double ENCODER_UPDATE_HZ = 100.0;
     private static final double MOTOR_UPDATE_HZ = 100.0;
-    private static final double ENCODER_ERROR = 1 / 7.7;
+    private static final double ENCODER_ERROR = 1 / 999;
 
     private static final double BASE_TOLERANCE_ROT = Units.degreesToRadians(6.0) / TWO_PI;
     private static final LoggableTunedNumber SPEED_CUT =
-            new LoggableTunedNumber("Turrets/SPEED_CUT", 0.05, TuningConstants.isTuningShooter);
+            new LoggableTunedNumber("Turrets/SPEED_CUT", 0.1, TuningConstants.isTuningShooter);
 
     private final TalonFX talon;
     private final CANcoder canCoderBig;
@@ -85,7 +85,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
     private double lastTurretAngleRads = 0.0;
     private double lastUpdateTimeSec = -1.0;
-
+    private double lastOffsetUpdate = 0.0;
     /**
      * The motor rotor position (in rotations) that corresponds to turret angle = 0.
      * Computed on ANY CRT lock:  offset = currentRotorRots - turretRads/(2π) * ratio * sign
@@ -315,6 +315,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
             motorRotorOffsetRots = currentRotorRots
                     - (solvedRad / TWO_PI) * motorToTurretRatio * turretSign;
             Logger.recordOutput(name + "/Turret/MotorRotorOffsetRots", motorRotorOffsetRots);
+            lastOffsetUpdate = Timer.getFPGATimestamp();
         } else if (haveLock) {
             lastTurretAngleRads = predictedTurretRad;
         }

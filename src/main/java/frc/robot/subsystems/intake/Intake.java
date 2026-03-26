@@ -52,7 +52,7 @@ public class Intake extends SubsystemChecker {
     private static final LoggableTunedNumber slide_agitate = new LoggableTunedNumber("Intake/Setpoints/AgitateInches",
             6.0, TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber agitate_force_volts = new LoggableTunedNumber(
-            "Intake/AgitateForceVolts", 12.0, TuningConstants.isTuningIntake);
+            "Intake/AgitateForceVolts", -5.5, TuningConstants.isTuningIntake);
 
     private static final LoggableTunedNumber arm_tolerance = new LoggableTunedNumber("Intake/ToleranceInches", 0.5,
             TuningConstants.isTuningIntake);

@@ -12,7 +12,7 @@ public class AdvancedMechanismConstants {
                 public static final double minHoodAngle = Math.toRadians(12.0);
                 public static final double maxHoodAngle = Math.toRadians(51.0);
                 public static final int currentLimitAzimuth = 50;
-                public static final int currentLimitFlywheel = 40;
+                public static final int currentLimitFlywheel = 80;
                 public static final int currentLimitHood = 20;
                 public static final int currentLimitKickup = 100;
                 public static final int turretTeeth = 77;

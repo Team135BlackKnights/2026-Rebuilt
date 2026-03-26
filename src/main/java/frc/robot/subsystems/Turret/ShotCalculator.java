@@ -96,16 +96,15 @@ public class ShotCalculator {
     ShotProfile profile = new ShotProfile("Hub");
     addCalibrationPoint(profile, 1.254, 3000.0, 0.28, 1.020);
     addCalibrationPoint(profile, 1.767, 3000.0, 0.32, 1.020);
-    addCalibrationPoint(profile, 1.762, 3500.0, 0.37, 1.100);
-    addCalibrationPoint(profile, 1.929, 3500.0, 0.37, 1.100);
-    addCalibrationPoint(profile, 2.135, 3300.0, 0.40, 1.100);
-    addCalibrationPoint(profile, 2.277, 3300.0, 0.44, 0.990);
-    addCalibrationPoint(profile, 2.766, 3900, 0.47, 1.14);
-    addCalibrationPoint(profile, 2.815, 3950, 0.46, 1.14);
-    addCalibrationPoint(profile, 2.86, 3950, 0.46, 1.2);
-    addCalibrationPoint(profile, 3.074, 4200, 0.48, 1.29);
-    addCalibrationPoint(profile, 3.274, 4300, 0.48, 1.31);
-    addCalibrationPoint(profile, 3.494, 4400, 0.48, 1.3);
+    addCalibrationPoint(profile, 1.929, 3300.0, 0.37, 1.100);
+    addCalibrationPoint(profile, 2.135, 3300.0, 0.42, 1.100);
+    addCalibrationPoint(profile, 2.277, 3300.0, 0.46, 0.990);
+    addCalibrationPoint(profile, 2.766, 3900, 0.51, 1.14);
+    addCalibrationPoint(profile, 2.815, 3950, 0.51, 1.14);
+    addCalibrationPoint(profile, 2.86, 3950, 0.51, 1.2);
+    addCalibrationPoint(profile, 3.074, 4200, 0.53, 1.29);
+    addCalibrationPoint(profile, 3.274, 4300, 0.53, 1.31);
+    addCalibrationPoint(profile, 3.494, 4400, 0.53, 1.3);
     return profile;
   }
 

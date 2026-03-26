@@ -1,4 +1,4 @@
-["dist=1.254m rpm=3000.0 hood=0.28rad tof=1.020s", "dist=1.767m rpm=3000.0 hood=0.32rad tof=1.020s", "dist=1.762m rpm=3500.0 hood=0.37rad tof=1.100s", "dist=1.929m rpm=3500.0 hood=0.37rad tof=1.100s", "dist=2.135m rpm=3300.0 hood=0.40rad tof=1.100s", "dist=2.277m rpm=3300.0 hood=0.44rad tof=0.990s"]
+["dist=1.691m rpm=3000.0 hood=0.31rad tof=0.920s", "dist=1.956m rpm=3000.0 hood=0.37rad tof=0.940s", "dist=2.170m rpm=3200.0 hood=0.41rad tof=0.970s", "dist=2.530m rpm=3500.0 hood=0.45rad tof=1.080s", "dist=2.761m rpm=3600.0 hood=0.50rad tof=1.170s", "dist=3.021m rpm=3800.0 hood=0.53rad tof=1.140s", "dist=3.318m rpm=4200.0 hood=0.62rad tof=1.070s", "dist=3.555m rpm=4700.0 hood=0.70rad tof=1.030s"]
 ![blocks_logo](https://github.com/Team135BlackKnights/135-Blocks/assets/49589065/488cddd6-688f-4a2d-b0a6-cc395535b318)
 
 # 135 Consul

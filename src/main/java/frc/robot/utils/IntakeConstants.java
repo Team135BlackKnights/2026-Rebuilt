@@ -7,7 +7,7 @@ public class IntakeConstants {
     public static final int intakeMotorID = 40; 
     public static final int frontRollersMotorID = 42;
     public static final int intakeCurrentLimit = 40; // amps
-    public static final int frontRollersCurrentLimit = 100; // amps
+    public static final int frontRollersCurrentLimit = 50; // amps
     public static final boolean intakeInverted = false;
     public static final boolean frontRollersInverted = true;
     public static final DCMotor intakeArmMotor = DCMotor.getKrakenX44Foc(1);
