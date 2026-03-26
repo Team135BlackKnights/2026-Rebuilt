@@ -214,7 +214,7 @@ public class RobotContainer {
 	Trigger leftTriggerDrive = driveController.leftTrigger(.125); // partial
 	Trigger leftTriggerDriveFull = driveController.leftTrigger(.875); // full if needed
 	Trigger rightTriggerDrive = driveController.rightTrigger(.125);
-	Trigger rightTriggerDriveFull = driveController.rightTrigger(.875);
+	Trigger rightTriggerDriveFull = driveController.a();//driveController.rightTrigger(.875);
 	Trigger leftStickButtonDrive = driveController.leftStick();
 	Trigger rightStickButtonDrive = driveController.rightStick();
 	Trigger selectButtonDrive = driveController.back(); // select
@@ -1163,7 +1163,7 @@ public class RobotContainer {
 		leftStickButtonDrive.onFalse(Commands.runOnce(() -> drivetrainS.stopModules(), drivetrainS));
 		rightStickButtonDrive.onTrue(new OrchestraC("megolovania").withName("Play Megolovania"));
 		// Test Commands
-		aButtonDrive.whileTrue(Commands.run(() -> {
+		/*aButtonDrive.whileTrue(Commands.run(() -> {
 			//leftTurret.setCharTurretPos(0);
 			rightTurret.setCharRPM(3000);
 			//intake.setGoal(Goal.VOMITING);
@@ -1175,7 +1175,7 @@ public class RobotContainer {
 			// intake.setGoal(Goal.STOW);
 			// leftTurret.setCharTurretPos(-1.49);
 			// hang.setGoal(HangState.STOWED);
-		}));
+		}));*/
 		bButtonDrive.onTrue(Commands.runOnce(() -> {
 			rightTurret.setCharRPM(5000);
 			//leftTurret.clearLoggedShots();

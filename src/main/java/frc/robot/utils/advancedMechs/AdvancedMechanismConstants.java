@@ -1,7 +1,10 @@
 package frc.robot.utils.advancedMechs;
 
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform2d;
+import edu.wpi.first.math.geometry.Transform3d;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.math.system.plant.DCMotor;
 import frc.robot.utils.simpleMechanisms.SimpleMechanismConstants;
 
@@ -10,7 +13,7 @@ public class AdvancedMechanismConstants {
                 public static final double minTurretAngle = -1;
                 public static final double maxTurretAngle = 3.5;
                 public static final double minHoodAngle = Math.toRadians(12.0);
-                public static final double maxHoodAngle = Math.toRadians(51.0);
+                public static final double maxHoodAngle = Math.toRadians(43.0);
                 public static final int currentLimitAzimuth = 50;
                 public static final int currentLimitFlywheel = 80;
                 public static final int currentLimitHood = 20;
@@ -56,9 +59,15 @@ public class AdvancedMechanismConstants {
                 public static final int leftHoodEncoderID = 27;
                 public static final String leftName = "LeftTurret";
                 public static final Transform2d robotToLeftTurretHoleCenter = new Transform2d(-.163, -.227, new Rotation2d());
+                public static final Transform3d robotToLeftTurretLaunchBase =
+                                new Transform3d(robotToLeftTurretHoleCenter.getX(), robotToLeftTurretHoleCenter.getY(),
+                                                Units.inchesToMeters(15.0), new Rotation3d());
                 public static final double leftAzimuthBigEncoderOffset = .2841796875;
                 public static final double leftAzimuthSmallEncoderOffset = .201904296875;
                 public static final double leftHoodEncoderOffset = 0.2294921875;
+                public static final double leftLaunchPitchOffsetRads = Math.PI / 2.0;
+                public static final double leftLaunchPitchScale = -1.0;
+                public static final double leftLaunchPathLengthMeters = 0.20746;
                 // Right Turret
                 public static final int rightAzimuthID = 29;
                 public static final int rightAzimuthBigEncoderID = 30;
@@ -68,8 +77,16 @@ public class AdvancedMechanismConstants {
                 public static final int rightHoodEncoderID = 34;
                 public static final String rightName = "RightTurret";
                 public static final Transform2d robotToRightTurretHoleCenter = new Transform2d(-.163, .227, new Rotation2d());
+                public static final Transform3d robotToRightTurretLaunchBase =
+                                new Transform3d(robotToRightTurretHoleCenter.getX(), robotToRightTurretHoleCenter.getY(),
+                                                Units.inchesToMeters(15.0), new Rotation3d());
                 public static final double rightAzimuthBigEncoderOffset = .38916;
                 public static final double rightAzimuthSmallEncoderOffset = .084716;
                 public static final double rightHoodEncoderOffset = 0.385986328125;
+                public static final double rightLaunchPitchOffsetRads = Math.PI / 2.0;
+                public static final double rightLaunchPitchScale = -1.0;
+                public static final double rightLaunchPathLengthMeters = 0.20746;
+                public static final double hubScoringPlaneHeightMeters = Units.inchesToMeters(72.0);
+                public static final double hubScoringPlaneLateralToleranceMeters = Units.inchesToMeters(18.0);
         }
 }
