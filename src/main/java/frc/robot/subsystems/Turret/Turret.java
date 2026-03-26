@@ -143,6 +143,7 @@ public class Turret extends SubsystemChecker {
   private Goal jackhammerBaseGoal = Goal.IDLE;
 
   private static final double SAFE_HOOD_DOWN_RADS = Units.degreesToRadians(13.0);
+  private static final double SAFE_TRENCH_HOOD_RADS = Units.degreesToRadians(31.0);
   private static final double AUTO_REZERO_INTERVAL_SEC = 2.5;
   private static final double MANUAL_REZERO_INTERVAL_SEC = 1;
 
@@ -712,17 +713,21 @@ public class Turret extends SubsystemChecker {
   }
 
   private boolean isHoodForcedDown(Goal controlGoal) {
-    return manualHoodRezeroHeld || trenchHoodLock || !isShootLikeGoal(controlGoal);
+    return manualHoodRezeroHeld || !isShootLikeGoal(controlGoal);
   }
 
   private void applyHoodSafetyControl(Goal controlGoal) {
+    double commandedHoodRads = desiredHoodRads + Units.degreesToRadians(offsetHoodAngle.get());
     if (controlGoal == Goal.TUNING_HOOD || controlGoal == Goal.TUNING_SHOT) {
-      hoodIO.setPosition(desiredHoodRads + Units.degreesToRadians(offsetHoodAngle.get()));
+      hoodIO.setPosition(commandedHoodRads);
       return;
     }
     boolean forceDown = isHoodForcedDown(controlGoal);
+    boolean trenchClamped =
+        trenchHoodLock && isShootLikeGoal(controlGoal) && commandedHoodRads > SAFE_TRENCH_HOOD_RADS;
     if (forceDown) {
       hoodIO.setPosition(SAFE_HOOD_DOWN_RADS);
+      /*
       if (DriverStation.isEnabled()) {
         double now = Timer.getFPGATimestamp();
         if (manualHoodRezeroHeld) {
@@ -736,11 +741,15 @@ public class Turret extends SubsystemChecker {
           lastAutoRezeroSec = now;
         }
       }
+      */
+    } else if (trenchClamped) {
+      hoodIO.setPosition(SAFE_TRENCH_HOOD_RADS);
     } else {
-      hoodIO.setPosition(desiredHoodRads + Units.degreesToRadians(offsetHoodAngle.get()));
+      hoodIO.setPosition(commandedHoodRads);
     }
-    hoodForcedDownLastLoop = forceDown;
+    hoodForcedDownLastLoop = forceDown || trenchClamped;
     Logger.recordOutput(name + "/Hood/ForceDown", forceDown);
+    Logger.recordOutput(name + "/Hood/TrenchClamped", trenchClamped);
     Logger.recordOutput(name + "/Hood/TrenchLock", trenchHoodLock);
     Logger.recordOutput(name + "/Hood/ManualRezeroHeld", manualHoodRezeroHeld);
   }

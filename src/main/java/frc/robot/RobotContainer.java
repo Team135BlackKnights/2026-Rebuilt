@@ -1032,7 +1032,7 @@ public class RobotContainer {
 		Trigger beyondCenter = new Trigger(() -> GeomUtil.applyY(drivetrainS.getPose().getY()) > 4);
 		Trigger beforeRightTrench = new Trigger(() -> GeomUtil.applyY(drivetrainS.getPose().getY()) < 2.3);
 		final double trenchHardLockMeters = 0.6;
-		final double hoodSafeDownDeg = 13.0;
+			final double hoodSafeDownDeg = 31.0;
 		final double hoodDownRateDegPerSec = 38.0;
 		final double trenchUnlockDebounceSec = 0.4;
 		BooleanSupplier nearAnyTrenchRaw = () -> {
@@ -1067,8 +1067,8 @@ public class RobotContainer {
 		};
 		Debouncer trenchUnlockDebouncer = new Debouncer(trenchUnlockDebounceSec, Debouncer.DebounceType.kFalling);
 		Trigger nearAnyTrench = new Trigger(() -> trenchUnlockDebouncer.calculate(nearAnyTrenchRaw.getAsBoolean()));
-		Trigger hoodAboveSafeAngle = new Trigger(
-				() -> leftTurret.isHoodAboveDegrees(14.0) || rightTurret.isHoodAboveDegrees(14.0));
+			Trigger hoodAboveSafeAngle = new Trigger(
+					() -> leftTurret.isHoodAboveDegrees(31.0) || rightTurret.isHoodAboveDegrees(31.0));
 		Command targetHubBoth = buildTargetHubBothCommand();
 		Command shootTurrets = buildShootTurretsCommand();
 
