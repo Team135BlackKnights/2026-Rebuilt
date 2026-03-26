@@ -51,6 +51,8 @@ public class Intake extends SubsystemChecker {
             .25, TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber slide_agitate = new LoggableTunedNumber("Intake/Setpoints/AgitateInches",
             6.0, TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber agitate_force_volts = new LoggableTunedNumber(
+            "Intake/AgitateForceVolts", 12.0, TuningConstants.isTuningIntake);
 
     private static final LoggableTunedNumber arm_tolerance = new LoggableTunedNumber("Intake/ToleranceInches", 0.5,
             TuningConstants.isTuningIntake);
@@ -148,14 +150,16 @@ public class Intake extends SubsystemChecker {
             case HOLD -> frontRollers.setGoal(FrontRollers.Goal.STOPPED);
             case AGITATING -> {
                 double agitateInches = slide_agitate.get();
+                double groundInches = slide_ground.get();
                 if (agitatingGoingUp) {
                     currentSlideSetpointInches = agitateInches;
-                    if (Math.abs(armInputs.positionInches - agitateInches) < arm_tolerance.get()) {
+                    if (armInputs.positionInches <= agitateInches) {
                         agitatingGoingUp = false;
+                        currentSlideSetpointInches = groundInches;
                     }
                 } else {
-                    currentSlideSetpointInches = slide_ground.get();
-                    if (Math.abs(armInputs.positionInches - slide_ground.get()) < arm_tolerance.get()) {
+                    currentSlideSetpointInches = groundInches;
+                    if (Math.abs(armInputs.positionInches - groundInches) < arm_tolerance.get()) {
                         agitatingGoingUp = true;
                     }
                 }
@@ -164,7 +168,12 @@ public class Intake extends SubsystemChecker {
         }
 
         if (goal != Goal.TUNING) {
-            armIO.setPosition(currentSlideSetpointInches);
+            if (goal == Goal.AGITATING && agitatingGoingUp
+                    && armInputs.positionInches > currentSlideSetpointInches) {
+                armIO.setVoltage(agitate_force_volts.get());
+            } else {
+                armIO.setPosition(currentSlideSetpointInches);
+            }
         }
 
         Logger.recordOutput("Intake/Goal", goal);
@@ -172,6 +181,9 @@ public class Intake extends SubsystemChecker {
         Logger.recordOutput("Intake/SetpointInches", currentSlideSetpointInches);
         Logger.recordOutput("Intake/SetpointVolts", currentRollerVolts);
         Logger.recordOutput("Intake/AtSetpoint", isAtSetpoint());
+        Logger.recordOutput("Intake/AgitatingGoingUp", agitatingGoingUp);
+        Logger.recordOutput("Intake/AgitateForceInActive",
+                goal == Goal.AGITATING && agitatingGoingUp && armInputs.positionInches > currentSlideSetpointInches);
     }
 
     private FrontRollers.Goal getJackhammerFrontRollerGoal() {

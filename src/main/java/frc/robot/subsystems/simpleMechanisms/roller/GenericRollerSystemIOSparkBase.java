@@ -31,6 +31,18 @@ public abstract class GenericRollerSystemIOSparkBase implements GenericRollerSys
 
   public GenericRollerSystemIOSparkBase(
       int id, String name, int currentLimitAmps, boolean invert, boolean brake, boolean isSparkMax, double reduction) {
+    this(id, name, currentLimitAmps, invert, brake, isSparkMax, reduction, true);
+  }
+
+  public GenericRollerSystemIOSparkBase(
+      int id,
+      String name,
+      int currentLimitAmps,
+      boolean invert,
+      boolean brake,
+      boolean isSparkMax,
+      double reduction,
+      boolean currentLimitEnabled) {
     this.reduction = reduction;
     if (!name.equals("CoralMotor")){
       if (isSparkMax) {
@@ -41,7 +53,10 @@ public abstract class GenericRollerSystemIOSparkBase implements GenericRollerSys
         config = new SparkFlexConfig();
       }
       this.name = name;
-      config = config.smartCurrentLimit(currentLimitAmps).voltageCompensation(12);
+      if (currentLimitEnabled) {
+        config = config.smartCurrentLimit(currentLimitAmps);
+      }
+      config = config.voltageCompensation(12);
       config = config.inverted(invert).idleMode(IdleMode.kCoast);
       motor.configure(config, ResetMode.kResetSafeParameters, PersistMode.kNoPersistParameters);
       encoder = motor.getEncoder();
@@ -54,7 +69,10 @@ public abstract class GenericRollerSystemIOSparkBase implements GenericRollerSys
         config = new SparkFlexConfig();
       }
       this.name = name;
-      config = config.smartCurrentLimit(currentLimitAmps).voltageCompensation(12);
+      if (currentLimitEnabled) {
+        config = config.smartCurrentLimit(currentLimitAmps);
+      }
+      config = config.voltageCompensation(12);
       config = config.inverted(invert).idleMode(IdleMode.kCoast);
       motor.configure(config, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
       encoder = motor.getEncoder();

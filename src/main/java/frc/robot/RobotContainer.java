@@ -579,7 +579,7 @@ public class RobotContainer {
 				kickup = new Kickup(
 						new KickupIOKrakenFOC(AdvancedMechanismConstants.Turret.centerIndexerID, Robot.rioCanBus,
 								"Kickup", AdvancedMechanismConstants.Turret.currentLimitKickup,
-								AdvancedMechanismConstants.Turret.invertKickup, false,
+								true, false,
 								AdvancedMechanismConstants.Turret.centerIndexerRatio));
 				leftTurret = new Turret(azimuthIOLeftTurret, flywheelIOLeftTurret,
 						hoodIOLeftTurret,

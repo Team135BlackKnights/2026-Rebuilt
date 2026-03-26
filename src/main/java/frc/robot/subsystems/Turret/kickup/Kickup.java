@@ -21,9 +21,9 @@ public class Kickup extends GenericRollerSystem<Kickup.Goal> {
     @Getter
     public enum Goal implements GenericRollerSystem.RollGoalSupplier {
         IDLING(0.0, true),
-        JACKHAMMER(12.0, true, 0.25),
-        SHOOTING(11.0, true),
-        TESTING(6.0, true),
+        JACKHAMMER(9.0, true, 0.25),
+        SHOOTING(9.0, true),
+        TESTING(9.0, true),
         VOMITING(-8.0, true);
 
         private final double defaultValue;
