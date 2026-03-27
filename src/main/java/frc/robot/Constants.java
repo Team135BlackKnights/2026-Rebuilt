@@ -126,7 +126,7 @@ public final class Constants {
 	}
 
 	public static class TuningConstants {
-		public static final boolean isTuningPID = true,
+		public static final boolean isTuningPID = false,
 				isTuningMacros = true,
 				isTuningVision = true,
 				isTuningShooter = true,

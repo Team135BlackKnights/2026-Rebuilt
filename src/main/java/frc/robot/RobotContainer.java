@@ -214,7 +214,7 @@ public class RobotContainer {
 	Trigger leftTriggerDrive = driveController.leftTrigger(.125); // partial
 	Trigger leftTriggerDriveFull = driveController.leftTrigger(.875); // full if needed
 	Trigger rightTriggerDrive = driveController.rightTrigger(.125);
-	Trigger rightTriggerDriveFull = driveController.a();//driveController.rightTrigger(.875);
+	Trigger rightTriggerDriveFull = driveController.rightTrigger(.875);
 	Trigger leftStickButtonDrive = driveController.leftStick();
 	Trigger rightStickButtonDrive = driveController.rightStick();
 	Trigger selectButtonDrive = driveController.back(); // select
@@ -1374,14 +1374,14 @@ public class RobotContainer {
 		}));
 		manipLeftTrigger.whileTrue(Commands.run(() -> {
 			double stickY = manipController.getLeftY();
-			double volts = -stickY * 3.0;
+			double volts = -stickY * 6.0;
 			intake.runCharacterization(volts);
 		}, intake).finallyDo(() -> {
 			intake.holdAtCurrentPosition();
 		}));
 		manipRightTrigger.whileTrue(Commands.run(() -> {
 			double stickY = manipController.getLeftY();
-			double volts = stickY * 3.0;
+			double volts = stickY * 6.0;
 			intake.runCharacterization(volts);
 		}, intake).finallyDo(() -> {
 			intake.holdAtCurrentPosition();
