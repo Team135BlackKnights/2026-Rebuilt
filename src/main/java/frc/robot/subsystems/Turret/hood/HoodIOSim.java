@@ -35,11 +35,13 @@ public class HoodIOSim implements HoodIO {
   private final ArmConfig hoodConfig;
   private final Arm hood;
 
-  private final double minAngleRads = AdvancedMechanismConstants.Turret.minHoodAngle;
-  private final double maxAngleRads = AdvancedMechanismConstants.Turret.maxHoodAngle;
+  private final double minAngleRads;
+  private final double maxAngleRads;
 
-  public HoodIOSim(CANBus bus, int motorID, String name) {
+  public HoodIOSim(CANBus bus, int motorID, String name, double minAngleRads, double maxAngleRads) {
     this.name = name;
+    this.minAngleRads = minAngleRads;
+    this.maxAngleRads = maxAngleRads;
     // Matches your old SingleJointedArmSim gearing term:
     final double rotorPerMechanism =
         AdvancedMechanismConstants.Turret.hoodEncoderToHoodArmRatio
@@ -77,7 +79,12 @@ public class HoodIOSim implements HoodIO {
   }
 
   public HoodIOSim() {
-    this(new CANBus("rio"), 0, "HoodIOSim");
+    this(
+        new CANBus("rio"),
+        0,
+        "HoodIOSim",
+        AdvancedMechanismConstants.Turret.leftMinHoodAngle,
+        AdvancedMechanismConstants.Turret.leftMaxHoodAngle);
   }
 
   @Override

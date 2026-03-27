@@ -551,8 +551,8 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.leftAzimuthSmallEncoderID,
 						AdvancedMechanismConstants.Turret.leftName,
 						AdvancedMechanismConstants.Turret.currentLimitAzimuth,
-						AdvancedMechanismConstants.Turret.minTurretAngle,
-						AdvancedMechanismConstants.Turret.maxTurretAngle,
+						AdvancedMechanismConstants.Turret.leftMinTurretAngle,
+						AdvancedMechanismConstants.Turret.leftMaxTurretAngle,
 						AdvancedMechanismConstants.Turret.leftAzimuthBigEncoderOffset,
 						AdvancedMechanismConstants.Turret.leftAzimuthSmallEncoderOffset,
 						AdvancedMechanismConstants.Turret.enc1GearTeethLeft,
@@ -573,8 +573,8 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.leftHoodID,
 						AdvancedMechanismConstants.Turret.leftName,
 						AdvancedMechanismConstants.Turret.currentLimitHood,
-						AdvancedMechanismConstants.Turret.minHoodAngle,
-						AdvancedMechanismConstants.Turret.maxHoodAngle);
+						AdvancedMechanismConstants.Turret.leftMinHoodAngle,
+						AdvancedMechanismConstants.Turret.leftMaxHoodAngle);
 
 				kickup = new Kickup(
 						new KickupIOKrakenFOC(AdvancedMechanismConstants.Turret.centerIndexerID, Robot.rioCanBus,
@@ -602,8 +602,8 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.rightAzimuthBigEncoderID,
 						AdvancedMechanismConstants.Turret.rightName,
 						AdvancedMechanismConstants.Turret.currentLimitAzimuth,
-						-AdvancedMechanismConstants.Turret.maxTurretAngle,
-						-AdvancedMechanismConstants.Turret.minTurretAngle,
+						AdvancedMechanismConstants.Turret.rightMinTurretAngle,
+						AdvancedMechanismConstants.Turret.rightMaxTurretAngle,
 						AdvancedMechanismConstants.Turret.rightAzimuthSmallEncoderOffset,
 						AdvancedMechanismConstants.Turret.rightAzimuthBigEncoderOffset,
 						AdvancedMechanismConstants.Turret.enc1GearTeethRight,
@@ -623,8 +623,8 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.rightHoodID,
 						AdvancedMechanismConstants.Turret.rightName,
 						AdvancedMechanismConstants.Turret.currentLimitHood,
-						AdvancedMechanismConstants.Turret.minHoodAngle,
-						AdvancedMechanismConstants.Turret.maxHoodAngle);
+						AdvancedMechanismConstants.Turret.rightMinHoodAngle,
+						AdvancedMechanismConstants.Turret.rightMaxHoodAngle);
 				rightTurret = new Turret(azimuthIORightTurret, flywheelIORightTurret, hoodIORightTurret,
 						new Kickup(
 								"RightTurret/Kickup",
@@ -774,8 +774,8 @@ public class RobotContainer {
 								AdvancedMechanismConstants.Turret.leftAzimuthSmallEncoderID,
 								AdvancedMechanismConstants.Turret.leftName + "Azimuth",
 								AdvancedMechanismConstants.Turret.currentLimitAzimuth,
-								AdvancedMechanismConstants.Turret.minTurretAngle,
-								AdvancedMechanismConstants.Turret.maxTurretAngle,
+								AdvancedMechanismConstants.Turret.leftMinTurretAngle,
+								AdvancedMechanismConstants.Turret.leftMaxTurretAngle,
 								AdvancedMechanismConstants.Turret.enc1GearTeethLeft,
 								AdvancedMechanismConstants.Turret.enc2GearTeethLeft,
 								AdvancedMechanismConstants.Turret.leftMotorRadPerTurretRad),
@@ -791,7 +791,9 @@ public class RobotContainer {
 						new HoodIOSim(
 								Robot.rioCanBus,
 								AdvancedMechanismConstants.Turret.leftHoodID,
-								AdvancedMechanismConstants.Turret.leftName + "Hood"),
+								AdvancedMechanismConstants.Turret.leftName + "Hood",
+								AdvancedMechanismConstants.Turret.leftMinHoodAngle,
+								AdvancedMechanismConstants.Turret.leftMaxHoodAngle),
 						new Kickup(
 								"LeftTurret/Kickup",
 								"LeftTurret/Kickup",
@@ -809,8 +811,8 @@ public class RobotContainer {
 								AdvancedMechanismConstants.Turret.rightAzimuthSmallEncoderID,
 								AdvancedMechanismConstants.Turret.rightName + "Azimuth",
 								AdvancedMechanismConstants.Turret.currentLimitAzimuth,
-								-AdvancedMechanismConstants.Turret.maxTurretAngle,
-								-AdvancedMechanismConstants.Turret.minTurretAngle,
+								AdvancedMechanismConstants.Turret.rightMinTurretAngle,
+								AdvancedMechanismConstants.Turret.rightMaxTurretAngle,
 								AdvancedMechanismConstants.Turret.enc1GearTeethRight,
 								AdvancedMechanismConstants.Turret.enc2GearTeethRight,
 								AdvancedMechanismConstants.Turret.rightMotorRadPerTurretRad),
@@ -826,7 +828,9 @@ public class RobotContainer {
 						new HoodIOSim(
 								Robot.rioCanBus,
 								AdvancedMechanismConstants.Turret.rightHoodID,
-								AdvancedMechanismConstants.Turret.rightName + "Hood"),
+								AdvancedMechanismConstants.Turret.rightName + "Hood",
+								AdvancedMechanismConstants.Turret.rightMinHoodAngle,
+								AdvancedMechanismConstants.Turret.rightMaxHoodAngle),
 						new Kickup(
 								"RightTurret/Kickup",
 								"RightTurret/Kickup",

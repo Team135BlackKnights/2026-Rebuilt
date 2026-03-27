@@ -62,12 +62,20 @@ public class ShotCalculator {
           "ShotCalculator/BallSpeedMpsPerRPM",
           FITTED_BALL_SPEED_MPS_PER_RPM,
           TuningConstants.isTuningShooter);
+  private static final LoggableTunedNumber motionCompensationDeadbandSpeedMetersPerSec =
+      new LoggableTunedNumber(
+          "ShotCalculator/MotionCompDeadbandSpeedMps", 0.5, TuningConstants.isTuningShooter);
+  private static final LoggableTunedNumber motionCompensationFullSpeedMetersPerSec =
+      new LoggableTunedNumber(
+          "ShotCalculator/MotionCompFullSpeedMps", 1.0, TuningConstants.isTuningShooter);
 
   private static final TurretBallisticsConfig LEFT_TURRET_CONFIG =
       new TurretBallisticsConfig(
           AdvancedMechanismConstants.Turret.leftName,
           AdvancedMechanismConstants.Turret.robotToLeftTurretHoleCenter,
           AdvancedMechanismConstants.Turret.robotToLeftTurretLaunchBase,
+          AdvancedMechanismConstants.Turret.leftMinHoodAngle,
+          AdvancedMechanismConstants.Turret.leftMaxHoodAngle,
           new LoggableTunedNumber(
               "ShotCalculator/LeftTurret/PitchOffsetRad",
               AdvancedMechanismConstants.Turret.leftLaunchPitchOffsetRads,
@@ -83,6 +91,8 @@ public class ShotCalculator {
           AdvancedMechanismConstants.Turret.rightName,
           AdvancedMechanismConstants.Turret.robotToRightTurretHoleCenter,
           AdvancedMechanismConstants.Turret.robotToRightTurretLaunchBase,
+          AdvancedMechanismConstants.Turret.rightMinHoodAngle,
+          AdvancedMechanismConstants.Turret.rightMaxHoodAngle,
           new LoggableTunedNumber(
               "ShotCalculator/RightTurret/PitchOffsetRad",
               AdvancedMechanismConstants.Turret.rightLaunchPitchOffsetRads,
@@ -126,6 +136,8 @@ public class ShotCalculator {
       double launchPitchRad,
       double launchSpeedMps,
       double timeOfFlightSec,
+      Translation2d rawChassisVelocityAtMuzzle,
+      double motionCompensationScale,
       Translation2d chassisVelocityAtMuzzle,
       Translation2d predictedCrossingPoint,
       double rangeErrorMeters,
@@ -139,6 +151,8 @@ public class ShotCalculator {
           INVALID_POSE,
           Double.NaN,
           Double.NaN,
+          Double.NaN,
+          INVALID_TRANSLATION,
           Double.NaN,
           INVALID_TRANSLATION,
           INVALID_TRANSLATION,
@@ -174,6 +188,8 @@ public class ShotCalculator {
     private final String name;
     private final Transform2d turretCenterTransform;
     private final Transform3d launchBaseTransform;
+    private final double minHoodAngleRad;
+    private final double maxHoodAngleRad;
     private final LoggableTunedNumber pitchOffsetRad;
     private final LoggableTunedNumber pitchScale;
     private final double launchPathLengthMeters;
@@ -182,12 +198,16 @@ public class ShotCalculator {
         String name,
         Transform2d turretCenterTransform,
         Transform3d launchBaseTransform,
+        double minHoodAngleRad,
+        double maxHoodAngleRad,
         LoggableTunedNumber pitchOffsetRad,
         LoggableTunedNumber pitchScale,
         double launchPathLengthMeters) {
       this.name = name;
       this.turretCenterTransform = turretCenterTransform;
       this.launchBaseTransform = launchBaseTransform;
+      this.minHoodAngleRad = minHoodAngleRad;
+      this.maxHoodAngleRad = maxHoodAngleRad;
       this.pitchOffsetRad = pitchOffsetRad;
       this.pitchScale = pitchScale;
       this.launchPathLengthMeters = launchPathLengthMeters;
@@ -449,6 +469,8 @@ public class ShotCalculator {
     Rotation2d robotHeading = robotPose.getRotation();
     ChassisSpeeds fieldChassisSpeeds = RobotContainer.drivetrainS.getFieldChassisSpeeds();
     TargetPlaneGeometry targetGeometry = resolveTargetPlaneGeometry(target);
+    Translation2d fieldLinearVelocity =
+        new Translation2d(fieldChassisSpeeds.vxMetersPerSecond, fieldChassisSpeeds.vyMetersPerSecond);
 
     ShotSolution table2dSolution =
         createTable2dSolution(
@@ -507,6 +529,15 @@ public class ShotCalculator {
     Logger.recordOutput(
         "SuperStructure/ShotCalculator/" + profile.name + "/BallisticTimeOfFlightSec",
         selectedSolution.ballisticState().timeOfFlightSec());
+    Logger.recordOutput(
+        "SuperStructure/ShotCalculator/" + profile.name + "/FieldLinearSpeedMps",
+        fieldLinearVelocity.getNorm());
+    Logger.recordOutput(
+        "SuperStructure/ShotCalculator/" + profile.name + "/MotionCompDeadbandSpeedMps",
+        motionCompensationDeadbandSpeedMetersPerSec.get());
+    Logger.recordOutput(
+        "SuperStructure/ShotCalculator/" + profile.name + "/MotionCompFullSpeedMps",
+        motionCompensationFullSpeedMetersPerSec.get());
 
     return new ShootingParameters(turretAngle, turretVel, hoodAngle, hoodVel, flywheelSpeed);
   }
@@ -525,14 +556,20 @@ public class ShotCalculator {
     Pose2d turretCenterPose = robotPose.transformBy(robotToTurret);
     TurretBallisticsConfig turretConfig = resolveTurretConfig(robotToTurret);
     double turretToTargetDistance = target.getDistance(turretCenterPose.getTranslation()) + distanceOffset;
-    Translation2d turretCenterVelocity =
+    Translation2d rawTurretCenterVelocity =
         computeFieldVelocityAtRobotOffset(robotToTurret.getTranslation(), robotHeading, fieldChassisSpeeds);
+    double turretCenterMotionCompScale = computeMotionCompensationScale(rawTurretCenterVelocity);
+    Translation2d turretCenterVelocity = rawTurretCenterVelocity.times(turretCenterMotionCompScale);
     double leadTimeOfFlightSec = profile.getTimeOfFlight(turretToTargetDistance);
     double lookaheadDist = turretToTargetDistance;
     Pose2d lookaheadPose = turretCenterPose;
     StaticShotCommand shotCommand =
         getStaticShotCommandForDistance(
             profile, turretToTargetDistance, targetGeometry, turretConfig, robotPose, robotHeading);
+    String table2dLogPrefix = "SuperStructure/ShotCalculator/" + profile.name + "/Table2D";
+    Logger.recordOutput(table2dLogPrefix + "/MotionCompScale", turretCenterMotionCompScale);
+    Logger.recordOutput(table2dLogPrefix + "/RawTurretCenterVelocityMps", rawTurretCenterVelocity.getNorm());
+    Logger.recordOutput(table2dLogPrefix + "/ScaledTurretCenterVelocityMps", turretCenterVelocity.getNorm());
     if (targetGeometry == null) {
       lookaheadPose =
           new Pose2d(
@@ -714,8 +751,8 @@ public class ShotCalculator {
     double hoodAngleRad =
         MathUtil.clamp(
             profile.getHoodAngle(distanceMeters).getRadians(),
-            AdvancedMechanismConstants.Turret.minHoodAngle,
-            AdvancedMechanismConstants.Turret.maxHoodAngle);
+            turretConfig.minHoodAngleRad,
+            turretConfig.maxHoodAngleRad);
     double flywheelSpeedRadPerSec =
         MathUtil.clamp(profile.getFlywheelSpeed(distanceMeters), 0.0, MAX_FLYWHEEL_SPEED_RAD_PER_SEC);
 
@@ -838,8 +875,11 @@ public class ShotCalculator {
 
     double horizontalLaunchSpeedMps = launchSpeedMps * Math.cos(launchPitchRad);
     double verticalLaunchSpeedMps = launchSpeedMps * Math.sin(launchPitchRad);
-    Translation2d chassisVelocityAtMuzzle =
+    Translation2d rawChassisVelocityAtMuzzle =
         computeFieldVelocityAtRobotOffset(muzzleOffsetRobot, robotHeading, fieldChassisSpeeds);
+    double motionCompensationScale = computeMotionCompensationScale(rawChassisVelocityAtMuzzle);
+    Translation2d chassisVelocityAtMuzzle =
+        rawChassisVelocityAtMuzzle.times(motionCompensationScale);
 
     double[] crossingTimesSec =
         solvePlaneCrossTimesAtHeight(
@@ -853,6 +893,8 @@ public class ShotCalculator {
           launchPitchRad,
           launchSpeedMps,
           Double.NaN,
+          rawChassisVelocityAtMuzzle,
+          motionCompensationScale,
           chassisVelocityAtMuzzle,
           INVALID_TRANSLATION,
           Double.NaN,
@@ -912,6 +954,8 @@ public class ShotCalculator {
           launchPitchRad,
           launchSpeedMps,
           Double.NaN,
+          rawChassisVelocityAtMuzzle,
+          motionCompensationScale,
           chassisVelocityAtMuzzle,
           INVALID_TRANSLATION,
           Double.NaN,
@@ -927,6 +971,8 @@ public class ShotCalculator {
         launchPitchRad,
         launchSpeedMps,
         bestCandidate.timeOfFlightSec(),
+        rawChassisVelocityAtMuzzle,
+        motionCompensationScale,
         chassisVelocityAtMuzzle,
         bestCandidate.predictedCrossingPoint(),
         bestCandidate.rangeErrorMeters(),
@@ -950,6 +996,9 @@ public class ShotCalculator {
     Logger.recordOutput(prefix + "/LaunchPitchDeg", Math.toDegrees(ballisticState.launchPitchRad()));
     Logger.recordOutput(prefix + "/LaunchSpeedMps", ballisticState.launchSpeedMps());
     Logger.recordOutput(prefix + "/BallisticTimeOfFlightSec", ballisticState.timeOfFlightSec());
+    Logger.recordOutput(prefix + "/MotionCompScale", ballisticState.motionCompensationScale());
+    Logger.recordOutput(prefix + "/RawMuzzleVelocityMps", ballisticState.rawChassisVelocityAtMuzzle().getNorm());
+    Logger.recordOutput(prefix + "/ScaledMuzzleVelocityMps", ballisticState.chassisVelocityAtMuzzle().getNorm());
     Logger.recordOutput(
         prefix + "/PredictedCrossPose",
         targetGeometry == null
@@ -1001,6 +1050,19 @@ public class ShotCalculator {
         fieldOffset.rotateBy(Rotation2d.fromDegrees(90.0))
             .times(fieldChassisSpeeds.omegaRadiansPerSecond);
     return linearVelocity.plus(rotationalVelocity);
+  }
+
+  private static double computeMotionCompensationScale(Translation2d compensationVelocity) {
+    double deadbandSpeed = Math.max(0.0, motionCompensationDeadbandSpeedMetersPerSec.get());
+    double fullSpeed = Math.max(0.0, motionCompensationFullSpeedMetersPerSec.get());
+    double compensationSpeed = compensationVelocity.getNorm();
+
+    if (fullSpeed <= deadbandSpeed + 1e-9) {
+      return compensationSpeed >= deadbandSpeed ? 1.0 : 0.0;
+    }
+
+    return MathUtil.clamp(
+        (compensationSpeed - deadbandSpeed) / (fullSpeed - deadbandSpeed), 0.0, 1.0);
   }
 
   private static double[] solvePlaneCrossTimesAtHeight(
