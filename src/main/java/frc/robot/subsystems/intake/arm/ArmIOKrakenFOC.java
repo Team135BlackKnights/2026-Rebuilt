@@ -29,8 +29,10 @@ import frc.robot.utils.selfCheck.drive.SelfCheckingTalonFX;
 
 public class ArmIOKrakenFOC implements ArmIO {
     protected static final LoggableTunedNumber ZERO_VOLTS = new LoggableTunedNumber("Intake/Arm/zeroVolts",6,TuningConstants.isTuningIntake);
+    protected static final LoggableTunedNumber FAST_REZERO_VOLTS = new LoggableTunedNumber("Intake/Arm/fastRezeroVolts",9,TuningConstants.isTuningIntake);
     protected static final LoggableTunedNumber ZERO_CURRENT_AMPS = new LoggableTunedNumber("Intake/Arm/zeroAmps",35,TuningConstants.isTuningIntake);
     protected static final LoggableTunedNumber ZERO_HOLD_SEC = new LoggableTunedNumber("Intake/Arm/zeroTime",.4,TuningConstants.isTuningIntake);
+    protected static final LoggableTunedNumber FAST_REZERO_WINDOW_SEC = new LoggableTunedNumber("Intake/Arm/fastRezeroWindowSec",2.0,TuningConstants.isTuningIntake);
 
     protected final String name;
     protected final TalonFX talon;
@@ -59,6 +61,8 @@ public class ArmIOKrakenFOC implements ArmIO {
     protected boolean zeroingActive = false;
     protected boolean openLoop = false;
     private double zeroSpikeStartTimeSec = Double.NaN;
+    protected boolean fastRezeroActive = false;
+    protected double lastZeroRequestTimeSec = Double.NEGATIVE_INFINITY;
 
     public ArmIOKrakenFOC(
             CANBus bus,
@@ -132,6 +136,8 @@ public class ArmIOKrakenFOC implements ArmIO {
         inputs.torqueCurrentAmps = torqueCurrent.getValueAsDouble();
         inputs.tempCelsius = tempCelsius.getValueAsDouble();
         Logger.recordOutput("Intake/ZERO", openLoop);
+        Logger.recordOutput("Intake/Arm/FastRezeroActive", fastRezeroActive);
+        Logger.recordOutput("Intake/Arm/ZeroingVoltage", getZeroingVoltage());
     }
 
     @Override
@@ -162,6 +168,11 @@ public class ArmIOKrakenFOC implements ArmIO {
 
     @Override
     public void zero() {
+        double now = Timer.getFPGATimestamp();
+        fastRezeroActive =
+                Double.isFinite(lastZeroRequestTimeSec)
+                        && (now - lastZeroRequestTimeSec) <= FAST_REZERO_WINDOW_SEC.get();
+        lastZeroRequestTimeSec = now;
         zeroingActive = true;
         zeroSpikeStartTimeSec = Double.NaN;
     }
@@ -242,7 +253,7 @@ public class ArmIOKrakenFOC implements ArmIO {
         }
 
         double now = Timer.getFPGATimestamp();
-        talon.setControl(voltageRequest.withOutput(ZERO_VOLTS.get()));
+        talon.setControl(voltageRequest.withOutput(getZeroingVoltage()));
         BaseStatusSignal.refreshAll(supplyCurrent, statorCurrent, torqueCurrent);
         double observedCurrentAmps = Math.abs(torqueCurrent.getValueAsDouble());
 
@@ -258,7 +269,12 @@ public class ArmIOKrakenFOC implements ArmIO {
             talon.setPosition(inchesToMechanismRotations(maxPositionInches));
             zeroingActive = false;
             zeroSpikeStartTimeSec = Double.NaN;
+            fastRezeroActive = false;
             openLoop = false;
         }
+    }
+
+    protected double getZeroingVoltage() {
+        return fastRezeroActive ? FAST_REZERO_VOLTS.get() : ZERO_VOLTS.get();
     }
 }

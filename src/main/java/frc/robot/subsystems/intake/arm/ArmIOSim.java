@@ -97,13 +97,13 @@ public class ArmIOSim extends ArmIOKrakenFOC {
 
     @Override
     public void zero() {
-        zeroingActive = true;
+        super.zero();
         zeroSpikeStartTimeSec = Double.NaN;
     }
 
     private void processSimZeroing() {
         double now = Timer.getFPGATimestamp();
-        appliedVolts = ZERO_VOLTS.get();
+        appliedVolts = getZeroingVoltage();
         slideSim.setInputVoltage(appliedVolts);
 
         boolean atLowerHardstop = Units.metersToInches(slideSim.getPositionMeters())
@@ -120,6 +120,7 @@ public class ArmIOSim extends ArmIOKrakenFOC {
             slideSim.setState(Units.inchesToMeters(IntakeConstants.slideMinInches), 0.0);
             zeroingActive = false;
             zeroSpikeStartTimeSec = Double.NaN;
+            fastRezeroActive = false;
             openLoop = false;
             appliedVolts = 0.0;
             slideSim.setInputVoltage(0.0);

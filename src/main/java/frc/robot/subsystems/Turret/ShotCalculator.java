@@ -68,6 +68,15 @@ public class ShotCalculator {
   private static final LoggableTunedNumber motionCompensationFullSpeedMetersPerSec =
       new LoggableTunedNumber(
           "ShotCalculator/MotionCompFullSpeedMps", 1.0, TuningConstants.isTuningShooter);
+  private static final LoggableTunedNumber longRangeFlywheelTrimStartDistanceMeters =
+      new LoggableTunedNumber(
+          "ShotCalculator/LongRangeFlywheelTrimStartDistanceM", 2.8, TuningConstants.isTuningShooter);
+  private static final LoggableTunedNumber longRangeFlywheelTrimEndDistanceMeters =
+      new LoggableTunedNumber(
+          "ShotCalculator/LongRangeFlywheelTrimEndDistanceM", 3.55, TuningConstants.isTuningShooter);
+  private static final LoggableTunedNumber longRangeFlywheelTrimRpm =
+      new LoggableTunedNumber(
+          "ShotCalculator/LongRangeFlywheelTrimRPM", 150.0, TuningConstants.isTuningShooter);
 
   private static final TurretBallisticsConfig LEFT_TURRET_CONFIG =
       new TurretBallisticsConfig(
@@ -538,6 +547,10 @@ public class ShotCalculator {
     Logger.recordOutput(
         "SuperStructure/ShotCalculator/" + profile.name + "/MotionCompFullSpeedMps",
         motionCompensationFullSpeedMetersPerSec.get());
+    Logger.recordOutput(
+        "SuperStructure/ShotCalculator/" + profile.name + "/LongRangeFlywheelTrimRPM",
+        Units.radiansPerSecondToRotationsPerMinute(
+            computeLongRangeFlywheelTrimRadPerSec(selectedSolution.lookaheadDist())));
 
     return new ShootingParameters(turretAngle, turretVel, hoodAngle, hoodVel, flywheelSpeed);
   }
@@ -754,7 +767,10 @@ public class ShotCalculator {
             turretConfig.minHoodAngleRad,
             turretConfig.maxHoodAngleRad);
     double flywheelSpeedRadPerSec =
-        MathUtil.clamp(profile.getFlywheelSpeed(distanceMeters), 0.0, MAX_FLYWHEEL_SPEED_RAD_PER_SEC);
+        MathUtil.clamp(
+            profile.getFlywheelSpeed(distanceMeters) - computeLongRangeFlywheelTrimRadPerSec(distanceMeters),
+            0.0,
+            MAX_FLYWHEEL_SPEED_RAD_PER_SEC);
 
     if (targetGeometry != null) {
       Double requiredFlywheelSpeedRadPerSec =
@@ -770,6 +786,25 @@ public class ShotCalculator {
     }
 
     return new StaticShotCommand(hoodAngleRad, flywheelSpeedRadPerSec);
+  }
+
+  private static double computeLongRangeFlywheelTrimRadPerSec(double distanceMeters) {
+    double trimRpm = Math.max(0.0, longRangeFlywheelTrimRpm.get());
+    double startDistance = longRangeFlywheelTrimStartDistanceMeters.get();
+    double endDistance = longRangeFlywheelTrimEndDistanceMeters.get();
+
+    if (trimRpm <= 1e-9) {
+      return 0.0;
+    }
+
+    double scale;
+    if (endDistance <= startDistance + 1e-9) {
+      scale = distanceMeters >= startDistance ? 1.0 : 0.0;
+    } else {
+      scale = MathUtil.clamp((distanceMeters - startDistance) / (endDistance - startDistance), 0.0, 1.0);
+    }
+
+    return Units.rotationsPerMinuteToRadiansPerSecond(trimRpm * scale);
   }
 
   private static Double estimateRequiredFlywheelSpeedRadPerSec(
