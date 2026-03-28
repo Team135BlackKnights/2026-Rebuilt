@@ -1170,22 +1170,20 @@ public class RobotContainer {
 		leftStickButtonDrive.onFalse(Commands.runOnce(() -> drivetrainS.stopModules(), drivetrainS));
 		rightStickButtonDrive.onTrue(new OrchestraC("megolovania").withName("Play Megolovania"));
 		// Test Commands
-		/*
-		 * aButtonDrive.whileTrue(Commands.run(() -> {
-		 * //leftTurret.setCharTurretPos(0);
-		 * rightTurret.setCharRPM(3000);
-		 * //intake.setGoal(Goal.VOMITING);
-		 * //kickup.setGoal(Kickup.Goal.VOMITING);
-		 * // flywheel go to 5000 rpm
-		 * // leftTurret.setCharHoodPos(0);(4.1);
-		 * // leftTurret.setCharHoodPos(Units.degreesToRadians(12));
-		 * // rightTurret.setCharHoodPos(Units.degreesToRadians(12));
-		 * // intake.setGoal(Goal.STOW);
-		 * // leftTurret.setCharTurretPos(-1.49);
-		 * // hang.setGoal(HangState.STOWED);
-		 * }));
-		 */
-		bButtonDrive.onTrue(Commands.runOnce(() -> {
+		/*aButtonDrive.whileTrue(Commands.run(() -> {
+			//leftTurret.setCharTurretPos(0);
+			rightTurret.setCharRPM(3000);
+			//intake.setGoal(Goal.VOMITING);
+			//kickup.setGoal(Kickup.Goal.VOMITING);
+			// flywheel go to 5000 rpm
+			// leftTurret.setCharHoodPos(0);(4.1);
+			// leftTurret.setCharHoodPos(Units.degreesToRadians(12));
+			// rightTurret.setCharHoodPos(Units.degreesToRadians(12));
+			// intake.setGoal(Goal.STOW);
+			// leftTurret.setCharTurretPos(-1.49);
+			// hang.setGoal(HangState.STOWED);
+		}));*/
+		/*bButtonDrive.onTrue(Commands.runOnce(() -> {
 			rightTurret.setCharRPM(5000);
 			// leftTurret.clearLoggedShots();
 			// rightTurret.clearLoggedShots();
@@ -1195,7 +1193,7 @@ public class RobotContainer {
 			leftTurret.enterShotTuning();
 			rightTurret.enterShotTuning();
 			kickup.setGoal(Kickup.Goal.TESTING);
-		}, leftTurret, rightTurret, kickup));
+		}, leftTurret, rightTurret, kickup));*/
 		// Climber controls
 		// aButtonDrive.onTrue(Commands.either(Commands.runOnce(() ->
 		// hang.setGoal(HangState.EXTENDED)), Commands.runOnce(() ->
