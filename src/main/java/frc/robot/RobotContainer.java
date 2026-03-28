@@ -1180,7 +1180,7 @@ public class RobotContainer {
 			// leftTurret.setCharTurretPos(-1.49);
 			// hang.setGoal(HangState.STOWED);
 		}));*/
-		bButtonDrive.onTrue(Commands.runOnce(() -> {
+		/*bButtonDrive.onTrue(Commands.runOnce(() -> {
 			rightTurret.setCharRPM(5000);
 			//leftTurret.clearLoggedShots();
 			//rightTurret.clearLoggedShots();
@@ -1190,7 +1190,7 @@ public class RobotContainer {
 			leftTurret.enterShotTuning();
 			rightTurret.enterShotTuning();
 			kickup.setGoal(Kickup.Goal.TESTING);
-		}, leftTurret, rightTurret, kickup));
+		}, leftTurret, rightTurret, kickup));*/
 		// Climber controls
 		// aButtonDrive.onTrue(Commands.either(Commands.runOnce(() ->
 		// hang.setGoal(HangState.EXTENDED)), Commands.runOnce(() ->
