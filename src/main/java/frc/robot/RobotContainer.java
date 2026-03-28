@@ -917,6 +917,7 @@ public class RobotContainer {
 						.finallyDo(() -> intake.setGoal(Goal.STOW)));
 		NamedCommands.registerCommand(
 				"ShootWithIntakeOut", buildShootTurretsHubIntakeOutCommand());
+				NamedCommands.registerCommand("XLock", drivetrainS.orientModules(Swerve.getXOrientations()));
 		NamedCommands.registerCommand(
 				"Shoot", buildShootTurretsHubIntakeOutCommand());
 		// NamedCommands.registerCommand("Hang", buildHangCommand());
