@@ -117,8 +117,7 @@ public class ArmIOKrakenFOC implements ArmIO {
         BaseStatusSignal.setUpdateFrequencyForAll(
                 50.0, posAngle, velAngle, appliedVoltage, supplyCurrent, statorCurrent, torqueCurrent, tempCelsius);
         talon.optimizeBusUtilization(0, 1.0);
-
-        zero();
+        //zero();
     }
 
     @Override

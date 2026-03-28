@@ -79,7 +79,7 @@ public class Intake extends SubsystemChecker {
         TUNING,
     }
 
-    private Goal goal = Goal.START;
+    private Goal goal = Goal.STOW;
     private double currentSlideSetpointInches = 0.0;
     private double currentRollerVolts = 0.0;
     private boolean agitatingGoingUp = true;
@@ -101,7 +101,7 @@ public class Intake extends SubsystemChecker {
         updateTunablePIDs();
 
         if (DriverStation.isDisabled()) {
-            goal = Goal.INTAKE_OUTER_IDLE;
+            goal = Goal.STOW;
             armIO.stop();
             frontRollers.setGoal(FrontRollers.Goal.STOPPED);
             return;

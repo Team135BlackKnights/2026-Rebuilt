@@ -3,6 +3,7 @@
 // the WPILib BSD license file in the root directory of this project.
 package frc.robot;
 
+import frc.robot.Constants.FRCMatchState;
 import frc.robot.Constants.Mode;
 import frc.robot.commands.FeedForwardCharacterization;
 import frc.robot.commands.OrchestraC;
@@ -912,8 +913,8 @@ public class RobotContainer {
 
 		}
 		NamedCommands.registerCommand(
-				"Intake", Commands.run(() -> intake.setGoal(Goal.INTAKE_GROUND), intake)
-						.finallyDo(() -> intake.setGoal(Goal.INTAKE_OUTER_IDLE)));
+				"Intake", Commands.run(() -> intake.setGoal(Goal.STOW), intake)
+						.finallyDo(() -> intake.setGoal(Goal.STOW)));
 		NamedCommands.registerCommand(
 				"ShootWithIntakeOut", buildShootTurretsHubIntakeOutCommand());
 		NamedCommands.registerCommand(
@@ -1036,7 +1037,7 @@ public class RobotContainer {
 		Trigger beyondCenter = new Trigger(() -> GeomUtil.applyY(drivetrainS.getPose().getY()) > 4);
 		Trigger beforeRightTrench = new Trigger(() -> GeomUtil.applyY(drivetrainS.getPose().getY()) < 2.3);
 		final double trenchHardLockMeters = 0.6;
-			final double hoodSafeDownDeg = 31.0;
+		final double hoodSafeDownDeg = 31.0;
 		final double hoodDownRateDegPerSec = 38.0;
 		final double trenchUnlockDebounceSec = 0.4;
 		BooleanSupplier nearAnyTrenchRaw = () -> {
@@ -1071,8 +1072,8 @@ public class RobotContainer {
 		};
 		Debouncer trenchUnlockDebouncer = new Debouncer(trenchUnlockDebounceSec, Debouncer.DebounceType.kFalling);
 		Trigger nearAnyTrench = new Trigger(() -> trenchUnlockDebouncer.calculate(nearAnyTrenchRaw.getAsBoolean()));
-			Trigger hoodAboveSafeAngle = new Trigger(
-					() -> leftTurret.isHoodAboveDegrees(31.0) || rightTurret.isHoodAboveDegrees(31.0));
+		Trigger hoodAboveSafeAngle = new Trigger(
+				() -> leftTurret.isHoodAboveDegrees(31.0) || rightTurret.isHoodAboveDegrees(31.0));
 		Command targetHubBoth = buildTargetHubBothCommand();
 		Command shootTurrets = buildShootTurretsCommand();
 
@@ -1122,11 +1123,12 @@ public class RobotContainer {
 						intake,
 						CameraID.INTAKE_CAM),
 				Set.of(drivetrainS, intake));
-			// Auto factory setup
-			touchboardAutoFactory = new TouchboardAutoFactory(pathFinder, drivetrainS,
-					() -> new AutoIntake(drivetrainS, intake, CameraID.INTAKE_CAM), Set.of(intake, drivetrainS),
-					() -> buildTargetHubBothCommand().andThen(buildAutoShootTurretsCommand()).withName("Shoot Turrets Auto"),
-					Set.of(leftTurret, rightTurret, kickup, intake));
+		// Auto factory setup
+		touchboardAutoFactory = new TouchboardAutoFactory(pathFinder, drivetrainS,
+				() -> new AutoIntake(drivetrainS, intake, CameraID.INTAKE_CAM), Set.of(intake, drivetrainS),
+				() -> buildTargetHubBothCommand().andThen(buildAutoShootTurretsCommand())
+						.withName("Shoot Turrets Auto"),
+				Set.of(leftTurret, rightTurret, kickup, intake));
 
 		// Start of actual DRIVER bindings
 		// Start = zero chassis
@@ -1167,23 +1169,25 @@ public class RobotContainer {
 		leftStickButtonDrive.onFalse(Commands.runOnce(() -> drivetrainS.stopModules(), drivetrainS));
 		rightStickButtonDrive.onTrue(new OrchestraC("megolovania").withName("Play Megolovania"));
 		// Test Commands
-		/*aButtonDrive.whileTrue(Commands.run(() -> {
-			//leftTurret.setCharTurretPos(0);
-			rightTurret.setCharRPM(3000);
-			//intake.setGoal(Goal.VOMITING);
-			//kickup.setGoal(Kickup.Goal.VOMITING);
-			// flywheel go to 5000 rpm
-			// leftTurret.setCharHoodPos(0);(4.1);
-			// leftTurret.setCharHoodPos(Units.degreesToRadians(12));
-			// rightTurret.setCharHoodPos(Units.degreesToRadians(12));
-			// intake.setGoal(Goal.STOW);
-			// leftTurret.setCharTurretPos(-1.49);
-			// hang.setGoal(HangState.STOWED);
-		}));*/
+		/*
+		 * aButtonDrive.whileTrue(Commands.run(() -> {
+		 * //leftTurret.setCharTurretPos(0);
+		 * rightTurret.setCharRPM(3000);
+		 * //intake.setGoal(Goal.VOMITING);
+		 * //kickup.setGoal(Kickup.Goal.VOMITING);
+		 * // flywheel go to 5000 rpm
+		 * // leftTurret.setCharHoodPos(0);(4.1);
+		 * // leftTurret.setCharHoodPos(Units.degreesToRadians(12));
+		 * // rightTurret.setCharHoodPos(Units.degreesToRadians(12));
+		 * // intake.setGoal(Goal.STOW);
+		 * // leftTurret.setCharTurretPos(-1.49);
+		 * // hang.setGoal(HangState.STOWED);
+		 * }));
+		 */
 		bButtonDrive.onTrue(Commands.runOnce(() -> {
 			rightTurret.setCharRPM(5000);
-			//leftTurret.clearLoggedShots();
-			//rightTurret.clearLoggedShots();
+			// leftTurret.clearLoggedShots();
+			// rightTurret.clearLoggedShots();
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}, leftTurret, rightTurret, kickup));
 		yButtonDrive.onTrue(Commands.runOnce(() -> {
@@ -1529,11 +1533,15 @@ public class RobotContainer {
 		if (isInJackhammerPhase()) {
 			leftTurret.setGoal(Turret.Goal.JACKHAMMER);
 			rightTurret.setGoal(Turret.Goal.JACKHAMMER);
-			if (intake.isIntakeDeployed()) {
-				intake.setGoal(Goal.JACKHAMMERING_OUT);
-			} else {
-				intake.setGoal(Goal.JACKHAMMERING_IN);
+			if (Constants.currentMatchState != FRCMatchState.AUTO
+					&& Constants.currentMatchState != FRCMatchState.AUTOINIT) {
+				if (intake.isIntakeDeployed()) {
+					intake.setGoal(Goal.JACKHAMMERING_OUT);
+				} else {
+					intake.setGoal(Goal.JACKHAMMERING_IN);
+				}
 			}
+
 			kickup.setGoal(Kickup.Goal.JACKHAMMER);
 		} else {
 			leftTurret.setGoal(turretShootGoal);
@@ -1564,18 +1572,18 @@ public class RobotContainer {
 	}
 
 	private Command buildShootTurretsHubIntakeOutCommand() {
-			return (buildTargetHubBothCommand().andThen(Commands.runOnce(() -> {
-				shootTimer.restart();
-				resetShootCycle();
-				kickup.setGoal(Kickup.Goal.IDLING);
-			}).andThen(Commands.run(() -> {
-				applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.AGITATING,
-						shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints());
-			}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
-				leftTurret.setGoal(Turret.Goal.AIMING);
-				rightTurret.setGoal(Turret.Goal.AIMING);
+		return (buildTargetHubBothCommand().andThen(Commands.runOnce(() -> {
+			shootTimer.restart();
+			resetShootCycle();
 			kickup.setGoal(Kickup.Goal.IDLING);
-			intake.setGoal(Intake.Goal.INTAKE_OUTER_IDLE);
+		}).andThen(Commands.run(() -> {
+			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.STOW,
+					shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints());
+		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
+			leftTurret.setGoal(Turret.Goal.AIMING);
+			rightTurret.setGoal(Turret.Goal.AIMING);
+			kickup.setGoal(Kickup.Goal.IDLING);
+			intake.setGoal(Intake.Goal.STOW);
 			shootTimer.stop();
 			shootCycleStartSec = Double.NaN;
 		})))).withName("Shoot Turrets with Intake Out");
