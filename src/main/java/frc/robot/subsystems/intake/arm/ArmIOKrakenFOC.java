@@ -46,9 +46,9 @@ public class ArmIOKrakenFOC implements ArmIO {
     /** Motor rotor rotations per mechanism rotation. */
     protected final double reduction;
 
-    protected final double minPositionInches = IntakeConstants.slideMinInches;
-    protected final double maxPositionInches = IntakeConstants.slideMaxInches;
-    protected final double inchesPerMechanismRotation = IntakeConstants.slideInchesPerMechanismRotation;
+    protected final double minPositionDeg = IntakeConstants.armMinAngleDeg;
+    protected final double maxPositionDeg = IntakeConstants.armMaxAngleDeg;
+    protected final double degreesPerMechanismRotation = IntakeConstants.armDegreesPerMechanismRotation;
 
     protected final StatusSignal<Angle> posAngle;
     protected final StatusSignal<AngularVelocity> velAngle;
@@ -128,8 +128,8 @@ public class ArmIOKrakenFOC implements ArmIO {
                 .isOK();
         inputs.name = name;
         inputs.zeroing = zeroingActive;
-        inputs.positionInches = mechanismRotationsToInches(posAngle.getValueAsDouble());
-        inputs.velocityInchesPerSec = mechanismRotationsToInches(velAngle.getValueAsDouble());
+        inputs.positionDeg = mechanismRotationsToDegrees(posAngle.getValueAsDouble());
+        inputs.velocityDegPerSec = mechanismRotationsToDegrees(velAngle.getValueAsDouble());
         inputs.appliedVoltage = appliedVoltage.getValueAsDouble();
         inputs.supplyCurrentAmps = supplyCurrent.getValueAsDouble();
         inputs.torqueCurrentAmps = torqueCurrent.getValueAsDouble();
@@ -140,14 +140,14 @@ public class ArmIOKrakenFOC implements ArmIO {
     }
 
     @Override
-    public void setPosition(double positionInches) {
+    public void setPosition(double positionDeg) {
         if (zeroingActive) {
             return;
         }
 
         openLoop = false;
-        double clamped = MathUtil.clamp(positionInches, minPositionInches, maxPositionInches);
-        double desiredRotations = inchesToMechanismRotations(clamped);
+        double clamped = MathUtil.clamp(positionDeg, minPositionDeg, maxPositionDeg);
+        double desiredRotations = degreesToMechanismRotations(clamped);
         talon.setControl(motionMagicRequest.withPosition(desiredRotations));
     }
 
@@ -177,9 +177,9 @@ public class ArmIOKrakenFOC implements ArmIO {
     }
 
     @Override
-    public void configureMotionMagic(double cruiseInchesPerSec, double accelInchesPerSec2, double neutralDeadband) {
-        talonConfig.MotionMagic.MotionMagicCruiseVelocity = inchesToMechanismRotations(cruiseInchesPerSec);
-        talonConfig.MotionMagic.MotionMagicAcceleration = inchesToMechanismRotations(accelInchesPerSec2);
+    public void configureMotionMagic(double cruiseDegPerSec, double accelDegPerSec2, double neutralDeadband) {
+        talonConfig.MotionMagic.MotionMagicCruiseVelocity = degreesToMechanismRotationsMagnitude(cruiseDegPerSec);
+        talonConfig.MotionMagic.MotionMagicAcceleration = degreesToMechanismRotationsMagnitude(accelDegPerSec2);
         talonConfig.MotorOutput.DutyCycleNeutralDeadband = neutralDeadband;
         talon.getConfigurator().apply(talonConfig.MotionMagic);
         talon.getConfigurator().apply(talonConfig.MotorOutput);
@@ -187,11 +187,11 @@ public class ArmIOKrakenFOC implements ArmIO {
 
     @Override
     public void setPID(double p, double i, double d, double ks, double kv, double kg) {
-        talonConfig.Slot0.kP = scaleLinearGain(p);
-        talonConfig.Slot0.kI = scaleLinearGain(i);
-        talonConfig.Slot0.kD = scaleLinearGain(d);
+        talonConfig.Slot0.kP = scaleAngularGain(p);
+        talonConfig.Slot0.kI = scaleAngularGain(i);
+        talonConfig.Slot0.kD = scaleAngularGain(d);
         talonConfig.Slot0.kS = ks;
-        talonConfig.Slot0.kV = scaleLinearGain(kv);
+        talonConfig.Slot0.kV = scaleAngularGain(kv);
         talonConfig.Slot0.kG = kg;
         talon.getConfigurator().apply(talonConfig.Slot0);
     }
@@ -199,15 +199,15 @@ public class ArmIOKrakenFOC implements ArmIO {
     @Override
     public void setPID(double p, double i, double d, double ks, double kv, double kg,
                        double velocityMax, double accelerationMax, double neutralDeadband) {
-        talonConfig.Slot0.kP = scaleLinearGain(p);
-        talonConfig.Slot0.kI = scaleLinearGain(i);
-        talonConfig.Slot0.kD = scaleLinearGain(d);
+        talonConfig.Slot0.kP = scaleAngularGain(p);
+        talonConfig.Slot0.kI = scaleAngularGain(i);
+        talonConfig.Slot0.kD = scaleAngularGain(d);
         talonConfig.Slot0.kS = ks;
-        talonConfig.Slot0.kV = scaleLinearGain(kv);
+        talonConfig.Slot0.kV = scaleAngularGain(kv);
         talonConfig.Slot0.kG = kg;
 
-        talonConfig.MotionMagic.MotionMagicCruiseVelocity = inchesToMechanismRotations(velocityMax);
-        talonConfig.MotionMagic.MotionMagicAcceleration = inchesToMechanismRotations(accelerationMax);
+        talonConfig.MotionMagic.MotionMagicCruiseVelocity = degreesToMechanismRotationsMagnitude(velocityMax);
+        talonConfig.MotionMagic.MotionMagicAcceleration = degreesToMechanismRotationsMagnitude(accelerationMax);
 
         talonConfig.MotorOutput.DutyCycleNeutralDeadband = neutralDeadband;
         talon.getConfigurator().apply(talonConfig.Slot0);
@@ -234,16 +234,20 @@ public class ArmIOKrakenFOC implements ArmIO {
         return List.of(new SelfCheckingTalonFX(name, talon));
     }
 
-    protected double mechanismRotationsToInches(double mechanismRotations) {
-        return mechanismRotations * inchesPerMechanismRotation;
+    protected double mechanismRotationsToDegrees(double mechanismRotations) {
+        return -mechanismRotations * degreesPerMechanismRotation;
     }
 
-    protected double inchesToMechanismRotations(double inches) {
-        return inches / inchesPerMechanismRotation;
+    protected double degreesToMechanismRotations(double degrees) {
+        return -degrees / degreesPerMechanismRotation;
     }
 
-    private double scaleLinearGain(double linearGain) {
-        return linearGain * inchesPerMechanismRotation;
+    protected double degreesToMechanismRotationsMagnitude(double degrees) {
+        return Math.abs(degrees) / degreesPerMechanismRotation;
+    }
+
+    private double scaleAngularGain(double angularGain) {
+        return angularGain * degreesPerMechanismRotation;
     }
 
     private void processZeroing() {
@@ -265,7 +269,7 @@ public class ArmIOKrakenFOC implements ArmIO {
         }
 
         if (!Double.isNaN(zeroSpikeStartTimeSec) && (now - zeroSpikeStartTimeSec) >= ZERO_HOLD_SEC.get()) {
-            talon.setPosition(inchesToMechanismRotations(maxPositionInches));
+            talon.setPosition(degreesToMechanismRotations(minPositionDeg));
             zeroingActive = false;
             zeroSpikeStartTimeSec = Double.NaN;
             fastRezeroActive = false;

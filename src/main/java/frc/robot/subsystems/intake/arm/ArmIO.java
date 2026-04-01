@@ -8,10 +8,10 @@ public interface ArmIO {
     @AutoLog
     public class ArmIOInputs {
         public boolean connected = true;
-        public String name = "IntakeSlide";
+        public String name = "IntakeArm";
         public boolean zeroing = false;
-        public double positionInches = 0.0;
-        public double velocityInchesPerSec = 0.0;
+        public double positionDeg = 0.0;
+        public double velocityDegPerSec = 0.0;
         public double appliedVoltage = 0.0;
         public double supplyCurrentAmps = 0.0;
         public double torqueCurrentAmps = 0.0;
@@ -19,11 +19,11 @@ public interface ArmIO {
     }
 
     default void updateInputs(ArmIOInputs inputs) {}
-    default void setPosition(double positionInches) {}
+    default void setPosition(double positionDeg) {}
     default void setVoltage(double volts) {}
     default void stop() {}
     default void zero(){}
-    default void configureMotionMagic(double cruiseInchesPerSec, double accelInchesPerSec2, double neutralDeadband) {}
+    default void configureMotionMagic(double cruiseDegPerSec, double accelDegPerSec2, double neutralDeadband) {}
     default void setPID(double p, double i, double d, double ks, double kv, double kg) {}
     default void setPID(double p, double i, double d, double ks, double kv, double kg,
                         double velocityMax, double accelerationMax, double neutralDeadband) {

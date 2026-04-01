@@ -1001,8 +1001,8 @@ public class RobotContainer {
 		autoChooser.addOption("Intake PID Char",
 				new RoughPIDCharacterization(intake, (volts) -> intake.runCharacterization(volts),
 						intake::getCharacterizationMeasurement, intake::getCharVelocity,
-						IntakeConstants.slideMinInches, IntakeConstants.slideMaxInches, 1.0,
-						11.0, 3, 20).beforeStarting(Commands.waitSeconds(3))
+						IntakeConstants.armMinAngleDeg, IntakeConstants.armMaxAngleDeg, 15.0,
+						120.0, 3, 20).beforeStarting(Commands.waitSeconds(3))
 						.withName("Intake PID Characterization"));
 		autoChooser.addOption("Intake FeedForward Characterization",
 				new FeedForwardCharacterization(intake, (volts) -> intake.runCharacterization(volts),
@@ -1143,7 +1143,7 @@ public class RobotContainer {
 		// Left Trigger = auto align THRU the trench with velocity
 		// Right Trigger = fire while aiming at target
 		// Left Bumper = hold to intake from ground
-		// Right Bumper = hold to agitate intake (oscillate arm 0-25deg)
+		// Right Bumper = hold to agitate intake (oscillate arm 0-30deg)
 		// A button = vomit
 		// B button = clear logged shots
 		// Y button = (reserved)

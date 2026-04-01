@@ -4,17 +4,16 @@ import com.ctre.phoenix6.CANBus;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
-import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.simulation.ElevatorSim;
+import edu.wpi.first.wpilibj.simulation.SingleJointedArmSim;
 import frc.robot.utils.IntakeConstants;
 
 public class ArmIOSim extends ArmIOKrakenFOC {
 
-    private static final double ZERO_POSITION_EPSILON_INCHES = 0.05;
+    private static final double ZERO_POSITION_EPSILON_DEG = 1.0;
 
-    private final ElevatorSim slideSim;
+    private final SingleJointedArmSim armSim;
     private final PIDController simPID = new PIDController(6.0, 0.0, 0.25);
     private double appliedVolts = 0.0;
     private double zeroSpikeStartTimeSec = Double.NaN;
@@ -29,15 +28,15 @@ public class ArmIOSim extends ArmIOKrakenFOC {
                 true,
                 IntakeConstants.intakeArmReduction);
 
-        slideSim = new ElevatorSim(
-                DCMotor.getKrakenX44Foc(1),
+        armSim = new SingleJointedArmSim(
+                IntakeConstants.intakeArmMotor,
                 IntakeConstants.intakeArmReduction,
-                IntakeConstants.slideCarriageMassKg,
-                Units.inchesToMeters(IntakeConstants.slideInchesPerMechanismRotation / (2.0 * Math.PI)),
-                Units.inchesToMeters(IntakeConstants.slideMinInches),
-                Units.inchesToMeters(IntakeConstants.slideMaxInches),
-                false,
-                Units.inchesToMeters(IntakeConstants.slideMinInches));
+                IntakeConstants.intakeMOI,
+                IntakeConstants.intakeArmLengthMeters,
+                Units.degreesToRadians(IntakeConstants.armMinAngleDeg),
+                Units.degreesToRadians(IntakeConstants.armMaxAngleDeg),
+                true,
+                Units.degreesToRadians(IntakeConstants.armMinAngleDeg));
     }
 
     public ArmIOSim() {
@@ -50,32 +49,33 @@ public class ArmIOSim extends ArmIOKrakenFOC {
             processSimZeroing();
         }
 
-        slideSim.update(0.02);
+        armSim.update(0.02);
 
         inputs.connected = true;
         inputs.name = name;
         inputs.zeroing = zeroingActive;
-        inputs.positionInches = Units.metersToInches(slideSim.getPositionMeters());
-        inputs.velocityInchesPerSec = Units.metersToInches(slideSim.getVelocityMetersPerSecond());
+        inputs.positionDeg = Units.radiansToDegrees(armSim.getAngleRads());
+        inputs.velocityDegPerSec = Units.radiansToDegrees(armSim.getVelocityRadPerSec());
         inputs.appliedVoltage = appliedVolts;
-        inputs.supplyCurrentAmps = Math.abs(slideSim.getCurrentDrawAmps());
-        inputs.torqueCurrentAmps = Math.abs(slideSim.getCurrentDrawAmps());
+        inputs.supplyCurrentAmps = Math.abs(armSim.getCurrentDrawAmps());
+        inputs.torqueCurrentAmps = Math.abs(armSim.getCurrentDrawAmps());
         inputs.tempCelsius = 0.0;
     }
 
     @Override
-    public void setPosition(double positionInches) {
+    public void setPosition(double positionDeg) {
         if (zeroingActive) {
             return;
         }
 
         openLoop = false;
-        double clamped = MathUtil.clamp(positionInches, minPositionInches, maxPositionInches);
-        appliedVolts = MathUtil.clamp(
-                simPID.calculate(slideSim.getPositionMeters(), Units.inchesToMeters(clamped)),
+        double clamped = MathUtil.clamp(positionDeg, minPositionDeg, maxPositionDeg);
+        double controlVolts = MathUtil.clamp(
+                simPID.calculate(armSim.getAngleRads(), Units.degreesToRadians(clamped)),
                 -12.0,
                 12.0);
-        slideSim.setInputVoltage(appliedVolts);
+        appliedVolts = -controlVolts;
+        armSim.setInputVoltage(controlVolts);
     }
 
     @Override
@@ -86,28 +86,29 @@ public class ArmIOSim extends ArmIOKrakenFOC {
 
         openLoop = true;
         appliedVolts = MathUtil.clamp(volts, -12.0, 12.0);
-        slideSim.setInputVoltage(appliedVolts);
+        armSim.setInputVoltage(-appliedVolts);
     }
 
     @Override
     public void stop() {
         appliedVolts = 0.0;
-        slideSim.setInputVoltage(0.0);
+        armSim.setInputVoltage(0.0);
     }
 
     @Override
     public void zero() {
         super.zero();
         zeroSpikeStartTimeSec = Double.NaN;
+        simPID.reset();
     }
 
     private void processSimZeroing() {
         double now = Timer.getFPGATimestamp();
         appliedVolts = getZeroingVoltage();
-        slideSim.setInputVoltage(appliedVolts);
+        armSim.setInputVoltage(-appliedVolts);
 
-        boolean atLowerHardstop = Units.metersToInches(slideSim.getPositionMeters())
-                <= (IntakeConstants.slideMinInches + ZERO_POSITION_EPSILON_INCHES);
+        boolean atLowerHardstop = Units.radiansToDegrees(armSim.getAngleRads())
+                <= (IntakeConstants.armMinAngleDeg + ZERO_POSITION_EPSILON_DEG);
         if (atLowerHardstop) {
             if (Double.isNaN(zeroSpikeStartTimeSec)) {
                 zeroSpikeStartTimeSec = now;
@@ -117,13 +118,12 @@ public class ArmIOSim extends ArmIOKrakenFOC {
         }
 
         if (!Double.isNaN(zeroSpikeStartTimeSec) && (now - zeroSpikeStartTimeSec) >= ZERO_HOLD_SEC.get()) {
-            slideSim.setState(Units.inchesToMeters(IntakeConstants.slideMinInches), 0.0);
             zeroingActive = false;
             zeroSpikeStartTimeSec = Double.NaN;
             fastRezeroActive = false;
             openLoop = false;
             appliedVolts = 0.0;
-            slideSim.setInputVoltage(0.0);
+            armSim.setInputVoltage(0.0);
         }
     }
 }
