@@ -117,6 +117,10 @@ public class ShotCalculator {
       double hoodVelocity,
       double flywheelSpeed) {}
 
+  public record FixedDistanceShotParameters(
+      double hoodAngle,
+      double flywheelSpeed) {}
+
   private enum ShotModel {
     TABLE_2D,
     HYBRID_3D_LEAD
@@ -456,6 +460,25 @@ public class ShotCalculator {
 
   public ShootingParameters getParameters(Translation2d target, Transform2d robotToTurret) {
     return getParameters(target, robotToTurret, HUB_PROFILE, 0.0);
+  }
+
+  public FixedDistanceShotParameters getFixedDistanceShotParameters(
+      Transform2d robotToTurret,
+      ShotProfile profile,
+      double distanceMeters) {
+    if (profile == null) profile = HUB_PROFILE;
+    TurretBallisticsConfig turretConfig = resolveTurretConfig(robotToTurret);
+    StaticShotCommand shotCommand =
+        getStaticShotCommandForDistance(
+            profile,
+            distanceMeters,
+            null,
+            turretConfig,
+            new Pose2d(),
+            new Rotation2d());
+    return new FixedDistanceShotParameters(
+        shotCommand.hoodAngleRad(),
+        shotCommand.flywheelSpeedRadPerSec());
   }
 
   public ShootingParameters getParameters(

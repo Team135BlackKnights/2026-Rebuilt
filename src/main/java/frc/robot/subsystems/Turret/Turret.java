@@ -127,6 +127,8 @@ public class Turret extends SubsystemChecker {
   private double filteredTurretRads = Double.NaN;
   private double desiredHoodRads = 0.0;
   private double desiredFlywheelRadsPerSec = 0.0;
+  private boolean backupRobotAimingEnabled = false;
+  private double fixedShotDistanceOverrideMeters = Double.NaN;
 
   private final LoggableTunedNumber tuning_RPM;
   private final LoggableTunedNumber tuning_hoodDeg;
@@ -280,6 +282,26 @@ public class Turret extends SubsystemChecker {
     this.profile = getPresetTargetProfile(preset);
   }
 
+  public PresetTarget getPresetTarget() {
+    return activePreset;
+  }
+
+  public void setBackupRobotAimingEnabled(boolean enabled) {
+    backupRobotAimingEnabled = enabled;
+  }
+
+  public void setFixedShotDistanceOverrideMeters(double distanceMeters) {
+    fixedShotDistanceOverrideMeters = Math.max(0.0, distanceMeters);
+  }
+
+  public void clearFixedShotDistanceOverride() {
+    fixedShotDistanceOverrideMeters = Double.NaN;
+  }
+
+  public Translation2d getActiveTargetPosition() {
+    return activePreset == PresetTarget.OVER_NEUTRAL_ZONE ? getPresetTarget2d(PresetTarget.OVER_NEUTRAL_ZONE) : target;
+  }
+
   private void applyAllPIDs() {
     azimuthIO.setPID(
         azimuth_kP.get(), azimuth_kI.get(), azimuth_kD.get(),
@@ -341,6 +363,19 @@ public class Turret extends SubsystemChecker {
     return MathUtil.angleModulus(applyTurretAngleFilter(desiredTurretRads) - azimuthInputs.turretPositionRads);
   }
 
+  private double backupRobotHeadingErrorRads() {
+    Rotation2d desiredRobotHeading = GeomUtil.rotationFromCurrentToTarget(
+        RobotContainer.drivetrainS.getLookAheadPose().getTranslation(),
+        RobotContainer.getBackupAimTargetTranslation(),
+        GeomUtil.ApproachDirection.FRONT);
+    return MathUtil.angleModulus(
+        desiredRobotHeading.minus(RobotContainer.drivetrainS.getLookAheadPose().getRotation()).getRadians());
+  }
+
+  private double effectiveAimErrorRads() {
+    return backupRobotAimingEnabled ? backupRobotHeadingErrorRads() : turretAngleErrorRads();
+  }
+
   private double applyTurretAngleFilter(double targetRads) {
     // Initialize filter state on first use
     if (!Double.isFinite(filteredTurretRads)) {
@@ -367,8 +402,23 @@ public class Turret extends SubsystemChecker {
     Logger.recordOutput(name + "/Setpoints/TurretRadsFiltered", filtered);
   }
 
+  private void commandTurretPositionForMode(double targetRads) {
+    commandTurretPosition(backupRobotAimingEnabled ? 0.0 : targetRads);
+  }
+
+  private boolean hasFixedShotDistanceOverride() {
+    return Double.isFinite(fixedShotDistanceOverrideMeters);
+  }
+
+  private void applyFixedShotDistanceOverride() {
+    var fixedShotParameters =
+        shotCalculator.getFixedDistanceShotParameters(robotToTurret, profile, fixedShotDistanceOverrideMeters);
+    desiredHoodRads = fixedShotParameters.hoodAngle();
+    desiredFlywheelRadsPerSec = fixedShotParameters.flywheelSpeed();
+  }
+
   public boolean atAimAngle() {
-    return isAzimuthConnected() && Math.abs(turretAngleErrorRads()) < aimToleranceRads.get();
+    return isAzimuthConnected() && Math.abs(effectiveAimErrorRads()) < aimToleranceRads.get();
   }
 
   public void forceShot(double angle, double hood, double rpm) {
@@ -487,7 +537,7 @@ public class Turret extends SubsystemChecker {
         && isHoodConnected()
         && isFlywheelConnected()
         //&& !isHoodForcedDown(getShooterControlGoal())
-        && Math.abs(turretAngleErrorRads()) < aimToleranceRads.get()
+        && Math.abs(effectiveAimErrorRads()) < aimToleranceRads.get()
         && Math.abs(hoodInputs.positionRads - desiredHoodRads
             - Units.degreesToRadians(offsetHoodAngle.get())) < hoodToleranceRads.get()
         && Math.abs(flywheelInputs.velocityRadsPerSec - desiredFlywheelRadsPerSec
@@ -522,9 +572,13 @@ public class Turret extends SubsystemChecker {
         }
         desiredFlywheelRadsPerSec = 0.0;
 
-        azimuthIO.stop();
+        if (backupRobotAimingEnabled) {
+          commandTurretPosition(0.0);
+        } else {
+          azimuthIO.stop();
+          desiredTurretRads = lastTurretRads;
+        }
         flywheelIO.stop();
-        desiredTurretRads = lastTurretRads;
         desiredHoodRads = SAFE_HOOD_DOWN_RADS;
       }
 
@@ -539,7 +593,7 @@ public class Turret extends SubsystemChecker {
         desiredTurretRads = params.turretAngle().getRadians();
         desiredHoodRads = SAFE_HOOD_DOWN_RADS;
         desiredFlywheelRadsPerSec = Units.rotationsPerMinuteToRadiansPerSecond(flywheel_idle.get());
-        commandTurretPosition(desiredTurretRads);
+        commandTurretPositionForMode(desiredTurretRads);
 
         flywheelIO.setVelocity(desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
       }
@@ -553,29 +607,37 @@ public class Turret extends SubsystemChecker {
         desiredTurretRads = params.turretAngle().getRadians();
         desiredHoodRads = params.hoodAngle();
         desiredFlywheelRadsPerSec = params.flywheelSpeed();
-        commandTurretPosition(desiredTurretRads);
+        if (hasFixedShotDistanceOverride()) {
+          applyFixedShotDistanceOverride();
+        }
+        commandTurretPositionForMode(desiredTurretRads);
 
         flywheelIO.setVelocity(desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
       }
       case SHOOTING_CUSTOM -> {
-        commandTurretPosition(desiredTurretRads);
+        commandTurretPositionForMode(desiredTurretRads);
         flywheelIO.setVelocity(
             desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
       }
       case SHOOTING_FROM_HUB -> {
         var params = shotCalculator.getParameters(target, robotToTurret, profile, distanceOffset);
         desiredTurretRads = params.turretAngle().getRadians();
-        desiredHoodRads = Units.degreesToRadians(shot_HUB_TOP_CENTER_HOOD_DEG.get());
-        commandTurretPosition(desiredTurretRads);
-        flywheelIO.setVelocity(Units.rotationsPerMinuteToRadiansPerSecond(shot_HUB_TOP_CENTER_RPM.get())
-            + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
+        if (hasFixedShotDistanceOverride()) {
+          applyFixedShotDistanceOverride();
+        } else {
+          desiredHoodRads = Units.degreesToRadians(shot_HUB_TOP_CENTER_HOOD_DEG.get());
+          desiredFlywheelRadsPerSec = Units.rotationsPerMinuteToRadiansPerSecond(shot_HUB_TOP_CENTER_RPM.get());
+        }
+        commandTurretPositionForMode(desiredTurretRads);
+        flywheelIO.setVelocity(
+            desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
       }
 
       case TUNING_FLYWHEEL -> {
         flywheelIO.setVelocity(desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
       }
       case TUNING_AZIMUTH -> {
-        commandTurretPosition(desiredTurretRads);
+        commandTurretPositionForMode(desiredTurretRads);
       }
       case TUNING_HOOD -> {
       }
@@ -587,7 +649,7 @@ public class Turret extends SubsystemChecker {
         var params = shotCalculator.getParameters(target, robotToTurret, profile, distanceOffset);
         desiredTurretRads = params.turretAngle().getRadians();
         flywheelIO.setVelocity(desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
-        commandTurretPosition(desiredTurretRads);
+        commandTurretPositionForMode(desiredTurretRads);
       }
       case JACKHAMMER -> {
       }
@@ -638,6 +700,10 @@ public class Turret extends SubsystemChecker {
         desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
 
     Logger.recordOutput(name + "/Errors/TurretRads", turretAngleErrorRads());
+    Logger.recordOutput(name + "/BackupRobotAimingEnabled", backupRobotAimingEnabled);
+    Logger.recordOutput(name + "/BackupRobotHeadingErrorRads",
+        backupRobotAimingEnabled ? backupRobotHeadingErrorRads() : 0.0);
+    Logger.recordOutput(name + "/FixedShotDistanceOverrideMeters", fixedShotDistanceOverrideMeters);
     Logger.recordOutput(name + "/AtAimAngle", atAimAngle());
     Logger.recordOutput(name + "/AtShootSetpoints", atShootSetpoints());
     Logger.recordOutput(name + "/KickupGoal", kickupGoal.toString());

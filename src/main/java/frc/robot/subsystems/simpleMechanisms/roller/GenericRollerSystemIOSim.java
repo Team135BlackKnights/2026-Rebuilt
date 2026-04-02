@@ -13,8 +13,17 @@ public class GenericRollerSystemIOSim implements GenericRollerSystemIO {
   private final String name;
 
   public GenericRollerSystemIOSim(DCMotor motorModel, String name, double reduction, double moi) {
+    validateFinitePositive(name, "reduction", reduction);
+    validateFinitePositive(name, "moi", moi);
     sim = new DCMotorSim(LinearSystemId.createDCMotorSystem(motorModel, moi, reduction), motorModel, .1, .1);
     this.name = name;
+  }
+
+  private static void validateFinitePositive(String mechanismName, String parameterName, double value) {
+    if (!Double.isFinite(value) || value <= 0.0) {
+      throw new IllegalArgumentException(
+          mechanismName + " sim " + parameterName + " must be finite and > 0, got " + value);
+    }
   }
 
   @Override

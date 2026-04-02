@@ -6,10 +6,10 @@ package frc.robot;
 import frc.robot.Constants.FRCMatchState;
 import frc.robot.Constants.Mode;
 import frc.robot.commands.FeedForwardCharacterization;
-import frc.robot.commands.OrchestraC;
 import frc.robot.commands.RoughPIDCharacterization;
 import frc.robot.commands.StaticCharacterization;
 import frc.robot.commands.auto.AutoIntake;
+import frc.robot.commands.drive.AimToPose;
 import frc.robot.commands.drive.DrivetrainC;
 import frc.robot.commands.drive.WheelRadiusCharacterization;
 import frc.robot.subsystems.SubsystemChecker;
@@ -175,6 +175,13 @@ public class RobotContainer {
 	// public static DriverStationHID dsHIDHandler = new DriverStationHID(2);
 	public static XboxController testingController = new XboxController(5);
 	public static Optional<Rotation2d> angleOverrider = Optional.empty();
+	private static final double FIXED_HUB_SHOT_DISTANCE_OFFSET_METERS = Units.inchesToMeters(15.0);
+	private static final double TOWER_CENTER_FIXED_HUB_SHOT_DISTANCE_METERS = computeFixedHubShotDistanceMeters(
+			FieldConstants.Tower.centerPoint);
+	private static final double RIGHT_TRENCH_FIXED_HUB_SHOT_DISTANCE_METERS = computeFixedHubShotDistanceMeters(
+			FieldConstants.RightTrench.openingCenter);
+	private static final double LEFT_TRENCH_FIXED_HUB_SHOT_DISTANCE_METERS = computeFixedHubShotDistanceMeters(
+			FieldConstants.LeftTrench.openingCenter);
 	/** Timer used to force a shot after 0.25 s even if setpoints aren't reached */
 	private final Timer shootTimer = new Timer();
 	public static boolean forceKickup = false;
@@ -192,6 +199,9 @@ public class RobotContainer {
 	public static double angularSpeed = 0;
 	public static double xSpeed = 0;
 	public static double ySpeed = 0;
+	private Turret.PresetTarget leftTurretPresetBeforeFixedHubDistanceOverride = Turret.PresetTarget.HUB_TOP_CENTER;
+	private Turret.PresetTarget rightTurretPresetBeforeFixedHubDistanceOverride = Turret.PresetTarget.HUB_TOP_CENTER;
+	private int fixedHubDistanceOverrideHoldCount = 0;
 
 	public static void updateShotTuningIndexerGoals() {
 		if (kickup == null || leftTurret == null || rightTurret == null) {
@@ -222,6 +232,7 @@ public class RobotContainer {
 	Trigger startButtonDrive = driveController.start();
 	Trigger manipRightTrigger = manipController.rightTrigger(.1);
 	Trigger manipLeftTrigger = manipController.leftTrigger(.1);
+	Trigger manipStartButton = manipController.start();
 	Trigger manipAButton = manipController.a();
 	Trigger manipXButton = manipController.x();
 	Trigger manipUpPov = manipController.pov(0);
@@ -1026,6 +1037,93 @@ public class RobotContainer {
 		return angleOverrider;
 	}
 
+	private static double computeFixedHubShotDistanceMeters(Translation2d referencePoint) {
+		Translation2d hubTopCenterPoint = new Translation2d(
+				FieldConstants.Hub.topCenterPoint.getX(),
+				FieldConstants.Hub.topCenterPoint.getY());
+		return Math.max(0.0, hubTopCenterPoint.getDistance(referencePoint) - FIXED_HUB_SHOT_DISTANCE_OFFSET_METERS);
+	}
+
+	public static Translation2d getBackupAimTargetTranslation() {
+		if (leftTurret == null && rightTurret == null) {
+			return new Translation2d();
+		}
+		if (leftTurret == null) {
+			return rightTurret.getActiveTargetPosition();
+		}
+		if (rightTurret == null) {
+			return leftTurret.getActiveTargetPosition();
+		}
+		return leftTurret.getActiveTargetPosition().interpolate(rightTurret.getActiveTargetPosition(), 0.5);
+	}
+
+	private void setBackupRobotAimingEnabled(boolean enabled) {
+		leftTurret.setBackupRobotAimingEnabled(enabled);
+		rightTurret.setBackupRobotAimingEnabled(enabled);
+	}
+
+	private Command buildBackupRobotAimCommand() {
+		return Commands.startEnd(
+				() -> setBackupRobotAimingEnabled(true),
+				() -> setBackupRobotAimingEnabled(false))
+				.alongWith(new AimToPose(
+						drivetrainS,
+						() -> new Pose2d(getBackupAimTargetTranslation(), new Rotation2d()),
+						GeomUtil.ApproachDirection.FRONT))
+				.withName("Backup Robot Aim");
+	}
+
+	private void applyFixedHubDistanceOverride(double distanceMeters) {
+		leftTurret.setPresetTarget(Turret.PresetTarget.HUB_TOP_CENTER);
+		rightTurret.setPresetTarget(Turret.PresetTarget.HUB_TOP_CENTER);
+		leftTurret.setFixedShotDistanceOverrideMeters(distanceMeters);
+		rightTurret.setFixedShotDistanceOverrideMeters(distanceMeters);
+	}
+
+	private void engageFixedHubDistanceOverride(double distanceMeters) {
+		if (fixedHubDistanceOverrideHoldCount == 0) {
+			leftTurretPresetBeforeFixedHubDistanceOverride = leftTurret.getPresetTarget();
+			rightTurretPresetBeforeFixedHubDistanceOverride = rightTurret.getPresetTarget();
+		}
+		fixedHubDistanceOverrideHoldCount++;
+		applyFixedHubDistanceOverride(distanceMeters);
+	}
+
+	private double getHeldFixedHubDistanceOverrideMeters() {
+		if (manipAButton.getAsBoolean()) {
+			return TOWER_CENTER_FIXED_HUB_SHOT_DISTANCE_METERS;
+		}
+		if (manipBButton.getAsBoolean()) {
+			return RIGHT_TRENCH_FIXED_HUB_SHOT_DISTANCE_METERS;
+		}
+		if (manipXButton.getAsBoolean()) {
+			return LEFT_TRENCH_FIXED_HUB_SHOT_DISTANCE_METERS;
+		}
+		return Double.NaN;
+	}
+
+	private void releaseFixedHubDistanceOverride() {
+		fixedHubDistanceOverrideHoldCount = Math.max(0, fixedHubDistanceOverrideHoldCount - 1);
+		double heldDistanceMeters = getHeldFixedHubDistanceOverrideMeters();
+		if (Double.isFinite(heldDistanceMeters)) {
+			applyFixedHubDistanceOverride(heldDistanceMeters);
+			return;
+		}
+		leftTurret.clearFixedShotDistanceOverride();
+		rightTurret.clearFixedShotDistanceOverride();
+		if (fixedHubDistanceOverrideHoldCount == 0) {
+			leftTurret.setPresetTarget(leftTurretPresetBeforeFixedHubDistanceOverride);
+			rightTurret.setPresetTarget(rightTurretPresetBeforeFixedHubDistanceOverride);
+		}
+	}
+
+	private Command buildFixedHubDistanceOverrideCommand(double distanceMeters, String name) {
+		return Commands.startEnd(
+				() -> engageFixedHubDistanceOverride(distanceMeters),
+				this::releaseFixedHubDistanceOverride)
+				.withName(name);
+	}
+
 	private void configureBindings() {
 		Trigger povUp = driveController.pov(0);
 		Trigger povRight = driveController.pov(90);
@@ -1141,7 +1239,7 @@ public class RobotContainer {
 		// Start = zero chassis
 		// Select = zero robot
 		// Left Stick Button = orient modules to circle for pushing
-		// Right Stick Button = play megolovania because why not
+		// Right Stick Button = backup robot-azimuth aiming mode
 		// POV-Up / BR paddle = vomit
 		// POV-Right / TR paddle = manual turret control for aiming at right trench
 		// POV-Down / BL paddle = vomit
@@ -1154,7 +1252,7 @@ public class RobotContainer {
 		// B button = clear logged shots
 		// Y button = (reserved)
 		// X button = jackhammer intake/center indexer/turret kickups
-		// NOTE: Intake defaults DOWN (out). Manip X holds it UP (stow).
+		// NOTE: Intake defaults DOWN (out). Manip START holds it UP (stow).
 
 		startButtonDrive
 				.onTrue(new InstantCommand(() -> {
@@ -1174,7 +1272,7 @@ public class RobotContainer {
 				}));
 		leftStickButtonDrive.onTrue(drivetrainS.orientModules(Swerve.getXOrientations()));
 		leftStickButtonDrive.onFalse(Commands.runOnce(() -> drivetrainS.stopModules(), drivetrainS));
-		rightStickButtonDrive.onTrue(new OrchestraC("megolovania").withName("Play Megolovania"));
+		rightStickButtonDrive.whileTrue(buildBackupRobotAimCommand());
 		// Test Commands
 		/*
 		 * aButtonDrive.whileTrue(Commands.run(() -> {
@@ -1342,8 +1440,8 @@ public class RobotContainer {
 		povLeft.onTrue(targetHubBoth);
 		povRight.onTrue(targetBothOverNeutral);
 		// Manip Controls
-		// Manip X = hold intake up (stow), release to go back down
-		manipXButton.whileTrue(
+		// Manip START = hold intake up (stow), release to go back down
+		manipStartButton.whileTrue(
 				Commands.run(() -> intake.setGoal(Goal.STOW), intake)
 						.finallyDo(() -> intake.setGoal(Goal.INTAKE_OUTER_IDLE)));
 		Trigger manipManualTurret = new Trigger(
@@ -1403,15 +1501,15 @@ public class RobotContainer {
 		}, intake).finallyDo(() -> {
 			intake.holdAtCurrentPosition();
 		}));
-		manipAButton.whileTrue(Commands.startEnd(
-				() -> {
-					rightTurret.setManualHoodRezeroHeld(true);
-					leftTurret.setManualHoodRezeroHeld(true);
-				},
-				() -> {
-					rightTurret.setManualHoodRezeroHeld(false);
-					leftTurret.setManualHoodRezeroHeld(false);
-				}));
+		manipAButton.whileTrue(buildFixedHubDistanceOverrideCommand(
+				TOWER_CENTER_FIXED_HUB_SHOT_DISTANCE_METERS,
+				"Manip Tower Fixed Hub Distance"));
+		manipBButton.whileTrue(buildFixedHubDistanceOverrideCommand(
+				RIGHT_TRENCH_FIXED_HUB_SHOT_DISTANCE_METERS,
+				"Manip Right Trench Fixed Hub Distance"));
+		manipXButton.whileTrue(buildFixedHubDistanceOverrideCommand(
+				LEFT_TRENCH_FIXED_HUB_SHOT_DISTANCE_METERS,
+				"Manip Left Trench Fixed Hub Distance"));
 		manipUpPov.onTrue(Commands.runOnce(() -> {
 			rightTurret.offsetDistance(.125);
 			leftTurret.offsetDistance(.125);

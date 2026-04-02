@@ -11,7 +11,7 @@ public class IntakeConstants {
     public static final boolean intakeInverted = false;
     public static final boolean frontRollersInverted = true;
     public static final DCMotor intakeArmMotor = DCMotor.getKrakenX60Foc(1);
-    public static final double frontRollersReduction = 26/12/.0;
+    public static final double frontRollersReduction = 26.0 / 12.0;
     public static final double intakeMOI = 0.0005; // kg m^2
     public static final double intakeArmLengthMeters = Units.inchesToMeters(12.0);
     public static final double frontRollersMOI = 0.0021; // kg m^2
