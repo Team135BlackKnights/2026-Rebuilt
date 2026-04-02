@@ -11,6 +11,7 @@ import com.ctre.phoenix6.hardware.TalonFX;
 
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.math.util.Units;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.TuningConstants;
 import frc.robot.subsystems.SubsystemChecker;
@@ -24,11 +25,13 @@ import lombok.Getter;
 
 public class Intake extends SubsystemChecker {
 
-    private static final LoggableTunedNumber arm_kP = new LoggableTunedNumber("Intake/Arm/kP", 0.3,
+    private static final LoggableTunedNumber arm_kP = new LoggableTunedNumber("Intake/Arm/kP",
+            0.3 * Units.radiansToDegrees(1.0),
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_kI = new LoggableTunedNumber("Intake/Arm/kI", 0.0,
             TuningConstants.isTuningIntake);
-    private static final LoggableTunedNumber arm_kD = new LoggableTunedNumber("Intake/Arm/kD", 0.002,
+    private static final LoggableTunedNumber arm_kD = new LoggableTunedNumber("Intake/Arm/kD",
+            0.002 * (180.0 / Math.PI),
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_kS = new LoggableTunedNumber("Intake/Arm/kS", 4.1,
             TuningConstants.isTuningIntake);
@@ -37,25 +40,25 @@ public class Intake extends SubsystemChecker {
     private static final LoggableTunedNumber arm_kG = new LoggableTunedNumber("Intake/Arm/kG", 0,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_motionSpeed = new LoggableTunedNumber(
-            "Intake/Arm/MotionCruiseDegPerSec", 360, TuningConstants.isTuningIntake);
+            "Intake/Arm/MotionCruiseRadPerSec", Units.degreesToRadians(360.0), TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_motionAccel = new LoggableTunedNumber(
-            "Intake/Arm/MotionAccelDegPerSec2", 720, TuningConstants.isTuningIntake);
+            "Intake/Arm/MotionAccelRadPerSec2", Units.degreesToRadians(720.0), TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_neutralBand = new LoggableTunedNumber("Intake/Arm/NeutralBand", .15,
             TuningConstants.isTuningIntake);
 
-    private static final LoggableTunedNumber arm_stow = new LoggableTunedNumber("Intake/Setpoints/StowDeg",
-            45.0, TuningConstants.isTuningIntake);
-    private static final LoggableTunedNumber arm_ground = new LoggableTunedNumber("Intake/Setpoints/GroundDeg",
-            IntakeConstants.armMinAngleDeg, TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber arm_stow = new LoggableTunedNumber("Intake/Setpoints/StowRad",
+            Units.degreesToRadians(45.0), TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber arm_ground = new LoggableTunedNumber("Intake/Setpoints/GroundRad",
+            IntakeConstants.armMinAngleRad, TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber time_jackhammer = new LoggableTunedNumber("Intake/JackhammerTimeSecs",
             .25, TuningConstants.isTuningIntake);
-    private static final LoggableTunedNumber arm_agitate = new LoggableTunedNumber("Intake/Setpoints/AgitateDeg",
-            30.0, TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber arm_agitate = new LoggableTunedNumber("Intake/Setpoints/AgitateRad",
+            Units.degreesToRadians(30.0), TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber agitate_force_volts = new LoggableTunedNumber(
-            "Intake/AgitateForceVolts", -5.5, TuningConstants.isTuningIntake);
+            "Intake/AgitateForceVolts", -4, TuningConstants.isTuningIntake);
 
-    private static final LoggableTunedNumber arm_tolerance = new LoggableTunedNumber("Intake/ToleranceDeg", 2.0,
-            TuningConstants.isTuningIntake);
+    private static final LoggableTunedNumber arm_tolerance = new LoggableTunedNumber("Intake/ToleranceRad",
+            Units.degreesToRadians(20.0), TuningConstants.isTuningIntake);
 
     private final ArmIO armIO;
     private final FrontRollers frontRollers;
@@ -80,7 +83,7 @@ public class Intake extends SubsystemChecker {
     }
 
     private Goal goal = Goal.STOW;
-    private double currentArmSetpointDeg = 0.0;
+    private double currentArmSetpointRad = 0.0;
     private double currentRollerVolts = 0.0;
     private boolean agitatingGoingUp = true;
     @Getter
@@ -115,51 +118,51 @@ public class Intake extends SubsystemChecker {
         switch (goal) {
             case TUNING -> frontRollers.setGoal(FrontRollers.Goal.STOPPED);
             case START -> {
-                currentArmSetpointDeg = arm_ground.get();
+                currentArmSetpointRad = arm_ground.get();
                 frontRollers.setGoal(FrontRollers.Goal.STOPPED);
             }
             case STOW -> {
-                currentArmSetpointDeg = arm_stow.get();
+                currentArmSetpointRad = arm_stow.get();
                 frontRollers.setGoal(FrontRollers.Goal.IDLING);
             }
             case INTAKE_GROUND -> {
-                currentArmSetpointDeg = arm_ground.get();
+                currentArmSetpointRad = arm_ground.get();
                 frontRollers.setGoal(FrontRollers.Goal.INTAKING);
             }
             case INTAKE_GROUND_SHOOT -> {
-                currentArmSetpointDeg = arm_ground.get();
+                currentArmSetpointRad = arm_ground.get();
                 frontRollers.setGoal(FrontRollers.Goal.SHOOTING);
             }
             case INTAKE_OUTER_IDLE -> {
-                currentArmSetpointDeg = arm_ground.get();
+                currentArmSetpointRad = arm_ground.get();
                 frontRollers.setGoal(FrontRollers.Goal.IDLING);
             }
             case VOMITING -> {
-                currentArmSetpointDeg = arm_stow.get();
+                currentArmSetpointRad = arm_stow.get();
                 frontRollers.setGoal(FrontRollers.Goal.VOMITING);
             }
             case JACKHAMMERING_IN -> {
-                currentArmSetpointDeg = arm_ground.get();
+                currentArmSetpointRad = arm_ground.get();
                 frontRollers.setGoal(getJackhammerFrontRollerGoal());
             }
             case JACKHAMMERING_OUT -> {
-                currentArmSetpointDeg = arm_ground.get();
+                currentArmSetpointRad = arm_ground.get();
                 frontRollers.setGoal(getJackhammerFrontRollerGoal());
             }
             case SHOOTING -> frontRollers.setGoal(FrontRollers.Goal.SHOOTING);
             case HOLD -> frontRollers.setGoal(FrontRollers.Goal.STOPPED);
             case AGITATING -> {
-                double agitateDeg = arm_agitate.get();
-                double groundDeg = arm_ground.get();
+                double agitateRad = arm_agitate.get();
+                double groundRad = arm_ground.get();
                 if (agitatingGoingUp) {
-                    currentArmSetpointDeg = agitateDeg;
-                    if (armInputs.positionDeg >= agitateDeg - arm_tolerance.get()) {
+                    currentArmSetpointRad = agitateRad;
+                    if (armInputs.positionRad >= agitateRad - arm_tolerance.get()) {
                         agitatingGoingUp = false;
-                        currentArmSetpointDeg = groundDeg;
+                        currentArmSetpointRad = groundRad;
                     }
                 } else {
-                    currentArmSetpointDeg = groundDeg;
-                    if (Math.abs(armInputs.positionDeg - groundDeg) < arm_tolerance.get()) {
+                    currentArmSetpointRad = groundRad;
+                    if (Math.abs(armInputs.positionRad - groundRad) < arm_tolerance.get()) {
                         agitatingGoingUp = true;
                     }
                 }
@@ -169,21 +172,21 @@ public class Intake extends SubsystemChecker {
 
         if (goal != Goal.TUNING) {
             if (goal == Goal.AGITATING && agitatingGoingUp
-                    && armInputs.positionDeg < currentArmSetpointDeg) {
+                    && armInputs.positionRad < currentArmSetpointRad) {
                 armIO.setVoltage(agitate_force_volts.get());
             } else {
-                armIO.setPosition(currentArmSetpointDeg);
+                armIO.setPosition(currentArmSetpointRad);
             }
         }
 
         Logger.recordOutput("Intake/Goal", goal);
         Logger.recordOutput("SuperStructure/Intake/IntakeGoal", goal);
-        Logger.recordOutput("Intake/SetpointDeg", currentArmSetpointDeg);
+        Logger.recordOutput("Intake/SetpointRad", currentArmSetpointRad);
         Logger.recordOutput("Intake/SetpointVolts", currentRollerVolts);
         Logger.recordOutput("Intake/AtSetpoint", isAtSetpoint());
         Logger.recordOutput("Intake/AgitatingGoingUp", agitatingGoingUp);
         Logger.recordOutput("Intake/AgitateForceInActive",
-                goal == Goal.AGITATING && agitatingGoingUp && armInputs.positionDeg < currentArmSetpointDeg);
+                goal == Goal.AGITATING && agitatingGoingUp && armInputs.positionRad < currentArmSetpointRad);
     }
 
     private FrontRollers.Goal getJackhammerFrontRollerGoal() {
@@ -217,24 +220,24 @@ public class Intake extends SubsystemChecker {
     }
 
     public void holdAtCurrentPosition() {
-        currentArmSetpointDeg = armInputs.positionDeg;
+        currentArmSetpointRad = armInputs.positionRad;
         setGoal(Goal.HOLD);
     }
 
-    public double getCharacterizationMeasurement() {
-        return armInputs.positionDeg;
+    public double getCharacterizationPositionRad() {
+        return armInputs.positionRad;
     }
 
-    public double getCharVelocity() {
-        return armInputs.velocityDegPerSec;
+    public double getCharacterizationVelocityRadPerSec() {
+        return armInputs.velocityRadPerSec;
     }
 
     public boolean isAtSetpoint() {
-        return Math.abs(armInputs.positionDeg - currentArmSetpointDeg) < arm_tolerance.get();
+        return Math.abs(armInputs.positionRad - currentArmSetpointRad) < arm_tolerance.get();
     }
 
-    public double getArmAngleDeg() {
-        return armInputs.positionDeg;
+    public double getArmAngleRad() {
+        return armInputs.positionRad;
     }
 
     private boolean isArmConnected() {

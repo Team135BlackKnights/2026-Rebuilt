@@ -537,7 +537,7 @@ public class RobotContainer {
 						"IntakeArm",
 						IntakeConstants.intakeCurrentLimit,
 						IntakeConstants.intakeInverted,
-						false,
+						true,
 						IntakeConstants.intakeArmReduction);
 				FrontRollers frontRollers = new FrontRollers(
 						new FrontRollersIOKrakenFOC(IntakeConstants.frontRollersMotorID, Robot.rioCanBus,
@@ -913,13 +913,17 @@ public class RobotContainer {
 
 		}
 		NamedCommands.registerCommand(
-				"Intake", Commands.run(() -> intake.setGoal(Goal.STOW), intake)
-						.finallyDo(() -> intake.setGoal(Goal.STOW)));
+				"Intake", Commands.run(() -> intake.setGoal(Goal.INTAKE_GROUND), intake)
+						.finallyDo(() -> intake.setGoal(Goal.INTAKE_OUTER_IDLE)));
 		NamedCommands.registerCommand(
-				"ShootWithIntakeOut", buildShootTurretsHubIntakeOutCommand());
-				NamedCommands.registerCommand("XLock", drivetrainS.orientModules(Swerve.getXOrientations()));
+				"ShootWithIntakeOut", buildAutoShootTurretsCommand());
+		NamedCommands.registerCommand("XLock", drivetrainS.orientModules(Swerve.getXOrientations()));
 		NamedCommands.registerCommand(
 				"Shoot", buildShootTurretsHubIntakeOutCommand());
+		NamedCommands.registerCommand(
+				"ZeroIntake", new InstantCommand(() -> {
+					intake.zero();
+				}));
 		// NamedCommands.registerCommand("Hang", buildHangCommand());
 		NamedCommands.registerCommand("UseDrive", Commands.run(() -> {
 			drivetrainS.stopModules();
@@ -1000,13 +1004,15 @@ public class RobotContainer {
 		// autos for tuning
 		autoChooser.addOption("Intake PID Char",
 				new RoughPIDCharacterization(intake, (volts) -> intake.runCharacterization(volts),
-						intake::getCharacterizationMeasurement, intake::getCharVelocity,
-						IntakeConstants.armMinAngleDeg, IntakeConstants.armMaxAngleDeg, 15.0,
-						120.0, 3, 20).beforeStarting(Commands.waitSeconds(3))
+						intake::getCharacterizationPositionRad, intake::getCharacterizationVelocityRadPerSec,
+						IntakeConstants.armMinAngleRad, IntakeConstants.armMaxAngleRad,
+						Units.degreesToRadians(15.0), Units.degreesToRadians(120.0), 3, 20)
+						.beforeStarting(Commands.waitSeconds(3))
 						.withName("Intake PID Characterization"));
 		autoChooser.addOption("Intake FeedForward Characterization",
 				new FeedForwardCharacterization(intake, (volts) -> intake.runCharacterization(volts),
-						intake::getCharacterizationMeasurement, () -> false).beforeStarting(Commands.waitSeconds(3))
+						intake::getCharacterizationVelocityRadPerSec, () -> false)
+						.beforeStarting(Commands.waitSeconds(3))
 						.withName("Intake FeedForward Characterization"));
 		SmartDashboard.putData(field);
 
@@ -1170,30 +1176,34 @@ public class RobotContainer {
 		leftStickButtonDrive.onFalse(Commands.runOnce(() -> drivetrainS.stopModules(), drivetrainS));
 		rightStickButtonDrive.onTrue(new OrchestraC("megolovania").withName("Play Megolovania"));
 		// Test Commands
-		/*aButtonDrive.whileTrue(Commands.run(() -> {
-			//leftTurret.setCharTurretPos(0);
-			rightTurret.setCharRPM(3000);
-			//intake.setGoal(Goal.VOMITING);
-			//kickup.setGoal(Kickup.Goal.VOMITING);
-			// flywheel go to 5000 rpm
-			// leftTurret.setCharHoodPos(0);(4.1);
-			// leftTurret.setCharHoodPos(Units.degreesToRadians(12));
-			// rightTurret.setCharHoodPos(Units.degreesToRadians(12));
-			// intake.setGoal(Goal.STOW);
-			// leftTurret.setCharTurretPos(-1.49);
-			// hang.setGoal(HangState.STOWED);
-		}));*/
-		/*bButtonDrive.onTrue(Commands.runOnce(() -> {
-			rightTurret.setCharRPM(5000);
-			// leftTurret.clearLoggedShots();
-			// rightTurret.clearLoggedShots();
-			kickup.setGoal(Kickup.Goal.IDLING);
-		}, leftTurret, rightTurret, kickup));
-		yButtonDrive.onTrue(Commands.runOnce(() -> {
-			leftTurret.enterShotTuning();
-			rightTurret.enterShotTuning();
-			kickup.setGoal(Kickup.Goal.TESTING);
-		}, leftTurret, rightTurret, kickup));*/
+		/*
+		 * aButtonDrive.whileTrue(Commands.run(() -> {
+		 * //leftTurret.setCharTurretPos(0);
+		 * rightTurret.setCharRPM(3000);
+		 * //intake.setGoal(Goal.VOMITING);
+		 * //kickup.setGoal(Kickup.Goal.VOMITING);
+		 * // flywheel go to 5000 rpm
+		 * // leftTurret.setCharHoodPos(0);(4.1);
+		 * // leftTurret.setCharHoodPos(Units.degreesToRadians(12));
+		 * // rightTurret.setCharHoodPos(Units.degreesToRadians(12));
+		 * // intake.setGoal(Goal.STOW);
+		 * // leftTurret.setCharTurretPos(-1.49);
+		 * // hang.setGoal(HangState.STOWED);
+		 * }));
+		 */
+		/*
+		 * bButtonDrive.onTrue(Commands.runOnce(() -> {
+		 * rightTurret.setCharRPM(5000);
+		 * // leftTurret.clearLoggedShots();
+		 * // rightTurret.clearLoggedShots();
+		 * kickup.setGoal(Kickup.Goal.IDLING);
+		 * }, leftTurret, rightTurret, kickup));
+		 * yButtonDrive.onTrue(Commands.runOnce(() -> {
+		 * leftTurret.enterShotTuning();
+		 * rightTurret.enterShotTuning();
+		 * kickup.setGoal(Kickup.Goal.TESTING);
+		 * }, leftTurret, rightTurret, kickup));
+		 */
 		// Climber controls
 		// aButtonDrive.onTrue(Commands.either(Commands.runOnce(() ->
 		// hang.setGoal(HangState.EXTENDED)), Commands.runOnce(() ->
@@ -1576,13 +1586,13 @@ public class RobotContainer {
 			resetShootCycle();
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}).andThen(Commands.run(() -> {
-			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.STOW,
+			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.INTAKE_GROUND,
 					shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints());
 		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
 			kickup.setGoal(Kickup.Goal.IDLING);
-			intake.setGoal(Intake.Goal.STOW);
+			intake.setGoal(Intake.Goal.INTAKE_OUTER_IDLE);
 			shootTimer.stop();
 			shootCycleStartSec = Double.NaN;
 		})))).withName("Shoot Turrets with Intake Out");

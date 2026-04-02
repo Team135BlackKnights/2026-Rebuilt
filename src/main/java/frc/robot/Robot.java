@@ -371,8 +371,7 @@ public class Robot extends LoggedRobot {
 
 	private void updateAdvantageScopePiecesLive() {
 		Logger.recordOutput("RobotState/AdvantageScope/modelPose", RobotContainer.drivetrainS.getPose());
-		double intakeAngleDeg = RobotContainer.intake.getArmAngleDeg();
-		double intakeAngleRad = Units.degreesToRadians(intakeAngleDeg);
+		double intakeAngleRad = RobotContainer.intake.getArmAngleRad();
 		Logger.recordOutput("RobotState/AdvantageScope/model_0Pose",
 				new Pose3d(0.05, 0, 0.228, new Rotation3d(0, intakeAngleRad, 0)));// intake
 		Logger.recordOutput("RobotState/AdvantageScope/model_1Pose",

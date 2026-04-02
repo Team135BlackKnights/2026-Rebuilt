@@ -11,7 +11,7 @@ import frc.robot.utils.IntakeConstants;
 
 public class ArmIOSim extends ArmIOKrakenFOC {
 
-    private static final double ZERO_POSITION_EPSILON_DEG = 1.0;
+    private static final double ZERO_POSITION_EPSILON_RAD = Units.degreesToRadians(1.0);
 
     private final SingleJointedArmSim armSim;
     private final PIDController simPID = new PIDController(6.0, 0.0, 0.25);
@@ -33,10 +33,10 @@ public class ArmIOSim extends ArmIOKrakenFOC {
                 IntakeConstants.intakeArmReduction,
                 IntakeConstants.intakeMOI,
                 IntakeConstants.intakeArmLengthMeters,
-                Units.degreesToRadians(IntakeConstants.armMinAngleDeg),
-                Units.degreesToRadians(IntakeConstants.armMaxAngleDeg),
+                IntakeConstants.armMinAngleRad,
+                IntakeConstants.armMaxAngleRad,
                 true,
-                Units.degreesToRadians(IntakeConstants.armMinAngleDeg));
+                IntakeConstants.armMinAngleRad);
     }
 
     public ArmIOSim() {
@@ -54,8 +54,8 @@ public class ArmIOSim extends ArmIOKrakenFOC {
         inputs.connected = true;
         inputs.name = name;
         inputs.zeroing = zeroingActive;
-        inputs.positionDeg = Units.radiansToDegrees(armSim.getAngleRads());
-        inputs.velocityDegPerSec = Units.radiansToDegrees(armSim.getVelocityRadPerSec());
+        inputs.positionRad = armSim.getAngleRads();
+        inputs.velocityRadPerSec = armSim.getVelocityRadPerSec();
         inputs.appliedVoltage = appliedVolts;
         inputs.supplyCurrentAmps = Math.abs(armSim.getCurrentDrawAmps());
         inputs.torqueCurrentAmps = Math.abs(armSim.getCurrentDrawAmps());
@@ -63,15 +63,15 @@ public class ArmIOSim extends ArmIOKrakenFOC {
     }
 
     @Override
-    public void setPosition(double positionDeg) {
+    public void setPosition(double positionRad) {
         if (zeroingActive) {
             return;
         }
 
         openLoop = false;
-        double clamped = MathUtil.clamp(positionDeg, minPositionDeg, maxPositionDeg);
+        double clamped = MathUtil.clamp(positionRad, minPositionRad, maxPositionRad);
         double controlVolts = MathUtil.clamp(
-                simPID.calculate(armSim.getAngleRads(), Units.degreesToRadians(clamped)),
+                simPID.calculate(armSim.getAngleRads(), clamped),
                 -12.0,
                 12.0);
         appliedVolts = -controlVolts;
@@ -107,8 +107,8 @@ public class ArmIOSim extends ArmIOKrakenFOC {
         appliedVolts = getZeroingVoltage();
         armSim.setInputVoltage(-appliedVolts);
 
-        boolean atLowerHardstop = Units.radiansToDegrees(armSim.getAngleRads())
-                <= (IntakeConstants.armMinAngleDeg + ZERO_POSITION_EPSILON_DEG);
+        boolean atLowerHardstop = armSim.getAngleRads()
+                <= (IntakeConstants.armMinAngleRad + ZERO_POSITION_EPSILON_RAD);
         if (atLowerHardstop) {
             if (Double.isNaN(zeroSpikeStartTimeSec)) {
                 zeroSpikeStartTimeSec = now;

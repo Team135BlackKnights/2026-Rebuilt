@@ -85,7 +85,6 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
     private double lastTurretAngleRads = 0.0;
     private double lastUpdateTimeSec = -1.0;
-    private double lastOffsetUpdate = 0.0;
     /**
      * The motor rotor position (in rotations) that corresponds to turret angle = 0.
      * Computed on ANY CRT lock:  offset = currentRotorRots - turretRads/(2π) * ratio * sign
@@ -315,7 +314,6 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
             motorRotorOffsetRots = currentRotorRots
                     - (solvedRad / TWO_PI) * motorToTurretRatio * turretSign;
             Logger.recordOutput(name + "/Turret/MotorRotorOffsetRots", motorRotorOffsetRots);
-            lastOffsetUpdate = Timer.getFPGATimestamp();
         } else if (haveLock) {
             lastTurretAngleRads = predictedTurretRad;
         }
@@ -349,7 +347,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         Logger.recordOutput(name + "/Turret/DesiredTurretRads", desiredTurret);
         Logger.recordOutput(name + "/Turret/DesStatus", "OK");
 
-        //talon.setControl(motionMagicRequest.withPosition(desiredRotorRots));
+        talon.setControl(motionMagicRequest.withPosition(desiredRotorRots));
     }
 
     @Override
@@ -359,7 +357,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
     @Override
     public void runVolts(double volts) {
-        //talon.setControl(voltageRequest.withOutput(volts * turretSign));
+        talon.setControl(voltageRequest.withOutput(volts * turretSign));
     }
 
     @Override

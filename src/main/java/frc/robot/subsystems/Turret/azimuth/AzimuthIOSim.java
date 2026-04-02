@@ -83,7 +83,6 @@ public class AzimuthIOSim implements AzimuthIO {
     private final double maxAngleRad;
     private final double enc1GearTeeth;
     private final double enc2GearTeeth;
-    private final double motorToTurretRatio;
 
     private double lastTurretAngleRads = 0.0;
 
@@ -106,7 +105,6 @@ public class AzimuthIOSim implements AzimuthIO {
         this.maxAngleRad = maxTurretAngleRad;
         this.enc1GearTeeth = enc1GearTeeth;
         this.enc2GearTeeth = enc2GearTeeth;
-        this.motorToTurretRatio = motorToTurretRatio;
         this.enc1ToEnc2Ratio = enc1GearTeeth / enc2GearTeeth;
         this.combinedRatio = TURRET_RATIO * enc1ToEnc2Ratio;
 

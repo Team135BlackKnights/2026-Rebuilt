@@ -10,8 +10,8 @@ public interface ArmIO {
         public boolean connected = true;
         public String name = "IntakeArm";
         public boolean zeroing = false;
-        public double positionDeg = 0.0;
-        public double velocityDegPerSec = 0.0;
+        public double positionRad = 0.0;
+        public double velocityRadPerSec = 0.0;
         public double appliedVoltage = 0.0;
         public double supplyCurrentAmps = 0.0;
         public double torqueCurrentAmps = 0.0;
@@ -19,16 +19,16 @@ public interface ArmIO {
     }
 
     default void updateInputs(ArmIOInputs inputs) {}
-    default void setPosition(double positionDeg) {}
+    default void setPosition(double positionRad) {}
     default void setVoltage(double volts) {}
     default void stop() {}
     default void zero(){}
-    default void configureMotionMagic(double cruiseDegPerSec, double accelDegPerSec2, double neutralDeadband) {}
+    default void configureMotionMagic(double cruiseRadPerSec, double accelRadPerSec2, double neutralDeadband) {}
     default void setPID(double p, double i, double d, double ks, double kv, double kg) {}
     default void setPID(double p, double i, double d, double ks, double kv, double kg,
-                        double velocityMax, double accelerationMax, double neutralDeadband) {
+                        double velocityMaxRadPerSec, double accelerationMaxRadPerSec2, double neutralDeadband) {
         setPID(p, i, d, ks, kv, kg);
-        configureMotionMagic(velocityMax, accelerationMax,neutralDeadband);
+        configureMotionMagic(velocityMaxRadPerSec, accelerationMaxRadPerSec2, neutralDeadband);
     }
     default void setCurrentLimit(double amps) {}
     default void setBrakeMode(boolean brake) {}
