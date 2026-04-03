@@ -6,7 +6,7 @@ import edu.wpi.first.math.util.Units;
 public class IntakeConstants {
     public static final int intakeMotorID = 40; 
     public static final int frontRollersMotorID = 42;
-    public static final int intakeCurrentLimit = 40; // amps
+    public static final int intakeCurrentLimit = 80; // amps
     public static final int frontRollersCurrentLimit = 50; // amps
     public static final boolean intakeInverted = false;
     public static final boolean frontRollersInverted = true;
