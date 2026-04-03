@@ -11,8 +11,8 @@ import frc.robot.utils.simpleMechanisms.SimpleMechanismConstants;
 public class AdvancedMechanismConstants {
         public static class Turret {
                 public static final double leftMinTurretAngle = 0;
-                public static final double leftMaxTurretAngle = Math.toRadians(330);
-                public static final double rightMinTurretAngle = -Math.toRadians(330);
+                public static final double leftMaxTurretAngle = 5.4;
+                public static final double rightMinTurretAngle = -5.4;
                 public static final double rightMaxTurretAngle = 0;
                 public static final double leftMinHoodAngle = Math.toRadians(12.0);
                 public static final double leftMaxHoodAngle = Math.toRadians(43.0);
