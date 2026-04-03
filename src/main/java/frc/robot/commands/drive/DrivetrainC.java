@@ -13,6 +13,7 @@ import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Constants.TuningConstants;
@@ -20,6 +21,7 @@ import frc.robot.Robot;
 import frc.robot.RobotContainer;
 import frc.robot.subsystems.drive.DrivetrainS;
 import frc.robot.subsystems.drive.FastSwerve.Swerve;
+import frc.robot.subsystems.drive.FastSwerve.Swerve.ModuleLimits;
 import frc.robot.subsystems.drive.FastSwerve.Swerve.TxTyPoseRecord;
 import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.CompetitionFieldUtils.FieldConstants;
@@ -51,6 +53,8 @@ public class DrivetrainC extends Command {
 			"Drive/RotationalSpeedMaxPercentage", .75, TuningConstants.isTuningDrivetrain);
 	static final LoggableTunedNumber autoIntakeAssistPercentage = new LoggableTunedNumber(
 			"Drive/AutoIntakeAssistPercentage", .5, TuningConstants.isTuningDrivetrain);
+	private static final double TELEOP_SHOOT_ACCEL_SCALE = 1.0 / 6.0;
+	private static final double SHOOT_TRIGGER_FULL_THRESHOLD = 0.875;
 	private Function<Double, Double> translationalCurve = ResponseCurve.QUADRATIC;
 	private Function<Double, Double> rotationalCurve = ResponseCurve.SOFT;
 
@@ -256,6 +260,7 @@ public class DrivetrainC extends Command {
 
 	@Override
 	public void execute() {
+		updateTeleopShootAccelerationLimit();
 		// update the curves
 		LoggableTunedNumber.ifChanged(hashCode(), () -> {
 			translationalCurve = val -> Math.pow(val, translationalResponseCurve.get());
@@ -471,6 +476,28 @@ public class DrivetrainC extends Command {
 
 	}
 
+	private void updateTeleopShootAccelerationLimit() {
+		if (!(drivetrainS instanceof Swerve swerve)) {
+			return;
+		}
+
+		boolean shouldLimitAccel = DriverStation.isTeleopEnabled()
+				&& RobotContainer.driveController.getHID().getRightTriggerAxis() >= SHOOT_TRIGGER_FULL_THRESHOLD;
+		ModuleLimits desiredLimits = shouldLimitAccel
+				? new ModuleLimits(
+						DriveConstants.moduleLimitsLow.maxDriveVelocity(),
+						DriveConstants.moduleLimitsLow.maxDriveAcceleration() * TELEOP_SHOOT_ACCEL_SCALE,
+						DriveConstants.moduleLimitsLow.maxSteeringVelocity())
+				: DriveConstants.moduleLimitsLow;
+
+		Logger.recordOutput("Drive/TeleopShootAccelLimited", shouldLimitAccel);
+		Logger.recordOutput("Drive/TeleopShootAccelScale", shouldLimitAccel ? TELEOP_SHOOT_ACCEL_SCALE : 1.0);
+
+		if (!desiredLimits.equals(swerve.getModuleLimits())) {
+			swerve.setCurrentModuleLimits(desiredLimits);
+		}
+	}
+
 	@Override
 	public void end(boolean interrupted) {
 		// make sure to end any active aim if present
@@ -482,6 +509,9 @@ public class DrivetrainC extends Command {
 		}
 		activeAimCommand = null;
 		aimInitialized = false;
+		if (drivetrainS instanceof Swerve swerve && !DriveConstants.moduleLimitsLow.equals(swerve.getModuleLimits())) {
+			swerve.setCurrentModuleLimits(DriveConstants.moduleLimitsLow);
+		}
 
 		drivetrainS.stopModules();
 	}
