@@ -419,14 +419,14 @@ public class ShotCalculator {
 
   private static ShotProfile buildHubProfile() {
     ShotProfile profile = new ShotProfile("Hub");
-    addCalibrationPoint(profile, 1.691, 3000.0, 0.31, 0.920);
+    addCalibrationPoint(profile, 1.691, 3000.0, 0.31, 0.920);  // height of bottom of the hub, to be safe, distance in meters, rpms, hood angle in radians, time of flight in seconds
     addCalibrationPoint(profile, 1.956, 3000.0, 0.37, 0.940);
     addCalibrationPoint(profile, 2.170, 3200.0, 0.41, 0.970);
     addCalibrationPoint(profile, 2.530, 3500.0, 0.45, 1.080);
     addCalibrationPoint(profile, 2.761, 3600.0, 0.50, 1.170);
     addCalibrationPoint(profile, 3.021, 3800.0, 0.53, 1.140);
-    addCalibrationPoint(profile, 3.318, 4200.0, 0.62, 1.070);
-    addCalibrationPoint(profile, 3.555, 4400.0, 0.70, 1.030);
+    addCalibrationPoint(profile, 3.318, 4000.0, 0.62, 1.070);
+    addCalibrationPoint(profile, 3.555, 4200.0, 0.70, 1.030);
     return profile;
   }
 
