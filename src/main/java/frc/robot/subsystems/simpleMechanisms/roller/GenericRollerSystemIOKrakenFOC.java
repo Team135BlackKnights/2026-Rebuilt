@@ -55,8 +55,8 @@ public abstract class GenericRollerSystemIOKrakenFOC implements GenericRollerSys
     config.CurrentLimits.SupplyCurrentLimit = currentLimitAmps;
     config.TorqueCurrent.PeakForwardTorqueCurrent = currentLimitAmps;
     config.TorqueCurrent.PeakReverseTorqueCurrent = -currentLimitAmps;
-    config.CurrentLimits.SupplyCurrentLimitEnable = false;
-    config.CurrentLimits.StatorCurrentLimitEnable = false;
+    config.CurrentLimits.SupplyCurrentLimitEnable = true;
+    config.CurrentLimits.StatorCurrentLimitEnable = true;
     talon.getConfigurator().apply(config);
 
     position = talon.getPosition();

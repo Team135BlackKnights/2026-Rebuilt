@@ -21,7 +21,7 @@ public class AdvancedMechanismConstants {
                 public static final int currentLimitAzimuth = 50;
                 public static final int currentLimitFlywheel = 80;
                 public static final int currentLimitHood = 20;
-                public static final int currentLimitKickup = 100;
+                public static final int currentLimitKickup = 60;
                 public static final int turretTeeth = 77;
                 public static final int idlerTeeth = 10;
                 public static final double leftMotorRadPerTurretRad = 36.0 / 12.0 * 77.0 / 10.0;
