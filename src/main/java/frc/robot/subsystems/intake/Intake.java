@@ -40,14 +40,14 @@ public class Intake extends SubsystemChecker {
     private static final LoggableTunedNumber arm_kG = new LoggableTunedNumber("Intake/Arm/kG", 0,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_motionSpeed = new LoggableTunedNumber(
-            "Intake/Arm/MotionCruiseRadPerSec", Units.degreesToRadians(360.0), TuningConstants.isTuningIntake);
+            "Intake/Arm/MotionCruiseRadPerSec", 2, TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_motionAccel = new LoggableTunedNumber(
-            "Intake/Arm/MotionAccelRadPerSec2", Units.degreesToRadians(720.0), TuningConstants.isTuningIntake);
+            "Intake/Arm/MotionAccelRadPerSec2", 4, TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_neutralBand = new LoggableTunedNumber("Intake/Arm/NeutralBand", .15,
             TuningConstants.isTuningIntake);
 
     private static final LoggableTunedNumber arm_stow = new LoggableTunedNumber("Intake/Setpoints/StowRad",
-            Units.degreesToRadians(45.0), TuningConstants.isTuningIntake);
+            Units.degreesToRadians(70.0), TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_ground = new LoggableTunedNumber("Intake/Setpoints/GroundRad",
             IntakeConstants.armMinAngleRad, TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber time_jackhammer = new LoggableTunedNumber("Intake/JackhammerTimeSecs",
@@ -55,7 +55,7 @@ public class Intake extends SubsystemChecker {
     private static final LoggableTunedNumber arm_agitate = new LoggableTunedNumber("Intake/Setpoints/AgitateRad",
             Units.degreesToRadians(30.0), TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber agitate_force_volts = new LoggableTunedNumber(
-            "Intake/AgitateForceVolts", -4, TuningConstants.isTuningIntake);
+            "Intake/AgitateForceVolts", -2, TuningConstants.isTuningIntake);
 
     private static final LoggableTunedNumber arm_tolerance = new LoggableTunedNumber("Intake/ToleranceRad",
             Units.degreesToRadians(20.0), TuningConstants.isTuningIntake);
@@ -93,7 +93,6 @@ public class Intake extends SubsystemChecker {
         this.armIO = armIO;
         this.frontRollers = frontRollers;
         updateTunablePIDs();
-        zero();
     }
 
     @Override

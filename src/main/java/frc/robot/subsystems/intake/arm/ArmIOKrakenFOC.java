@@ -29,8 +29,8 @@ import frc.robot.utils.selfCheck.SelfChecking;
 import frc.robot.utils.selfCheck.drive.SelfCheckingTalonFX;
 
 public class ArmIOKrakenFOC implements ArmIO {
-    protected static final LoggableTunedNumber ZERO_VOLTS = new LoggableTunedNumber("Intake/Arm/zeroVolts",6,TuningConstants.isTuningIntake);
-    protected static final LoggableTunedNumber FAST_REZERO_VOLTS = new LoggableTunedNumber("Intake/Arm/fastRezeroVolts",9,TuningConstants.isTuningIntake);
+    protected static final LoggableTunedNumber ZERO_VOLTS = new LoggableTunedNumber("Intake/Arm/zeroVolts",4,TuningConstants.isTuningIntake);
+    protected static final LoggableTunedNumber FAST_REZERO_VOLTS = new LoggableTunedNumber("Intake/Arm/fastRezeroVolts",3,TuningConstants.isTuningIntake);
     protected static final LoggableTunedNumber ZERO_CURRENT_AMPS = new LoggableTunedNumber("Intake/Arm/zeroAmps",35,TuningConstants.isTuningIntake);
     protected static final LoggableTunedNumber ZERO_HOLD_SEC = new LoggableTunedNumber("Intake/Arm/zeroTime",.4,TuningConstants.isTuningIntake);
     protected static final LoggableTunedNumber FAST_REZERO_WINDOW_SEC = new LoggableTunedNumber("Intake/Arm/fastRezeroWindowSec",2.0,TuningConstants.isTuningIntake);
@@ -118,7 +118,7 @@ public class ArmIOKrakenFOC implements ArmIO {
         BaseStatusSignal.setUpdateFrequencyForAll(
                 50.0, posAngle, velAngle, appliedVoltage, supplyCurrent, statorCurrent, torqueCurrent, tempCelsius);
         talon.optimizeBusUtilization(0, 1.0);
-        //zero();
+        zero();
     }
 
     @Override

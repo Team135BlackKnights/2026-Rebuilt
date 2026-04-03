@@ -118,7 +118,7 @@ public class VisionConstants {
 					.location("0x02210000 / 3")
 										.width(1600)
 					.height(1304)
-					.exposure(4)
+					.exposure(16)
 					.saturation(0)
 					.hue(0)
 					.whiteBalance(4000)
