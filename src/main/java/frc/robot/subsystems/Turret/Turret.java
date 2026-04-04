@@ -143,6 +143,7 @@ public class Turret extends SubsystemChecker {
   private double lastAutoRezeroSec = Double.NEGATIVE_INFINITY;
   private double lastManualRezeroSec = Double.NEGATIVE_INFINITY;
   private Goal jackhammerBaseGoal = Goal.IDLE;
+  private boolean flywheelOutputSuppressed = false;
 
   private static final double SAFE_HOOD_DOWN_RADS = Units.degreesToRadians(13.0);
   private static final double SAFE_TRENCH_HOOD_RADS = Units.degreesToRadians(31.0);
@@ -406,6 +407,14 @@ public class Turret extends SubsystemChecker {
     commandTurretPosition(backupRobotAimingEnabled ? 0.0 : targetRads);
   }
 
+  private void commandFlywheelVelocity(double velocityRadsPerSec) {
+    if (flywheelOutputSuppressed) {
+      flywheelIO.stop();
+      return;
+    }
+    flywheelIO.setVelocity(velocityRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
+  }
+
   private boolean hasFixedShotDistanceOverride() {
     return Double.isFinite(fixedShotDistanceOverrideMeters);
   }
@@ -434,7 +443,7 @@ public class Turret extends SubsystemChecker {
     goal = Goal.TUNING_FLYWHEEL;
     jackhammerBaseGoal = goal;
     desiredFlywheelRadsPerSec = rpm * 2.0 * Math.PI / 60.0;
-    flywheelIO.setVelocity(desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
+    commandFlywheelVelocity(desiredFlywheelRadsPerSec);
   }
 
   public void setCharTurretPos(double radians) {
@@ -524,6 +533,10 @@ public class Turret extends SubsystemChecker {
     manualHoodRezeroHeld = held;
   }
 
+  public void setFlywheelOutputSuppressed(boolean suppressed) {
+    flywheelOutputSuppressed = suppressed;
+  }
+
   public boolean isHoodAboveDegrees(double degrees) {
     return desiredHoodRads > Units.degreesToRadians(degrees) && !isHoodForcedDown(getShooterControlGoal());
   }
@@ -600,7 +613,7 @@ public class Turret extends SubsystemChecker {
         desiredFlywheelRadsPerSec = Units.rotationsPerMinuteToRadiansPerSecond(flywheel_idle.get());
         commandTurretPositionForMode(desiredTurretRads);
 
-        flywheelIO.setVelocity(desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
+        commandFlywheelVelocity(desiredFlywheelRadsPerSec);
       }
 
       case SHOOTING -> {
@@ -617,12 +630,11 @@ public class Turret extends SubsystemChecker {
         }
         commandTurretPositionForMode(desiredTurretRads);
 
-        flywheelIO.setVelocity(desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
+        commandFlywheelVelocity(desiredFlywheelRadsPerSec);
       }
       case SHOOTING_CUSTOM -> {
         commandTurretPositionForMode(desiredTurretRads);
-        flywheelIO.setVelocity(
-            desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
+        commandFlywheelVelocity(desiredFlywheelRadsPerSec);
       }
       case SHOOTING_FROM_HUB -> {
         var params = shotCalculator.getParameters(target, robotToTurret, profile, distanceOffset);
@@ -634,12 +646,11 @@ public class Turret extends SubsystemChecker {
           desiredFlywheelRadsPerSec = Units.rotationsPerMinuteToRadiansPerSecond(shot_HUB_TOP_CENTER_RPM.get());
         }
         commandTurretPositionForMode(desiredTurretRads);
-        flywheelIO.setVelocity(
-            desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
+        commandFlywheelVelocity(desiredFlywheelRadsPerSec);
       }
 
       case TUNING_FLYWHEEL -> {
-        flywheelIO.setVelocity(desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
+        commandFlywheelVelocity(desiredFlywheelRadsPerSec);
       }
       case TUNING_AZIMUTH -> {
         commandTurretPositionForMode(desiredTurretRads);
@@ -653,7 +664,7 @@ public class Turret extends SubsystemChecker {
         setPresetTarget(PresetTarget.HUB_TOP_CENTER);
         var params = shotCalculator.getParameters(target, robotToTurret, profile, distanceOffset);
         desiredTurretRads = params.turretAngle().getRadians();
-        flywheelIO.setVelocity(desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
+        commandFlywheelVelocity(desiredFlywheelRadsPerSec);
         commandTurretPositionForMode(desiredTurretRads);
       }
       case JACKHAMMER -> {
@@ -706,6 +717,7 @@ public class Turret extends SubsystemChecker {
 
     Logger.recordOutput(name + "/Errors/TurretRads", turretAngleErrorRads());
     Logger.recordOutput(name + "/BackupRobotAimingEnabled", backupRobotAimingEnabled);
+    Logger.recordOutput(name + "/FlywheelOutputSuppressed", flywheelOutputSuppressed);
     Logger.recordOutput(name + "/BackupRobotHeadingErrorRads",
         backupRobotAimingEnabled ? backupRobotHeadingErrorRads() : 0.0);
     Logger.recordOutput(name + "/FixedShotDistanceOverrideMeters", fixedShotDistanceOverrideMeters);

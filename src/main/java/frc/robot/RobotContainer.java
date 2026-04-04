@@ -239,6 +239,7 @@ public class RobotContainer {
 	Trigger manipDownPov = manipController.pov(180);
 	Trigger manipBButton = manipController.b();
 	Trigger manipYButton = manipController.y();
+	Trigger manipSelectButton = manipController.back();
 	public static int currentTest = 0;
 	public static String piConnection = "DISCONNECTED";
 	@AutoLogOutput(key = "RobotState/currentPath")
@@ -246,6 +247,8 @@ public class RobotContainer {
 	public static Field2d field = new Field2d();
 	public static boolean userDrive = true;
 	public static boolean withinLineTolerance = false;
+	@AutoLogOutput(key = "SuperStructure/ManipulatorPowerSaveEnabled")
+	private boolean manipulatorPowerSaveEnabled = false;
 	// Simulation
 	public static Rebuilt2026FieldSimulation fieldSimulation = null;
 	public static Command currentAuto, lastAuto = null;
@@ -1124,6 +1127,13 @@ public class RobotContainer {
 				.withName(name);
 	}
 
+	private void setManipulatorPowerSaveEnabled(boolean enabled) {
+		manipulatorPowerSaveEnabled = enabled;
+		intake.setArmOutputSuppressed(enabled);
+		leftTurret.setFlywheelOutputSuppressed(enabled);
+		rightTurret.setFlywheelOutputSuppressed(enabled);
+	}
+
 	private void configureBindings() {
 		Trigger povUp = driveController.pov(0);
 		Trigger povRight = driveController.pov(90);
@@ -1449,6 +1459,8 @@ public class RobotContainer {
 		povRight.onTrue(targetBothOverNeutral);
 		// Manip Controls
 		// Manip START = hold intake up (stow), release to go back down
+		manipSelectButton.onTrue(Commands.runOnce(
+				() -> setManipulatorPowerSaveEnabled(!manipulatorPowerSaveEnabled)));
 		manipStartButton.whileTrue(
 				Commands.run(() -> intake.setGoal(Goal.STOW), intake)
 						.finallyDo(() -> intake.setGoal(Goal.INTAKE_OUTER_IDLE)));

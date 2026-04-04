@@ -86,6 +86,7 @@ public class Intake extends SubsystemChecker {
     private double currentArmSetpointRad = 0.0;
     private double currentRollerVolts = 0.0;
     private boolean agitatingGoingUp = true;
+    private boolean armOutputSuppressed = false;
     @Getter
     private boolean intakeDeployed = false;
 
@@ -170,7 +171,9 @@ public class Intake extends SubsystemChecker {
             }
         }
 
-        if (goal != Goal.TUNING) {
+        if (armOutputSuppressed) {
+            armIO.stop();
+        } else if (goal != Goal.TUNING) {
             if (goal == Goal.AGITATING && agitatingGoingUp
                     && armInputs.positionRad < currentArmSetpointRad) {
                 armIO.setVoltage(agitate_force_volts.get());
@@ -185,6 +188,7 @@ public class Intake extends SubsystemChecker {
         Logger.recordOutput("Intake/SetpointVolts", currentRollerVolts);
         Logger.recordOutput("Intake/AtSetpoint", isAtSetpoint());
         Logger.recordOutput("Intake/AgitatingGoingUp", agitatingGoingUp);
+        Logger.recordOutput("Intake/ArmOutputSuppressed", armOutputSuppressed);
         Logger.recordOutput("Intake/AgitateForceInActive",
                 goal == Goal.AGITATING && agitatingGoingUp && armInputs.positionRad < currentArmSetpointRad);
     }
@@ -212,6 +216,10 @@ public class Intake extends SubsystemChecker {
 
     public Goal getGoal() {
         return goal;
+    }
+
+    public void setArmOutputSuppressed(boolean suppressed) {
+        armOutputSuppressed = suppressed;
     }
 
     public void runCharacterization(double volts) {
