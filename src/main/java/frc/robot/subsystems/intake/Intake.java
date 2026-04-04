@@ -138,7 +138,7 @@ public class Intake extends SubsystemChecker {
                 frontRollers.setGoal(FrontRollers.Goal.IDLING);
             }
             case VOMITING -> {
-                currentArmSetpointRad = arm_stow.get();
+                currentArmSetpointRad = arm_ground.get();
                 frontRollers.setGoal(FrontRollers.Goal.VOMITING);
             }
             case JACKHAMMERING_IN -> {

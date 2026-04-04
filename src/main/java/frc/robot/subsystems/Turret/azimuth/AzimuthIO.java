@@ -30,6 +30,8 @@ public interface AzimuthIO {
     /** Should range from -pi to pi, auto handled for CRT */
     default void setDesiredPosition(double positionRads) {}
     default void stop() {}
+    default void disable() {}
+    default void enable() {}
     default void runVolts(double volts) {}
     default void setPID(double p, double i, double d, double ks, double kv, double ka, double velocityMax, double accelerationMax, double rampRate) {}
     default void setBrakeMode(boolean brake) {}

@@ -86,7 +86,7 @@ public class Turret extends SubsystemChecker {
 
   private final Transform2d robotToTurret;
 
-  private double distanceOffset = -.375;
+  private double distanceOffset = -.625;
   private final AzimuthIOInputsAutoLogged azimuthInputs = new AzimuthIOInputsAutoLogged();
   private final FlywheelIOInputsAutoLogged flywheelInputs = new FlywheelIOInputsAutoLogged();
   private final HoodIOInputsAutoLogged hoodInputs = new HoodIOInputsAutoLogged();
@@ -411,8 +411,8 @@ public class Turret extends SubsystemChecker {
   }
 
   private void applyFixedShotDistanceOverride() {
-    var fixedShotParameters =
-        shotCalculator.getFixedDistanceShotParameters(robotToTurret, profile, fixedShotDistanceOverrideMeters);
+    var fixedShotParameters = shotCalculator.getFixedDistanceShotParameters(robotToTurret, profile,
+        fixedShotDistanceOverrideMeters);
     desiredHoodRads = fixedShotParameters.hoodAngle();
     desiredFlywheelRadsPerSec = fixedShotParameters.flywheelSpeed();
   }
@@ -536,7 +536,7 @@ public class Turret extends SubsystemChecker {
     return isAzimuthConnected()
         && isHoodConnected()
         && isFlywheelConnected()
-        //&& !isHoodForcedDown(getShooterControlGoal())
+        // && !isHoodForcedDown(getShooterControlGoal())
         && Math.abs(effectiveAimErrorRads()) < aimToleranceRads.get()
         && Math.abs(hoodInputs.positionRads - desiredHoodRads
             - Units.degreesToRadians(offsetHoodAngle.get())) < hoodToleranceRads.get()
@@ -546,6 +546,11 @@ public class Turret extends SubsystemChecker {
 
   @Override
   public void periodic() {
+    if (isAzimuthConnected()) {
+      azimuthIO.enable();
+    } else {
+      azimuthIO.disable();
+    }
     azimuthIO.updateInputs(azimuthInputs);
     flywheelIO.updateInputs(flywheelInputs);
     hoodIO.updateInputs(hoodInputs);
@@ -657,8 +662,8 @@ public class Turret extends SubsystemChecker {
 
     // Decide kickup goal after updating shooter/turret/hood setpoints for this
     // loop.
-  Kickup.Goal kickupGoal = getKickupGoal(controlGoal, previousControlGoal);
-  kickup.setGoal(kickupGoal);
+    Kickup.Goal kickupGoal = getKickupGoal(controlGoal, previousControlGoal);
+    kickup.setGoal(kickupGoal);
     kickup.periodic();
     if (goal != lastGoal) {
       shotCalculator.clearShootingParameters();
@@ -789,25 +794,26 @@ public class Turret extends SubsystemChecker {
       return;
     }
     boolean forceDown = isHoodForcedDown(controlGoal);
-    boolean trenchClamped =
-        trenchHoodLock && isShootLikeGoal(controlGoal) && commandedHoodRads > SAFE_TRENCH_HOOD_RADS;
+    boolean trenchClamped = trenchHoodLock && isShootLikeGoal(controlGoal) && commandedHoodRads > SAFE_TRENCH_HOOD_RADS;
     if (forceDown) {
       hoodIO.setPosition(SAFE_HOOD_DOWN_RADS);
       /*
-      if (DriverStation.isEnabled()) {
-        double now = Timer.getFPGATimestamp();
-        if (manualHoodRezeroHeld) {
-          if (!hoodForcedDownLastLoop || now - lastManualRezeroSec >= MANUAL_REZERO_INTERVAL_SEC) {
-            hoodIO.zero();
-            lastManualRezeroSec = now;
-          }
-        } else if (!hoodForcedDownLastLoop || now - lastAutoRezeroSec >= AUTO_REZERO_INTERVAL_SEC) {
-          hoodIO.zero();
-          System.out.println("Auto-rezeroing hood due to safety lock");
-          lastAutoRezeroSec = now;
-        }
-      }
-      */
+       * if (DriverStation.isEnabled()) {
+       * double now = Timer.getFPGATimestamp();
+       * if (manualHoodRezeroHeld) {
+       * if (!hoodForcedDownLastLoop || now - lastManualRezeroSec >=
+       * MANUAL_REZERO_INTERVAL_SEC) {
+       * hoodIO.zero();
+       * lastManualRezeroSec = now;
+       * }
+       * } else if (!hoodForcedDownLastLoop || now - lastAutoRezeroSec >=
+       * AUTO_REZERO_INTERVAL_SEC) {
+       * hoodIO.zero();
+       * System.out.println("Auto-rezeroing hood due to safety lock");
+       * lastAutoRezeroSec = now;
+       * }
+       * }
+       */
     } else if (trenchClamped) {
       hoodIO.setPosition(SAFE_TRENCH_HOOD_RADS);
     } else {

@@ -47,8 +47,8 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
     private static final double ENCODER_ERROR = 1 / 999;
 
     private static final double BASE_TOLERANCE_ROT = Units.degreesToRadians(6.0) / TWO_PI;
-    private static final LoggableTunedNumber SPEED_CUT =
-            new LoggableTunedNumber("Turrets/SPEED_CUT", 0.1, TuningConstants.isTuningShooter);
+    private static final LoggableTunedNumber SPEED_CUT = new LoggableTunedNumber("Turrets/SPEED_CUT", 0.1,
+            TuningConstants.isTuningShooter);
 
     private final TalonFX talon;
     private final CANcoder canCoderBig;
@@ -56,8 +56,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
     /* Direct Phoenix 6 control requests — no YAMS wrapper */
     private final TalonFXConfiguration talonConfig = new TalonFXConfiguration();
-    private final MotionMagicVoltage motionMagicRequest =
-            new MotionMagicVoltage(0).withSlot(0).withEnableFOC(false);
+    private final MotionMagicVoltage motionMagicRequest = new MotionMagicVoltage(0).withSlot(0).withEnableFOC(false);
     private final VoltageOut voltageRequest = new VoltageOut(0).withEnableFOC(false);
 
     private final StatusSignal<Angle> motorRotorRots;
@@ -74,7 +73,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
     private final StatusSignal<Temperature> tempCelsius;
 
     private boolean haveLock = false;
-
+    private boolean allowMovement = true;
     private final String name;
     private final double minAngle;
     private final double maxAngle;
@@ -87,7 +86,8 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
     private double lastUpdateTimeSec = -1.0;
     /**
      * The motor rotor position (in rotations) that corresponds to turret angle = 0.
-     * Computed on ANY CRT lock:  offset = currentRotorRots - turretRads/(2π) * ratio * sign
+     * Computed on ANY CRT lock: offset = currentRotorRots - turretRads/(2π) * ratio
+     * * sign
      */
     private double motorRotorOffsetRots = Double.NaN;
 
@@ -112,14 +112,12 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         this.minAngle = minTurretAngle;
         this.maxAngle = maxTurretAngle;
 
-        this.rightTurret =
-                canCoderSmallID == AdvancedMechanismConstants.Turret.rightAzimuthBigEncoderID;
+        this.rightTurret = canCoderSmallID == AdvancedMechanismConstants.Turret.rightAzimuthBigEncoderID;
         this.turretSign = rightTurret ? 1.0 : 1.0;
         this.motorToTurretRatio = motorToTurretRatio;
 
-        final double turretToIdlerRatio =
-                (double) AdvancedMechanismConstants.Turret.turretTeeth
-                        / (double) AdvancedMechanismConstants.Turret.idlerTeeth;
+        final double turretToIdlerRatio = (double) AdvancedMechanismConstants.Turret.turretTeeth
+                / (double) AdvancedMechanismConstants.Turret.idlerTeeth;
 
         /*
          * We normalize the encoder readings into turret-space before feeding EasyCRT,
@@ -133,20 +131,24 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         canCoderSmall = new CANcoder(canCoderSmallID, bus);
 
         /* ---- CANcoder configs ---- */
-        /*CANcoderConfiguration encoder1Config = new CANcoderConfiguration();
-        CANcoderConfiguration encoder2Config = new CANcoderConfiguration();
-
-        encoder1Config.MagnetSensor.AbsoluteSensorDiscontinuityPoint = 0.5;
-        encoder2Config.MagnetSensor.AbsoluteSensorDiscontinuityPoint = 0.5;
-
-        //encoder1Config.MagnetSensor.MagnetOffset = encoder1Offset;
-        //encoder2Config.MagnetSensor.MagnetOffset = encoder2Offset;
-
-        encoder1Config.MagnetSensor.SensorDirection = SensorDirectionValue.Clockwise_Positive;
-        //encoder2Config.MagnetSensor.SensorDirection = SensorDirectionValue.Clockwise_Positive;
-
-        canCoderBig.getConfigurator().apply(encoder1Config);
-        canCoderSmall.getConfigurator().apply(encoder2Config);*/
+        /*
+         * CANcoderConfiguration encoder1Config = new CANcoderConfiguration();
+         * CANcoderConfiguration encoder2Config = new CANcoderConfiguration();
+         * 
+         * encoder1Config.MagnetSensor.AbsoluteSensorDiscontinuityPoint = 0.5;
+         * encoder2Config.MagnetSensor.AbsoluteSensorDiscontinuityPoint = 0.5;
+         * 
+         * //encoder1Config.MagnetSensor.MagnetOffset = encoder1Offset;
+         * //encoder2Config.MagnetSensor.MagnetOffset = encoder2Offset;
+         * 
+         * encoder1Config.MagnetSensor.SensorDirection =
+         * SensorDirectionValue.Clockwise_Positive;
+         * //encoder2Config.MagnetSensor.SensorDirection =
+         * SensorDirectionValue.Clockwise_Positive;
+         * 
+         * canCoderBig.getConfigurator().apply(encoder1Config);
+         * canCoderSmall.getConfigurator().apply(encoder2Config);
+         */
 
         talonConfig.CurrentLimits.StatorCurrentLimitEnable = true;
         talonConfig.CurrentLimits.StatorCurrentLimit = currentLimitAmps;
@@ -231,8 +233,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         inputs.name = name;
 
         inputs.motorPositionRads = Units.rotationsToRadians(motorRotorRots.getValueAsDouble());
-        inputs.motorVelocityRadsPerSec =
-                Units.rotationsToRadians(motorRotorVelocityRotsPerSec.getValueAsDouble());
+        inputs.motorVelocityRadsPerSec = Units.rotationsToRadians(motorRotorVelocityRotsPerSec.getValueAsDouble());
 
         double bigRawRads = MathUtil.inputModulus(
                 Units.rotationsToRadians(bigAbsRots.getValueAsDouble()), 0.0, TWO_PI);
@@ -251,8 +252,8 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         inputs.tempCelsius = tempCelsius.getValueAsDouble();
 
         final double motorVelRotsPerSec = motorRotorVelocityRotsPerSec.getValueAsDouble();
-        final double turretVelRadsPerSec =
-                Units.rotationsToRadians(motorVelRotsPerSec) * turretSign / motorToTurretRatio;
+        final double turretVelRadsPerSec = Units.rotationsToRadians(motorVelRotsPerSec) * turretSign
+                / motorToTurretRatio;
 
         /*
          * Velocity-integrate lastTurretAngleRads every cycle so the position
@@ -308,7 +309,8 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
              * (Re-)compute the rotor offset every time CRT solves.
              * offset = currentRotorRots - turretRads/(2π) * ratio * sign
              * This keeps the mapping from turret-space to rotor-space accurate
-             * even if there is any mechanical slip throughout a rotation. Maybe disable this/ max 1 per sec (Sync Cancoder essentially)
+             * even if there is any mechanical slip throughout a rotation. Maybe disable
+             * this/ max 1 per sec (Sync Cancoder essentially)
              */
             double currentRotorRots = motorRotorRots.getValueAsDouble();
             motorRotorOffsetRots = currentRotorRots
@@ -320,6 +322,9 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
         inputs.turretPositionRads = lastTurretAngleRads;
         inputs.turretVelocityRadsPerSec = turretVelRadsPerSec;
+        if (!allowMovement) {
+            stop();
+        }
     }
 
     /**
@@ -346,8 +351,8 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         Logger.recordOutput(name + "/Turret/DesMotorSpot", desiredRotorRots);
         Logger.recordOutput(name + "/Turret/DesiredTurretRads", desiredTurret);
         Logger.recordOutput(name + "/Turret/DesStatus", "OK");
-
-        talon.setControl(motionMagicRequest.withPosition(desiredRotorRots));
+        if (allowMovement)
+            talon.setControl(motionMagicRequest.withPosition(desiredRotorRots));
     }
 
     @Override
@@ -357,13 +362,13 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
     @Override
     public void runVolts(double volts) {
-        talon.setControl(voltageRequest.withOutput(volts * turretSign));
+        if (allowMovement)
+            talon.setControl(voltageRequest.withOutput(volts * turretSign));
     }
 
     @Override
     public void setBrakeMode(boolean brake) {
-        talonConfig.MotorOutput.NeutralMode =
-                brake ? NeutralModeValue.Brake : NeutralModeValue.Coast;
+        talonConfig.MotorOutput.NeutralMode = brake ? NeutralModeValue.Brake : NeutralModeValue.Coast;
         talon.getConfigurator().apply(talonConfig.MotorOutput);
     }
 
@@ -392,10 +397,8 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         talonConfig.Slot0.kV = kv;
         talonConfig.Slot0.kA = ka;
 
-        talonConfig.MotionMagic.MotionMagicCruiseVelocity =
-                velocityMax * motorToTurretRatio / TWO_PI;
-        talonConfig.MotionMagic.MotionMagicAcceleration =
-                accelerationMax * motorToTurretRatio / TWO_PI;
+        talonConfig.MotionMagic.MotionMagicCruiseVelocity = velocityMax * motorToTurretRatio / TWO_PI;
+        talonConfig.MotionMagic.MotionMagicAcceleration = accelerationMax * motorToTurretRatio / TWO_PI;
 
         talonConfig.ClosedLoopRamps.VoltageClosedLoopRampPeriod = rampRate;
         talonConfig.OpenLoopRamps.VoltageOpenLoopRampPeriod = rampRate;
@@ -413,6 +416,16 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         hardware.add(new SelfCheckingCANCoder(name + "_CANcoderBig", canCoderBig));
         hardware.add(new SelfCheckingCANCoder(name + "_CANcoderSmall", canCoderSmall));
         return hardware;
+    }
+
+    @Override
+    public void disable() {
+        allowMovement = false;
+    }
+
+    @Override
+    public void enable() {
+        allowMovement = true;
     }
 
     private double normalizeAbsoluteRotations(double rawRotations) {
