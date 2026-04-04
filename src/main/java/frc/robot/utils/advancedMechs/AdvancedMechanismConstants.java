@@ -10,10 +10,10 @@ import frc.robot.utils.simpleMechanisms.SimpleMechanismConstants;
 
 public class AdvancedMechanismConstants {
         public static class Turret {
-                public static final double leftMinTurretAngle = 0;
-                public static final double leftMaxTurretAngle = 5.4;
-                public static final double rightMinTurretAngle = -5.4;
-                public static final double rightMaxTurretAngle = 0;
+                public static final double leftMinTurretAngle = -.66;
+                public static final double leftMaxTurretAngle = 5.55;
+                public static final double rightMinTurretAngle = -4.77;
+                public static final double rightMaxTurretAngle = 1;
                 public static final double leftMinHoodAngle = Math.toRadians(12.0);
                 public static final double leftMaxHoodAngle = Math.toRadians(43.0);
                 public static final double rightMinHoodAngle = Math.toRadians(12.0);
