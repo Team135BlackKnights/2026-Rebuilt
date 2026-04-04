@@ -1065,7 +1065,7 @@ public class RobotContainer {
 	private Command buildBackupRobotAimCommand() {
 		return Commands.startEnd(
 				() -> setBackupRobotAimingEnabled(true),
-				() -> setBackupRobotAimingEnabled(true))
+				() -> setBackupRobotAimingEnabled(false))
 				.alongWith(new AimToPose(
 						drivetrainS,
 						() -> new Pose2d(getBackupAimTargetTranslation(), new Rotation2d()),
