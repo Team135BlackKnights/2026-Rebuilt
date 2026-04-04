@@ -1132,6 +1132,10 @@ public class RobotContainer {
 
 		Trigger manualTurretControl = povUp.or(povRight).or(povDown).or(povLeft);
 		Trigger inTeleOp = new Trigger(() -> DriverStation.isTeleop() && DriverStation.isEnabled());
+		Trigger finalSecondOfTeleop = new Trigger(
+				() -> DriverStation.isTeleopEnabled()
+						&& DriverStation.getMatchTime() > 0.0
+						&& DriverStation.getMatchTime() <= 1.0);
 		Trigger inScoreArea = new Trigger(() -> GeomUtil.applyX(drivetrainS.getPose().getX()) < 4.4); // when red, we
 																										// are at 12,
 																										// flipping
@@ -1395,6 +1399,10 @@ public class RobotContainer {
 		hoodAboveSafeAngle.whileTrue(Commands.startEnd(
 				() -> driveController.getHID().setRumble(RumbleType.kBothRumble, 1.0),
 				() -> driveController.getHID().setRumble(RumbleType.kBothRumble, 0.0)));
+		finalSecondOfTeleop.whileTrue(Commands.run(() -> {
+			leftTurret.setCharTurretPos(0.0);
+			rightTurret.setCharTurretPos(0.0);
+		}, leftTurret, rightTurret).withName("Zero Turrets At 1s"));
 		// Turret Controls
 		rightTriggerDriveFull.and(leftBumperDrive.negate()).and(rightBumperDrive.negate()).and(xButtonDrive.negate())
 				.whileTrue(shootTurrets);
