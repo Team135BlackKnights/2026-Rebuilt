@@ -126,7 +126,7 @@ public class DriveConstants {
 			"Drive/MaxTranslationalAcceleration", 36,TuningConstants.isTuningMacros);
 	public static final LoggableTunedNumber maxRotationalAcceleration = new LoggableTunedNumber(
 			"Drive/MaxRotationalAcceleration", 2 * Math.PI * 50,TuningConstants.isTuningMacros);
-	public static boolean fieldOriented = true;
+	public static boolean fieldOriented = false;
 	public static boolean autoAvoidance = false;
 	@AutoLogOutput(key = "Drive/AutoIntake")
 	public static boolean autoIntake = false;
