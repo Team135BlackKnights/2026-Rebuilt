@@ -727,7 +727,9 @@ public class Turret extends SubsystemChecker {
     if (DriverStation.isDisabled()) {
       return Kickup.Goal.IDLING;
     }
-
+    if (!isAzimuthConnected()){
+      return Kickup.Goal.VOMITING;
+    }
     if (controlGoal == Goal.JACKHAMMER || goal == Goal.JACKHAMMER) {
       return Kickup.Goal.JACKHAMMER;
     }
