@@ -170,7 +170,7 @@ public class Turret extends SubsystemChecker {
       azimuth_kV = new LoggableTunedNumber(name + "/Azimuth/kV", 0.0, TuningConstants.isTuningShooter);
       azimuth_kA = new LoggableTunedNumber(name + "/Azimuth/kA", 0.0, TuningConstants.isTuningShooter);
       azimuth_velMax = new LoggableTunedNumber(name + "/Azimuth/velMaxRadPerSec", 30, TuningConstants.isTuningShooter);
-      azimuth_accelMax = new LoggableTunedNumber(name + "/Azimuth/accelMaxRadPerSec2", 150.0,
+      azimuth_accelMax = new LoggableTunedNumber(name + "/Azimuth/accelMaxRadPerSec2", 100.0,
           TuningConstants.isTuningShooter);
       azimuth_ramp = new LoggableTunedNumber(name + "/Azimuth/ramp", 0.1, TuningConstants.isTuningShooter);
 
