@@ -1,14 +1,12 @@
 package frc.robot.subsystems.Turret.azimuth;
 
-import static edu.wpi.first.units.Units.Rotations;
-
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-import java.util.function.Supplier;
 
 import org.littletonrobotics.junction.Logger;
 
+import com.andymark.jni.AM_CAN_Mag_Switch;
+import com.andymark.jni.AM_CAN_Mag_Switch.AM_MagSwitchData;
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusSignal;
@@ -21,19 +19,13 @@ import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import edu.wpi.first.math.MathUtil;
-import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.util.Units;
 import edu.wpi.first.units.measure.Angle;
 import edu.wpi.first.units.measure.AngularVelocity;
 import edu.wpi.first.units.measure.Current;
 import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
-import edu.wpi.first.wpilibj.Timer;
-import frc.robot.Constants.TuningConstants;
-import frc.robot.subsystems.Turret.azimuth.EasyCRT.EasyCRT;
-import frc.robot.subsystems.Turret.azimuth.EasyCRT.EasyCRT.CRTStatus;
-import frc.robot.subsystems.Turret.azimuth.EasyCRT.EasyCRTConfig;
-import frc.robot.utils.LoggableTunedNumber;
+import edu.wpi.first.wpilibj.DriverStation;
 import frc.robot.utils.advancedMechs.AdvancedMechanismConstants;
 import frc.robot.utils.selfCheck.SelfChecking;
 import frc.robot.utils.selfCheck.drive.SelfCheckingCANCoder;
@@ -44,15 +36,11 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
     private static final double TWO_PI = 2.0 * Math.PI;
     private static final double ENCODER_UPDATE_HZ = 100.0;
     private static final double MOTOR_UPDATE_HZ = 100.0;
-    private static final double ENCODER_ERROR = 1 / 999;
-
-    private static final double BASE_TOLERANCE_ROT = Units.degreesToRadians(6.0) / TWO_PI;
-    private static final LoggableTunedNumber SPEED_CUT = new LoggableTunedNumber("Turrets/SPEED_CUT", 0.1,
-            TuningConstants.isTuningShooter);
 
     private final TalonFX talon;
     private final CANcoder canCoderBig;
-    private final CANcoder canCoderSmall;
+    private final AM_CAN_Mag_Switch magSwitch;
+
 
     /* Direct Phoenix 6 control requests — no YAMS wrapper */
     private final TalonFXConfiguration talonConfig = new TalonFXConfiguration();
@@ -64,8 +52,6 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
     private final StatusSignal<Angle> bigAbsRots;
     private final StatusSignal<AngularVelocity> bigAbsRotsVel;
-    private final StatusSignal<Angle> smallAbsRots;
-    private final StatusSignal<AngularVelocity> smallAbsRotsVel;
 
     private final StatusSignal<Voltage> appliedVoltage;
     private final StatusSignal<Current> supplyCurrent;
@@ -74,6 +60,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
     private boolean haveLock = false;
     private boolean allowMovement = true;
+    private boolean allowEncoderZeroing = true;
     private final String name;
     private final double minAngle;
     private final double maxAngle;
@@ -81,23 +68,17 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
     private final double turretSign;
     private final boolean rightTurret;
     private final double motorToTurretRatio;
+    private final double primaryEncoderOffsetRotations;
+    private final double primaryEncoderRatio;
 
     private double lastTurretAngleRads = 0.0;
-    private double lastUpdateTimeSec = -1.0;
-    /**
-     * The motor rotor position (in rotations) that corresponds to turret angle = 0.
-     * Computed on ANY CRT lock: offset = currentRotorRots - turretRads/(2π) * ratio
-     * * sign
-     */
-    private double motorRotorOffsetRots = Double.NaN;
-
-    private final EasyCRT easyCrt;
 
     public AzimuthIOKrakenFOC(
             CANBus bus,
             int ID,
             int canCoderBigID,
             int canCoderSmallID,
+            int magID,
             String name,
             int currentLimitAmps,
             double minTurretAngle,
@@ -118,17 +99,12 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
         final double turretToIdlerRatio = (double) AdvancedMechanismConstants.Turret.turretTeeth
                 / (double) AdvancedMechanismConstants.Turret.idlerTeeth;
-
-        /*
-         * We normalize the encoder readings into turret-space before feeding EasyCRT,
-         * so both turrets can use the SAME effective ratios here.
-         */
-        final double encoder1Ratio = -turretToIdlerRatio;
-        final double encoder2Ratio = turretToIdlerRatio * (enc1GearTeeth / enc2GearTeeth);
+        this.primaryEncoderOffsetRotations = encoder1Offset;
+        this.primaryEncoderRatio = -turretToIdlerRatio;
 
         talon = new TalonFX(ID, bus);
         canCoderBig = new CANcoder(canCoderBigID, bus);
-        canCoderSmall = new CANcoder(canCoderSmallID, bus);
+        magSwitch = new AM_CAN_Mag_Switch(magID);
 
         /* ---- CANcoder configs ---- */
         /*
@@ -187,11 +163,9 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
         bigAbsRots = canCoderBig.getAbsolutePosition();
         bigAbsRotsVel = canCoderBig.getVelocity();
-        smallAbsRots = canCoderSmall.getAbsolutePosition();
-        smallAbsRotsVel = canCoderSmall.getVelocity();
 
         BaseStatusSignal.setUpdateFrequencyForAll(
-                ENCODER_UPDATE_HZ, bigAbsRots, smallAbsRots, bigAbsRotsVel, smallAbsRotsVel);
+                ENCODER_UPDATE_HZ, bigAbsRots, bigAbsRotsVel);
         BaseStatusSignal.setUpdateFrequencyForAll(
                 MOTOR_UPDATE_HZ,
                 motorRotorRots,
@@ -202,24 +176,14 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
                 tempCelsius);
 
         talon.optimizeBusUtilization(0, 1.0);
-
-        EasyCRTConfig crtConfig = new EasyCRTConfig(
-                (Supplier<Pair<Angle, Angle>>) () -> {
-                    return Pair.of(
-                            Rotations.of(normalizeAbsoluteRotations(bigAbsRots.getValueAsDouble())),
-                            Rotations.of(normalizeAbsoluteRotations(smallAbsRots.getValueAsDouble())));
-                })
-                .withEncoderRatios(encoder1Ratio, encoder2Ratio)
-                .withMechanismRange(
-                        Rotations.of(minTurretAngle / TWO_PI - 0.75),
-                        Rotations.of(maxTurretAngle / TWO_PI + 0.75))
-                .withMatchTolerance(Rotations.of(BASE_TOLERANCE_ROT));
-
-        easyCrt = new EasyCRT(crtConfig);
     }
 
     @Override
     public void updateInputs(AzimuthIOInputs inputs) {
+        if (DriverStation.isEnabled()) {
+            allowEncoderZeroing = false;
+        }
+
         inputs.motorConnected = BaseStatusSignal.refreshAll(
                 motorRotorRots,
                 motorRotorVelocityRotsPerSec,
@@ -228,23 +192,21 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
                 torqueCurrent,
                 tempCelsius).isOK();
 
-        inputs.bothEncodersConnected = BaseStatusSignal.refreshAll(
-                bigAbsRots, smallAbsRots, bigAbsRotsVel, smallAbsRotsVel).isOK();
+        inputs.referenceEncoderConnected = BaseStatusSignal.refreshAll(bigAbsRots, bigAbsRotsVel).isOK();
+        inputs.bothEncodersConnected = inputs.referenceEncoderConnected;
         inputs.name = name;
-
-        inputs.motorPositionRads = Units.rotationsToRadians(motorRotorRots.getValueAsDouble());
+        AM_MagSwitchData data = magSwitch.getData();
+        inputs.magSwitchDetected = data.magnetDetected;
+        final double currentRotorRots = motorRotorRots.getValueAsDouble();
+        inputs.motorPositionRads = Units.rotationsToRadians(currentRotorRots);
         inputs.motorVelocityRadsPerSec = Units.rotationsToRadians(motorRotorVelocityRotsPerSec.getValueAsDouble());
 
         double bigRawRads = MathUtil.inputModulus(
                 Units.rotationsToRadians(bigAbsRots.getValueAsDouble()), 0.0, TWO_PI);
-        double smallRawRads = MathUtil.inputModulus(
-                Units.rotationsToRadians(smallAbsRots.getValueAsDouble()), 0.0, TWO_PI);
-
+     
         inputs.bigEncoderRads = bigRawRads;
-        inputs.smallEncoderRads = smallRawRads;
 
         final double bigSolveRads = normalizeAbsoluteRadians(bigRawRads);
-        final double smallSolveRads = normalizeAbsoluteRadians(smallRawRads);
 
         inputs.appliedVoltage = appliedVoltage.getValueAsDouble();
         inputs.supplyCurrentAmps = supplyCurrent.getValueAsDouble();
@@ -254,74 +216,47 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         final double motorVelRotsPerSec = motorRotorVelocityRotsPerSec.getValueAsDouble();
         final double turretVelRadsPerSec = Units.rotationsToRadians(motorVelRotsPerSec) * turretSign
                 / motorToTurretRatio;
-
-        /*
-         * Velocity-integrate lastTurretAngleRads every cycle so the position
-         * estimate stays alive even when CRT drops out at high speed.
-         */
-        final double now = Timer.getFPGATimestamp();
-        final double dt = (lastUpdateTimeSec > 0) ? (now - lastUpdateTimeSec) : 0.0;
-        lastUpdateTimeSec = now;
-
-        double predictedTurretRad = lastTurretAngleRads + turretVelRadsPerSec * dt;
-
+        final boolean shouldZeroFromEncoder = allowEncoderZeroing
+                && DriverStation.isDisabled()
+                && inputs.referenceEncoderConnected;
+        double encoderEstimateRad = Double.NaN;
         double solvedRad = Double.NaN;
-        boolean solved = false;
-        if (Math.abs(turretVelRadsPerSec) < SPEED_CUT.get()) {
-
-            Optional<Angle> crtResult = easyCrt.getAngleOptional();
-            CRTStatus crtStatus = easyCrt.getLastStatus();
-
-            if (crtResult.isPresent()) {
-                solvedRad = crtResult.get().in(edu.wpi.first.units.Units.Radians);
-                if (solvedRad - lastTurretAngleRads >= ENCODER_ERROR) {
-                    solvedRad += ENCODER_ERROR;
-                } else if (solvedRad - lastTurretAngleRads <= -ENCODER_ERROR) {
-                    solvedRad -= ENCODER_ERROR;
-                }
-                solved = true;
-            }
-            Logger.recordOutput(name + "/Turret/SolveStatusRaw", crtStatus);
-            Logger.recordOutput(name + "/Turret/SolveStatus", crtStatus.name());
-            Logger.recordOutput(name + "/Turret/SolveAngle", solvedRad);
-        } else {
-            Logger.recordOutput(name + "/Turret/SolveStatus", "IGNORED");
+        double seededRotorRots = Double.NaN;
+        if (shouldZeroFromEncoder) {
+            encoderEstimateRad = MathUtil.clamp(
+                    primaryEncoderAngleToTurretRads(bigAbsRots.getValueAsDouble()), minAngle, maxAngle);
+            solvedRad = 0.0;
+            seededRotorRots = 0.0;
+            talon.setPosition(seededRotorRots);
+            lastTurretAngleRads = solvedRad;
+            haveLock = true;
+        } else if (haveLock) {
+            lastTurretAngleRads = rotorRotationsToTurretRads(currentRotorRots);
         }
 
         Logger.recordOutput(name + "/Turret/IsRightTurret", rightTurret);
         Logger.recordOutput(name + "/Turret/TurretSign", turretSign);
-        Logger.recordOutput(name + "/Turret/CrtLastErrorRot", easyCrt.getLastErrorRotations());
 
         Logger.recordOutput(name + "/Turret/EncoderBigRadsRaw", bigRawRads);
-        Logger.recordOutput(name + "/Turret/EncoderSmallRadsRaw", smallRawRads);
         Logger.recordOutput(name + "/Turret/EncoderBigRadsNormalized", bigSolveRads);
-        Logger.recordOutput(name + "/Turret/EncoderSmallRadsNormalized", smallSolveRads);
-
         Logger.recordOutput(name + "/Turret/TurretVelRadsPerSec", turretVelRadsPerSec);
-        Logger.recordOutput(name + "/Turret/PredictedTurretRad", predictedTurretRad);
-        Logger.recordOutput(name + "/Turret/Dt", dt);
-
-        if (solved) {
-            lastTurretAngleRads = solvedRad;
-            haveLock = true;
-
-            /*
-             * (Re-)compute the rotor offset every time CRT solves.
-             * offset = currentRotorRots - turretRads/(2π) * ratio * sign
-             * This keeps the mapping from turret-space to rotor-space accurate
-             * even if there is any mechanical slip throughout a rotation. Maybe disable
-             * this/ max 1 per sec (Sync Cancoder essentially)
-             */
-            double currentRotorRots = motorRotorRots.getValueAsDouble();
-            motorRotorOffsetRots = currentRotorRots
-                    - (solvedRad / TWO_PI) * motorToTurretRatio * turretSign;
-            Logger.recordOutput(name + "/Turret/MotorRotorOffsetRots", motorRotorOffsetRots);
-        } else if (haveLock) {
-            lastTurretAngleRads = predictedTurretRad;
-        }
+        Logger.recordOutput(name + "/Turret/PreMatchZeroingAllowed", allowEncoderZeroing);
+        Logger.recordOutput(name + "/Turret/DisabledZeroEnabled", shouldZeroFromEncoder);
+        Logger.recordOutput(name + "/Turret/EncoderEstimateRad", encoderEstimateRad);
+        Logger.recordOutput(name + "/Turret/SolveAngle", solvedRad);
+        Logger.recordOutput(name + "/Turret/SeededRotorRots", seededRotorRots);
+        Logger.recordOutput(name + "/Turret/SolveStatus",
+                shouldZeroFromEncoder
+                        ? "DISABLED_ENCODER_ZERO"
+                        : (haveLock ? "MOTOR_ONLY" : "WAITING_FOR_DISABLED_ZERO"));
+        Logger.recordOutput(name + "/Turret/MotorOnlyTurretRad",
+                haveLock
+                        ? rotorRotationsToTurretRads(shouldZeroFromEncoder ? seededRotorRots : currentRotorRots)
+                        : Double.NaN);
 
         inputs.turretPositionRads = lastTurretAngleRads;
         inputs.turretVelocityRadsPerSec = turretVelRadsPerSec;
+        inputs.zeroed = haveLock;
         if (!allowMovement) {
             stop();
         }
@@ -333,7 +268,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
      */
     @Override
     public void setDesiredPosition(double turretRads) {
-        if (!haveLock || Double.isNaN(motorRotorOffsetRots)) {
+        if (!haveLock) {
             Logger.recordOutput(name + "/Turret/DesStatus", "NO_LOCK");
             return;
         }
@@ -345,8 +280,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         double desiredTurret = MathUtil.clamp(wrappedCmd, minAngle, maxAngle);
 
         // Convert desired turret-space angle to absolute motor rotor rotations
-        double desiredRotorRots = motorRotorOffsetRots
-                + (desiredTurret / TWO_PI) * motorToTurretRatio * turretSign;
+        double desiredRotorRots = turretToRotorRotations(desiredTurret);
 
         Logger.recordOutput(name + "/Turret/DesMotorSpot", desiredRotorRots);
         Logger.recordOutput(name + "/Turret/DesiredTurretRads", desiredTurret);
@@ -414,7 +348,6 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         List<SelfChecking> hardware = new ArrayList<>();
         hardware.add(new SelfCheckingTalonFX(name + "_talon", talon));
         hardware.add(new SelfCheckingCANCoder(name + "_CANcoderBig", canCoderBig));
-        hardware.add(new SelfCheckingCANCoder(name + "_CANcoderSmall", canCoderSmall));
         return hardware;
     }
 
@@ -426,6 +359,20 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
     @Override
     public void enable() {
         allowMovement = true;
+    }
+
+    private double primaryEncoderAngleToTurretRads(double rawEncoderRotations) {
+        double encoderDeltaRotations = MathUtil.inputModulus(
+                rawEncoderRotations - primaryEncoderOffsetRotations, -0.5, 0.5);
+        return Units.rotationsToRadians(encoderDeltaRotations / primaryEncoderRatio);
+    }
+
+    private double turretToRotorRotations(double turretRads) {
+        return (turretRads / TWO_PI) * motorToTurretRatio * turretSign;
+    }
+
+    private double rotorRotationsToTurretRads(double rotorRotations) {
+        return Units.rotationsToRadians(rotorRotations / (motorToTurretRatio * turretSign));
     }
 
     private double normalizeAbsoluteRotations(double rawRotations) {

@@ -19,6 +19,9 @@ public interface AzimuthIO {
         public double appliedVoltage = 0;
         public boolean motorConnected = true;
         public boolean bothEncodersConnected = true;
+        public boolean referenceEncoderConnected = true;
+        public boolean magSwitchDetected = false;
+        public boolean zeroed = false;
         public String name = "Azimuth";
         public double supplyCurrentAmps;
         public double torqueCurrentAmps;

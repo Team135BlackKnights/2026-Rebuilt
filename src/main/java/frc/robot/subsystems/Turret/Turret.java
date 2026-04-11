@@ -349,7 +349,7 @@ public class Turret extends SubsystemChecker {
   }
 
   private boolean isAzimuthConnected() {
-    return azimuthInputs.motorConnected && azimuthInputs.bothEncodersConnected;
+    return azimuthInputs.motorConnected && azimuthInputs.zeroed;
   }
 
   private boolean isFlywheelConnected() {
@@ -716,6 +716,8 @@ public class Turret extends SubsystemChecker {
         desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
 
     Logger.recordOutput(name + "/Errors/TurretRads", turretAngleErrorRads());
+    Logger.recordOutput(name + "/Azimuth/ReferenceEncoderConnected", azimuthInputs.referenceEncoderConnected);
+    Logger.recordOutput(name + "/Azimuth/Zeroed", azimuthInputs.zeroed);
     Logger.recordOutput(name + "/BackupRobotAimingEnabled", backupRobotAimingEnabled);
     Logger.recordOutput(name + "/FlywheelOutputSuppressed", flywheelOutputSuppressed);
     Logger.recordOutput(name + "/BackupRobotHeadingErrorRads",
