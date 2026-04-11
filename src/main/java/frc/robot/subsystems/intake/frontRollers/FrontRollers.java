@@ -32,7 +32,7 @@ public class FrontRollers extends GenericRollerSystem<FrontRollers.Goal> {
         IDLING(new LoggableTunedNumber("Intake/FrontRollers/IdlingVoltage", 0.0,
                 Constants.TuningConstants.isTuningIntake)),
         INTAKING(
-                new LoggableTunedNumber("Intake/FrontRollers/IntakingVoltage", 7.0,
+                new LoggableTunedNumber("Intake/FrontRollers/IntakingVoltage", 9.1,
                         Constants.TuningConstants.isTuningIntake)),
         SHOOTING(new LoggableTunedNumber("Intake/FrontRollers/ShootingVoltage", 10.0,
                 Constants.TuningConstants.isTuningIntake)),

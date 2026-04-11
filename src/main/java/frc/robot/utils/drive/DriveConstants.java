@@ -186,7 +186,7 @@ public class DriveConstants {
 			kFrontRightShifterForward = 2, kFrontRightShifterReverse = 3,
 			kBackLeftShifterForward = 4, kBackLeftShifterReverse = 5,
 			kBackRightShifterForward = 6, kBackRightShifterReverse = 7,
-			kMaxDriveCurrent = 65, kMaxTurnCurrent = 20;
+			kMaxDriveCurrent = 50, kMaxTurnCurrent = 20;
 	public static final boolean kFrontLeftDriveReversed = false,
 			kFrontLeftTurningReversed = false, kFrontLeftAbsEncoderReversed = false,
 			kFrontRightDriveReversed = true, kFrontRightTurningReversed = false,

@@ -40,14 +40,14 @@ public class Intake extends SubsystemChecker {
     private static final LoggableTunedNumber arm_kG = new LoggableTunedNumber("Intake/Arm/kG", 0,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_motionSpeed = new LoggableTunedNumber(
-            "Intake/Arm/MotionCruiseRadPerSec", Units.degreesToRadians(360.0), TuningConstants.isTuningIntake);
+            "Intake/Arm/MotionCruiseRadPerSec", 2, TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_motionAccel = new LoggableTunedNumber(
-            "Intake/Arm/MotionAccelRadPerSec2", Units.degreesToRadians(720.0), TuningConstants.isTuningIntake);
+            "Intake/Arm/MotionAccelRadPerSec2", 4, TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_neutralBand = new LoggableTunedNumber("Intake/Arm/NeutralBand", .15,
             TuningConstants.isTuningIntake);
 
     private static final LoggableTunedNumber arm_stow = new LoggableTunedNumber("Intake/Setpoints/StowRad",
-            Units.degreesToRadians(45.0), TuningConstants.isTuningIntake);
+            Units.degreesToRadians(70.0), TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_ground = new LoggableTunedNumber("Intake/Setpoints/GroundRad",
             IntakeConstants.armMinAngleRad, TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber time_jackhammer = new LoggableTunedNumber("Intake/JackhammerTimeSecs",
@@ -55,7 +55,7 @@ public class Intake extends SubsystemChecker {
     private static final LoggableTunedNumber arm_agitate = new LoggableTunedNumber("Intake/Setpoints/AgitateRad",
             Units.degreesToRadians(30.0), TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber agitate_force_volts = new LoggableTunedNumber(
-            "Intake/AgitateForceVolts", -4, TuningConstants.isTuningIntake);
+            "Intake/AgitateForceVolts", -2, TuningConstants.isTuningIntake);
 
     private static final LoggableTunedNumber arm_tolerance = new LoggableTunedNumber("Intake/ToleranceRad",
             Units.degreesToRadians(20.0), TuningConstants.isTuningIntake);
@@ -82,10 +82,11 @@ public class Intake extends SubsystemChecker {
         TUNING,
     }
 
-    private Goal goal = Goal.STOW;
+    private Goal goal = Goal.INTAKE_OUTER_IDLE;
     private double currentArmSetpointRad = 0.0;
     private double currentRollerVolts = 0.0;
     private boolean agitatingGoingUp = true;
+    private boolean armOutputSuppressed = false;
     @Getter
     private boolean intakeDeployed = false;
 
@@ -104,7 +105,7 @@ public class Intake extends SubsystemChecker {
         updateTunablePIDs();
 
         if (DriverStation.isDisabled()) {
-            goal = Goal.STOW;
+            goal = Goal.INTAKE_OUTER_IDLE;
             armIO.stop();
             frontRollers.setGoal(FrontRollers.Goal.STOPPED);
             return;
@@ -138,7 +139,7 @@ public class Intake extends SubsystemChecker {
                 frontRollers.setGoal(FrontRollers.Goal.IDLING);
             }
             case VOMITING -> {
-                currentArmSetpointRad = arm_stow.get();
+                currentArmSetpointRad = arm_ground.get();
                 frontRollers.setGoal(FrontRollers.Goal.VOMITING);
             }
             case JACKHAMMERING_IN -> {
@@ -170,7 +171,9 @@ public class Intake extends SubsystemChecker {
             }
         }
 
-        if (goal != Goal.TUNING) {
+        if (armOutputSuppressed) {
+            armIO.stop();
+        } else if (goal != Goal.TUNING) {
             if (goal == Goal.AGITATING && agitatingGoingUp
                     && armInputs.positionRad < currentArmSetpointRad) {
                 armIO.setVoltage(agitate_force_volts.get());
@@ -185,6 +188,7 @@ public class Intake extends SubsystemChecker {
         Logger.recordOutput("Intake/SetpointVolts", currentRollerVolts);
         Logger.recordOutput("Intake/AtSetpoint", isAtSetpoint());
         Logger.recordOutput("Intake/AgitatingGoingUp", agitatingGoingUp);
+        Logger.recordOutput("Intake/ArmOutputSuppressed", armOutputSuppressed);
         Logger.recordOutput("Intake/AgitateForceInActive",
                 goal == Goal.AGITATING && agitatingGoingUp && armInputs.positionRad < currentArmSetpointRad);
     }
@@ -212,6 +216,10 @@ public class Intake extends SubsystemChecker {
 
     public Goal getGoal() {
         return goal;
+    }
+
+    public void setArmOutputSuppressed(boolean suppressed) {
+        armOutputSuppressed = suppressed;
     }
 
     public void runCharacterization(double volts) {

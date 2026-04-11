@@ -50,7 +50,7 @@ public class VisionConstants {
 	public static final double objDetectConfidenceThreshold = .6;
 	public static final double maxZError = 0.75;
 	public static final double maxObjZError = 0.25;
-	public static final double maxYawError = 15.0;
+	public static final double maxYawError = 90.0;
 	public static final double linearStdDevBaseline = 0.025;
 	public static final double angularStdDevBaseline = 0.04;
 
@@ -118,7 +118,7 @@ public class VisionConstants {
 					.location("0x02210000 / 3")
 										.width(1600)
 					.height(1304)
-					.exposure(4)
+					.exposure(16)
 					.saturation(0)
 					.hue(0)
 					.whiteBalance(4000)
