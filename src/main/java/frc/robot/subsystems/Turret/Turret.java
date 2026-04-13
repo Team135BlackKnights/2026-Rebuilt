@@ -563,7 +563,7 @@ public class Turret extends SubsystemChecker {
 
   @Override
   public void periodic() {
-    if (azimuthInputs.motorConnected && (azimuthInputs.zeroed || azimuthIO.wantsZeroing())) {
+    if (azimuthInputs.motorConnected && (!azimuthInputs.zeroed || azimuthIO.wantsZeroing())) {
       azimuthIO.enable();
     } else {
       azimuthIO.disable();
@@ -744,6 +744,9 @@ public class Turret extends SubsystemChecker {
 
   private Kickup.Goal getKickupGoal(Goal controlGoal, Goal previousControlGoal) {
     if (DriverStation.isDisabled()) {
+      return Kickup.Goal.IDLING;
+    }
+    if (!azimuthInputs.zeroed || azimuthIO.wantsZeroing()) {
       return Kickup.Goal.IDLING;
     }
     if (!isAzimuthConnected()){
