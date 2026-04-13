@@ -81,7 +81,7 @@ public class FrontRollers extends GenericRollerSystem<FrontRollers.Goal> {
 
     public FrontRollers(FrontRollersIO io) {
         super("Intake/FrontRollers", io);
-        overcurrentThresholdAmps = new LoggableTunedNumber("Intake/FrontRollers/OvercurrentThresholdAmps", 50.0,
+        overcurrentThresholdAmps = new LoggableTunedNumber("Intake/FrontRollers/OvercurrentThresholdAmps", 90.0,
                 Constants.TuningConstants.isTuningIntake);
         overcurrentDelaySec = new LoggableTunedNumber("Intake/FrontRollers/OvercurrentDelaySec", 0.5,
                 Constants.TuningConstants.isTuningIntake);

@@ -29,9 +29,9 @@ import frc.robot.utils.selfCheck.SelfChecking;
 import frc.robot.utils.selfCheck.drive.SelfCheckingTalonFX;
 
 public class ArmIOKrakenFOC implements ArmIO {
-    protected static final LoggableTunedNumber ZERO_VOLTS = new LoggableTunedNumber("Intake/Arm/zeroVolts",4,TuningConstants.isTuningIntake);
-    protected static final LoggableTunedNumber FAST_REZERO_VOLTS = new LoggableTunedNumber("Intake/Arm/fastRezeroVolts",3,TuningConstants.isTuningIntake);
-    protected static final LoggableTunedNumber ZERO_CURRENT_AMPS = new LoggableTunedNumber("Intake/Arm/zeroAmps",35,TuningConstants.isTuningIntake);
+    protected static final LoggableTunedNumber ZERO_VOLTS = new LoggableTunedNumber("Intake/Arm/zeroVolts",7,TuningConstants.isTuningIntake);
+    protected static final LoggableTunedNumber FAST_REZERO_VOLTS = new LoggableTunedNumber("Intake/Arm/fastRezeroVolts",10,TuningConstants.isTuningIntake);
+    protected static final LoggableTunedNumber ZERO_CURRENT_AMPS = new LoggableTunedNumber("Intake/Arm/zeroAmps",10,TuningConstants.isTuningIntake);
     protected static final LoggableTunedNumber ZERO_HOLD_SEC = new LoggableTunedNumber("Intake/Arm/zeroTime",.4,TuningConstants.isTuningIntake);
     protected static final LoggableTunedNumber FAST_REZERO_WINDOW_SEC = new LoggableTunedNumber("Intake/Arm/fastRezeroWindowSec",2.0,TuningConstants.isTuningIntake);
 
