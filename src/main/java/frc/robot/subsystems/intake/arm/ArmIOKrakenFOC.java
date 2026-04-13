@@ -263,8 +263,13 @@ public class ArmIOKrakenFOC implements ArmIO {
         if (!zeroingActive) {
             return;
         }
-
-        double now = Timer.getFPGATimestamp();
+        talon.setPosition(radiansToMechanismRotations(minPositionRad));
+            zeroingActive = false;
+            zeroSpikeStartTimeSec = Double.NaN;
+            fastRezeroActive = false;
+            openLoop = false;
+        return;
+        /*    double now = Timer.getFPGATimestamp();
         talon.setControl(voltageRequest.withOutput(getZeroingVoltage()));
         BaseStatusSignal.refreshAll(supplyCurrent, statorCurrent, torqueCurrent);
         double observedCurrentAmps = Math.abs(torqueCurrent.getValueAsDouble());
@@ -283,7 +288,7 @@ public class ArmIOKrakenFOC implements ArmIO {
             zeroSpikeStartTimeSec = Double.NaN;
             fastRezeroActive = false;
             openLoop = false;
-        }
+        }*/
     }
 
     protected double getZeroingVoltage() {
