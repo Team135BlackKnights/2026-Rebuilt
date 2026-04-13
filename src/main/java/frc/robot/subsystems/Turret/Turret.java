@@ -563,7 +563,7 @@ public class Turret extends SubsystemChecker {
 
   @Override
   public void periodic() {
-    if (azimuthInputs.motorConnected && (!azimuthInputs.zeroed || azimuthIO.wantsZeroing())) {
+    if (azimuthInputs.motorConnected && (azimuthInputs.zeroed || azimuthIO.wantsZeroing())) {
       azimuthIO.enable();
     } else {
       azimuthIO.disable();

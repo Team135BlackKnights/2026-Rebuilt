@@ -416,11 +416,13 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
     @Override
     public void disable() {
         allowMovement = false;
+        Logger.recordOutput(name+"/Turret/AllowedToMove", allowMovement);
     }
 
     @Override
     public void enable() {
         allowMovement = true;
+        Logger.recordOutput(name+"/Turret/AllowedToMove", allowMovement);
     }
 
     @Override

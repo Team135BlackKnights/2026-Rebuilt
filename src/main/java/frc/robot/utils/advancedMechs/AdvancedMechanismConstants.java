@@ -25,7 +25,7 @@ public class AdvancedMechanismConstants {
                 public static final int turretTeeth = 77;
                 public static final int idlerTeeth = 10;
                 public static final double leftMotorRadPerTurretRad = 36.0 / 12.0 * 77.0 / 10.0;
-                public static final double rightMotorRadPerTurretRad = 36.0 / 10.0 * 77.0 / 10.0;
+                public static final double rightMotorRadPerTurretRad = 36.0 / 12.0 * 77.0 / 10.0;
                 public static final double flywheelRatio = 1.0 / 1.0;
                 public static final double hoodMotorToHoodEncoderRatio = 50.0 / 12.0;
                 public static final double hoodEncoderToHoodArmRatio = 19.0 / 15.0;
