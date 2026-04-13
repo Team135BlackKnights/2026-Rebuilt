@@ -596,6 +596,8 @@ public class Turret extends SubsystemChecker {
 
         if (backupRobotAimingEnabled) {
           commandTurretPosition(0.0);
+        } else if (!azimuthInputs.zeroed || azimuthIO.wantsZeroing()) {
+          desiredTurretRads = lastTurretRads;
         } else {
           azimuthIO.stop();
           desiredTurretRads = lastTurretRads;
