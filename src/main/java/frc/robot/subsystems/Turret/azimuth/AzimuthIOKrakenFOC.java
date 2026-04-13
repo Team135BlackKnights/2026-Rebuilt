@@ -63,7 +63,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
     private boolean haveLock = false;
     private boolean allowMovement = true;
-    private boolean allowEncoderZeroing = true;
+    private boolean zeroingRequested = true;
     private final String name;
     private final double minAngle;
     private final double maxAngle;
@@ -190,10 +190,6 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
     @Override
     public void updateInputs(AzimuthIOInputs inputs) {
-        if (DriverStation.isEnabled()) {
-            allowEncoderZeroing = false;
-        }
-
         inputs.motorConnected = BaseStatusSignal.refreshAll(
                 motorRotorRots,
                 motorRotorVelocityRotsPerSec,
@@ -227,14 +223,15 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         final double motorVelRotsPerSec = motorRotorVelocityRotsPerSec.getValueAsDouble();
         final double turretVelRadsPerSec = Units.rotationsToRadians(motorVelRotsPerSec) * turretSign
                 / motorToTurretRatio;
-        final boolean preMatchZeroEnabled = allowEncoderZeroing
-                && DriverStation.isDisabled()
+        final boolean wantsZeroing = zeroingRequested || !haveLock;
+        final boolean zeroingReady = wantsZeroing
                 && inputs.motorConnected
                 && inputs.referenceEncoderConnected;
-        final boolean shouldHomeToMag = preMatchZeroEnabled
+        final boolean shouldHomeToMag = zeroingReady
+                && DriverStation.isEnabled()
                 && !haveLock
                 && !magSwitchDetected;
-        final boolean shouldSolveFromEncoder = preMatchZeroEnabled
+        final boolean shouldSolveFromEncoder = zeroingReady
                 && !haveLock
                 && magSwitchDetected;
         final double homingCommandVolts = homingVolts.get() * homingDirection;
@@ -249,6 +246,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
             talon.setPosition(seededRotorRots);
             lastTurretAngleRads = solvedRad;
             haveLock = true;
+            zeroingRequested = false;
         } else if (haveLock) {
             lastTurretAngleRads = rotorRotationsToTurretRads(currentRotorRots);
         }
@@ -259,8 +257,8 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         Logger.recordOutput(name + "/Turret/EncoderBigRadsRaw", bigRawRads);
         Logger.recordOutput(name + "/Turret/EncoderBigRadsNormalized", bigSolveRads);
         Logger.recordOutput(name + "/Turret/TurretVelRadsPerSec", turretVelRadsPerSec);
-        Logger.recordOutput(name + "/Turret/PreMatchZeroingAllowed", allowEncoderZeroing);
-        Logger.recordOutput(name + "/Turret/DisabledZeroEnabled", preMatchZeroEnabled);
+        Logger.recordOutput(name + "/Turret/ZeroingRequested", wantsZeroing);
+        Logger.recordOutput(name + "/Turret/ZeroingReady", zeroingReady);
         Logger.recordOutput(name + "/Turret/MagSwitchRequiredForZero", true);
         Logger.recordOutput(name + "/Turret/HomingToMag", shouldHomeToMag);
         Logger.recordOutput(name + "/Turret/HomingDirection", homingDirection);
@@ -275,9 +273,15 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
                                 ? "HOMING_TO_MAG"
                                 : (haveLock
                                         ? "MOTOR_ONLY"
-                                        : (allowEncoderZeroing && DriverStation.isDisabled()
-                                                ? "WAITING_FOR_DISABLED_ZERO"
-                                                : "ZEROING_DISABLED"))));
+                                        : (!wantsZeroing
+                                                ? "ZEROING_DISABLED"
+                                                : (!inputs.motorConnected
+                                                        ? "WAITING_FOR_MOTOR"
+                                                        : (!inputs.referenceEncoderConnected
+                                                                ? "WAITING_FOR_ENCODER"
+                                                                : (DriverStation.isDisabled()
+                                                                        ? "WAITING_FOR_ENABLE"
+                                                                        : "WAITING_FOR_MAG_SWITCH")))))));
         Logger.recordOutput(name + "/Turret/MotorOnlyTurretRad",
                 haveLock
                         ? rotorRotationsToTurretRads(shouldSolveFromEncoder ? seededRotorRots : currentRotorRots)
@@ -389,6 +393,18 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
     @Override
     public void enable() {
         allowMovement = true;
+    }
+
+    @Override
+    public void requestRezero() {
+        zeroingRequested = true;
+        haveLock = false;
+        stop();
+    }
+
+    @Override
+    public boolean wantsZeroing() {
+        return zeroingRequested || !haveLock;
     }
 
     private double primaryEncoderAngleToTurretRads(double rawEncoderRotations) {

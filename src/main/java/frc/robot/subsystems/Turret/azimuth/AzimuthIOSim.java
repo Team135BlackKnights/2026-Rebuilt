@@ -76,7 +76,7 @@ public class AzimuthIOSim implements AzimuthIO {
     private final StatusSignal<Temperature> tempCelsius;
 
     private boolean haveLock = false;
-    private boolean allowEncoderZeroing = true;
+    private boolean zeroingRequested = true;
     private double motorPosRadAtLock = 0.0;
     private double turretRadAtLock = 0.0;
 
@@ -202,10 +202,6 @@ public class AzimuthIOSim implements AzimuthIO {
 
     @Override
     public void updateInputs(AzimuthIOInputs inputs) {
-        if (DriverStation.isEnabled()) {
-            allowEncoderZeroing = false;
-        }
-
         motorController.simIterate();
 
         double turretPosRad = motorController.getMechanismPosition().in(Radians);
@@ -258,8 +254,7 @@ public class AzimuthIOSim implements AzimuthIO {
                 ? turretRadAtLock + (mechanismPosRad - motorPosRadAtLock)
                 : mechanismPosRad;
 
-        final boolean shouldZeroFromEncoder = allowEncoderZeroing
-                && DriverStation.isDisabled()
+        final boolean shouldZeroFromEncoder = (zeroingRequested || !haveLock)
                 && inputs.referenceEncoderConnected;
         double solvedRad = Double.NaN;
         boolean usedFallbackSolve = false;
@@ -283,8 +278,8 @@ public class AzimuthIOSim implements AzimuthIO {
                                 : easyCrt.getLastStatus().name())
                         : (haveLock ? "MOTOR_ONLY" : "WAITING_FOR_PREMATCH_ZERO"));
         Logger.recordOutput(name + "/Turret/SolveUsedFallback", usedFallbackSolve);
-        Logger.recordOutput(name + "/Turret/PreMatchZeroingAllowed", allowEncoderZeroing);
-        Logger.recordOutput(name + "/Turret/DisabledZeroEnabled", shouldZeroFromEncoder);
+        Logger.recordOutput(name + "/Turret/ZeroingRequested", zeroingRequested || !haveLock);
+        Logger.recordOutput(name + "/Turret/ZeroingReady", shouldZeroFromEncoder);
         Logger.recordOutput(name + "/Turret/SolveAngle", solvedRad);
         Logger.recordOutput(name + "/Turret/EncoderBigRads", bigRads);
         Logger.recordOutput(name + "/Turret/EncoderSmallRads", smallRads);
@@ -292,6 +287,7 @@ public class AzimuthIOSim implements AzimuthIO {
         if (Double.isFinite(solvedRad)) {
             lastTurretAngleRads = solvedRad;
             haveLock = true;
+            zeroingRequested = false;
             turretRadAtLock = solvedRad;
             motorPosRadAtLock = mechanismPosRad;
         } else if (haveLock) {
@@ -303,6 +299,17 @@ public class AzimuthIOSim implements AzimuthIO {
         inputs.turretPositionRads = lastTurretAngleRads;
         inputs.turretVelocityRadsPerSec = turretVelRadPerSec;
         inputs.zeroed = haveLock;
+    }
+
+    @Override
+    public void requestRezero() {
+        zeroingRequested = true;
+        haveLock = false;
+    }
+
+    @Override
+    public boolean wantsZeroing() {
+        return zeroingRequested || !haveLock;
     }
 
     @Override

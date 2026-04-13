@@ -517,6 +517,10 @@ public class Turret extends SubsystemChecker {
     hoodIO.zero();
   }
 
+  public void rezeroAzimuth() {
+    azimuthIO.requestRezero();
+  }
+
   public void disAllowHood() {
     setManualHoodRezeroHeld(true);
   }
@@ -559,7 +563,7 @@ public class Turret extends SubsystemChecker {
 
   @Override
   public void periodic() {
-    if (isAzimuthConnected()) {
+    if (azimuthInputs.motorConnected && (azimuthInputs.zeroed || azimuthIO.wantsZeroing())) {
       azimuthIO.enable();
     } else {
       azimuthIO.disable();
@@ -718,6 +722,7 @@ public class Turret extends SubsystemChecker {
     Logger.recordOutput(name + "/Errors/TurretRads", turretAngleErrorRads());
     Logger.recordOutput(name + "/Azimuth/ReferenceEncoderConnected", azimuthInputs.referenceEncoderConnected);
     Logger.recordOutput(name + "/Azimuth/Zeroed", azimuthInputs.zeroed);
+    Logger.recordOutput(name + "/Azimuth/WantsZeroing", azimuthIO.wantsZeroing());
     Logger.recordOutput(name + "/BackupRobotAimingEnabled", backupRobotAimingEnabled);
     Logger.recordOutput(name + "/FlywheelOutputSuppressed", flywheelOutputSuppressed);
     Logger.recordOutput(name + "/BackupRobotHeadingErrorRads",

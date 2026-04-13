@@ -564,6 +564,7 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.leftAzimuthID,
 						AdvancedMechanismConstants.Turret.leftAzimuthBigEncoderID,
 						AdvancedMechanismConstants.Turret.leftAzimuthSmallEncoderID,
+						54,
 						AdvancedMechanismConstants.Turret.leftName,
 						AdvancedMechanismConstants.Turret.currentLimitAzimuth,
 						AdvancedMechanismConstants.Turret.leftMinTurretAngle,
@@ -615,6 +616,7 @@ public class RobotContainer {
 						AdvancedMechanismConstants.Turret.rightAzimuthID,
 						AdvancedMechanismConstants.Turret.rightAzimuthSmallEncoderID,
 						AdvancedMechanismConstants.Turret.rightAzimuthBigEncoderID,
+						55,
 						AdvancedMechanismConstants.Turret.rightName,
 						AdvancedMechanismConstants.Turret.currentLimitAzimuth,
 						AdvancedMechanismConstants.Turret.rightMinTurretAngle,
@@ -1276,8 +1278,10 @@ public class RobotContainer {
 				}));
 		selectButtonDrive
 				.onTrue(new InstantCommand(() -> {
-					System.out.println("Zeroing Intake/Stopping Turrets/Hoods");
+					System.out.println("Zeroing Intake/Rezeroing Turrets/Hoods");
 					intake.zero();
+					leftTurret.rezeroAzimuth();
+					rightTurret.rezeroAzimuth();
 					leftTurret.zeroHood();
 					rightTurret.zeroHood();
 					leftTurret.setGoal(Turret.Goal.IDLE);
@@ -1288,34 +1292,33 @@ public class RobotContainer {
 		leftStickButtonDrive.onFalse(Commands.runOnce(() -> drivetrainS.stopModules(), drivetrainS));
 		rightStickButtonDrive.whileTrue(buildBackupRobotAimCommand());
 		// Test Commands
-		/*
-		 * aButtonDrive.whileTrue(Commands.run(() -> {
-		 * //leftTurret.setCharTurretPos(0);
-		 * rightTurret.setCharRPM(3000);
-		 * //intake.setGoal(Goal.VOMITING);
-		 * //kickup.setGoal(Kickup.Goal.VOMITING);
-		 * // flywheel go to 5000 rpm
-		 * // leftTurret.setCharHoodPos(0);(4.1);
-		 * // leftTurret.setCharHoodPos(Units.degreesToRadians(12));
-		 * // rightTurret.setCharHoodPos(Units.degreesToRadians(12));
-		 * // intake.setGoal(Goal.STOW);
-		 * // leftTurret.setCharTurretPos(-1.49);
-		 * // hang.setGoal(HangState.STOWED);
-		 * }));
-		 */
-		/*
-		 * bButtonDrive.onTrue(Commands.runOnce(() -> {
-		 * rightTurret.setCharRPM(5000);
-		 * // leftTurret.clearLoggedShots();
-		 * // rightTurret.clearLoggedShots();
-		 * kickup.setGoal(Kickup.Goal.IDLING);
-		 * }, leftTurret, rightTurret, kickup));
-		 * yButtonDrive.onTrue(Commands.runOnce(() -> {
-		 * leftTurret.enterShotTuning();
-		 * rightTurret.enterShotTuning();
-		 * kickup.setGoal(Kickup.Goal.TESTING);
-		 * }, leftTurret, rightTurret, kickup));
-		 */
+		
+		aButtonDrive.whileTrue(Commands.run(() -> {
+		//leftTurret.setCharTurretPos(0);
+		//rightTurret.setCharRPM(3000);
+		//intake.setGoal(Goal.VOMITING);
+		//kickup.setGoal(Kickup.Goal.VOMITING);
+		// flywheel go to 5000 rpm
+		// leftTurret.setCharHoodPos(0);(4.1);
+		// leftTurret.setCharHoodPos(Units.degreesToRadians(12));
+		// rightTurret.setCharHoodPos(Units.degreesToRadians(12));
+		 intake.setGoal(Goal.STOW);
+		// leftTurret.setCharTurretPos(-1.49);
+		  // hang.setGoal(HangState.STOWED);
+		  }));
+		 
+				bButtonDrive.onTrue(Commands.runOnce(() -> {
+		//rightTurret.setCharRPM(5000);
+		// leftTurret.clearLoggedShots();
+		// rightTurret.clearLoggedShots();
+		intake.setGoal(Goal.INTAKE_OUTER_IDLE);
+		}, leftTurret, rightTurret, kickup));
+		yButtonDrive.onTrue(Commands.runOnce(() -> {
+		leftTurret.enterShotTuning();
+		rightTurret.enterShotTuning();
+		kickup.setGoal(Kickup.Goal.TESTING);
+		}, leftTurret, rightTurret, kickup));
+		
 		// Climber controls
 		// aButtonDrive.onTrue(Commands.either(Commands.runOnce(() ->
 		// hang.setGoal(HangState.EXTENDED)), Commands.runOnce(() ->
