@@ -6,7 +6,7 @@ import edu.wpi.first.math.util.Units;
 public class IntakeConstants {
     public static final int intakeMotorID = 40; 
     public static final int frontRollersMotorID = 42;
-    public static final int intakeCurrentLimit = 60; // amps
+    public static final int intakeCurrentLimit = 20; // amps
     public static final int frontRollersCurrentLimit = 60; // amps
     public static final boolean intakeInverted = false;
     public static final boolean frontRollersInverted = true;
@@ -20,7 +20,7 @@ public class IntakeConstants {
     public static final double armRadiansPerMechanismRotation = Units.rotationsToRadians(1.0);
     public static final double rollersDiameterMeters = Units.inchesToMeters(1.25);
     public static final double intakeReductinoToIntakeRollers = 24.0/8.0 * 32.0/24.0 * 15.0/24.0 *20.0/24.0; // 2.0833
-    public static final double intakeArmReduction = 9.0*50/24.0; 
+    public static final double intakeArmReduction = 9.0*5.0*50/24.0; 
     public static final String frontRollersName = "FrontRollersMotor";
 
 }

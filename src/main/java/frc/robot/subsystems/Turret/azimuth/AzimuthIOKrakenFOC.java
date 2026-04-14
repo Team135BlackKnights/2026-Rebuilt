@@ -113,12 +113,13 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         this.primaryEncoderRatio = -turretToIdlerRatio;
         this.homingVolts = new LoggableTunedNumber(
                 name + "/Turret/HomingVolts",
-                1.5,
+                1,
                 TuningConstants.isTuningShooter);
 
         talon = new TalonFX(ID, bus);
         canCoderBig = new CANcoder(canCoderBigID, bus);
         magSwitch = new AM_CAN_Mag_Switch(magID);
+        magSwitch.setReportPeriod(5);
 
         /* ---- CANcoder configs ---- */
         /*
@@ -207,7 +208,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         inputs.referenceEncoderConnected = BaseStatusSignal.refreshAll(bigAbsRots, bigAbsRotsVel).isOK();
         inputs.bothEncodersConnected = inputs.referenceEncoderConnected;
         inputs.name = name;
-        AM_MagSwitchData data = magSwitch.getData();
+        AM_MagSwitchData data = magSwitch.getData(1);
         final boolean magSwitchDetected = data.magnetDetected;
         final int magSwitchTime = data.timeStamp;
         lastMagSwitchContactSec = magSwitchTime;

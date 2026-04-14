@@ -31,7 +31,7 @@ import frc.robot.utils.selfCheck.drive.SelfCheckingTalonFX;
 public class ArmIOKrakenFOC implements ArmIO {
     protected static final LoggableTunedNumber ZERO_VOLTS = new LoggableTunedNumber("Intake/Arm/zeroVolts",7,TuningConstants.isTuningIntake);
     protected static final LoggableTunedNumber FAST_REZERO_VOLTS = new LoggableTunedNumber("Intake/Arm/fastRezeroVolts",10,TuningConstants.isTuningIntake);
-    protected static final LoggableTunedNumber ZERO_CURRENT_AMPS = new LoggableTunedNumber("Intake/Arm/zeroAmps",10,TuningConstants.isTuningIntake);
+    protected static final LoggableTunedNumber ZERO_CURRENT_AMPS = new LoggableTunedNumber("Intake/Arm/zeroAmps",18,TuningConstants.isTuningIntake);
     protected static final LoggableTunedNumber ZERO_HOLD_SEC = new LoggableTunedNumber("Intake/Arm/zeroTime",.4,TuningConstants.isTuningIntake);
     protected static final LoggableTunedNumber FAST_REZERO_WINDOW_SEC = new LoggableTunedNumber("Intake/Arm/fastRezeroWindowSec",2.0,TuningConstants.isTuningIntake);
 
@@ -263,13 +263,13 @@ public class ArmIOKrakenFOC implements ArmIO {
         if (!zeroingActive) {
             return;
         }
-        talon.setPosition(radiansToMechanismRotations(minPositionRad));
+        /*talon.setPosition(radiansToMechanismRotations(minPositionRad));
             zeroingActive = false;
             zeroSpikeStartTimeSec = Double.NaN;
             fastRezeroActive = false;
             openLoop = false;
-        return;
-        /*    double now = Timer.getFPGATimestamp();
+        return;*/
+            double now = Timer.getFPGATimestamp();
         talon.setControl(voltageRequest.withOutput(getZeroingVoltage()));
         BaseStatusSignal.refreshAll(supplyCurrent, statorCurrent, torqueCurrent);
         double observedCurrentAmps = Math.abs(torqueCurrent.getValueAsDouble());
@@ -288,7 +288,7 @@ public class ArmIOKrakenFOC implements ArmIO {
             zeroSpikeStartTimeSec = Double.NaN;
             fastRezeroActive = false;
             openLoop = false;
-        }*/
+        }
     }
 
     protected double getZeroingVoltage() {

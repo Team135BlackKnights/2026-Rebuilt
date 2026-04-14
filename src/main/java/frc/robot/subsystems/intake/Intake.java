@@ -26,23 +26,23 @@ import lombok.Getter;
 public class Intake extends SubsystemChecker {
 
     private static final LoggableTunedNumber arm_kP = new LoggableTunedNumber("Intake/Arm/kP",
-            0.3 * Units.radiansToDegrees(1.0),
+            160,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_kI = new LoggableTunedNumber("Intake/Arm/kI", 0.0,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_kD = new LoggableTunedNumber("Intake/Arm/kD",
-            0.002 * (180.0 / Math.PI),
+            20,
             TuningConstants.isTuningIntake);
-    private static final LoggableTunedNumber arm_kS = new LoggableTunedNumber("Intake/Arm/kS", 4.1,
+    private static final LoggableTunedNumber arm_kS = new LoggableTunedNumber("Intake/Arm/kS", 5.2,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_kV = new LoggableTunedNumber("Intake/Arm/kV", 0,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_kG = new LoggableTunedNumber("Intake/Arm/kG", 0,
             TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_motionSpeed = new LoggableTunedNumber(
-            "Intake/Arm/MotionCruiseRadPerSec", 2, TuningConstants.isTuningIntake);
+            "Intake/Arm/MotionCruiseRadPerSec",8, TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_motionAccel = new LoggableTunedNumber(
-            "Intake/Arm/MotionAccelRadPerSec2", 4, TuningConstants.isTuningIntake);
+            "Intake/Arm/MotionAccelRadPerSec2", 8, TuningConstants.isTuningIntake);
     private static final LoggableTunedNumber arm_neutralBand = new LoggableTunedNumber("Intake/Arm/NeutralBand", .15,
             TuningConstants.isTuningIntake);
 

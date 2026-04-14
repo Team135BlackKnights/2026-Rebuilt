@@ -1302,16 +1302,16 @@ public class RobotContainer {
 		// leftTurret.setCharHoodPos(0);(4.1);
 		// leftTurret.setCharHoodPos(Units.degreesToRadians(12));
 		// rightTurret.setCharHoodPos(Units.degreesToRadians(12));
-		 intake.setGoal(Goal.STOW);
+		 //intake.setGoal(Goal.STOW);
 		// leftTurret.setCharTurretPos(-1.49);
 		  // hang.setGoal(HangState.STOWED);
 		  }));
 		 
 				bButtonDrive.onTrue(Commands.runOnce(() -> {
 		//rightTurret.setCharRPM(5000);
-		// leftTurret.clearLoggedShots();
-		// rightTurret.clearLoggedShots();
-		intake.setGoal(Goal.INTAKE_OUTER_IDLE);
+		 leftTurret.clearLoggedShots();
+		 rightTurret.clearLoggedShots();
+		//intake.setGoal(Goal.INTAKE_OUTER_IDLE);
 		}, leftTurret, rightTurret, kickup));
 		yButtonDrive.onTrue(Commands.runOnce(() -> {
 		leftTurret.enterShotTuning();

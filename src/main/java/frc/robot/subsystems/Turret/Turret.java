@@ -172,7 +172,7 @@ public class Turret extends SubsystemChecker {
       azimuth_kV = new LoggableTunedNumber(name + "/Azimuth/kV", 0.0, TuningConstants.isTuningShooter);
       azimuth_kA = new LoggableTunedNumber(name + "/Azimuth/kA", 0.0, TuningConstants.isTuningShooter);
       azimuth_velMax = new LoggableTunedNumber(name + "/Azimuth/velMaxRadPerSec", 30, TuningConstants.isTuningShooter);
-      azimuth_accelMax = new LoggableTunedNumber(name + "/Azimuth/accelMaxRadPerSec2", 80.0,
+      azimuth_accelMax = new LoggableTunedNumber(name + "/Azimuth/accelMaxRadPerSec2", 50.0,
           TuningConstants.isTuningShooter);
       azimuth_ramp = new LoggableTunedNumber(name + "/Azimuth/ramp", 0.1, TuningConstants.isTuningShooter);
 
@@ -199,7 +199,7 @@ public class Turret extends SubsystemChecker {
       azimuth_kV = new LoggableTunedNumber(name + "/Azimuth/kV", 0.0, TuningConstants.isTuningShooter);
       azimuth_kA = new LoggableTunedNumber(name + "/Azimuth/kA", 0.0, TuningConstants.isTuningShooter);
       azimuth_velMax = new LoggableTunedNumber(name + "/Azimuth/velMaxRadPerSec", 30, TuningConstants.isTuningShooter);
-      azimuth_accelMax = new LoggableTunedNumber(name + "/Azimuth/accelMaxRadPerSec2", 150.0,
+      azimuth_accelMax = new LoggableTunedNumber(name + "/Azimuth/accelMaxRadPerSec2", 50.0,
           TuningConstants.isTuningShooter);
       azimuth_ramp = new LoggableTunedNumber(name + "/Azimuth/ramp", 0.1, TuningConstants.isTuningShooter);
 
@@ -210,7 +210,7 @@ public class Turret extends SubsystemChecker {
       flywheel_kA = new LoggableTunedNumber(name + "/Flywheel/kA", 0.0, TuningConstants.isTuningShooter);
       flywheel_ramp = new LoggableTunedNumber(name + "/Flywheel/Ramp", 0.25, TuningConstants.isTuningShooter);
       offsetRPM = new LoggableTunedNumber(name + "/Flywheel/Offset", 0, TuningConstants.isTuningShooter);
-      offsetHoodAngle = new LoggableTunedNumber(name + "/Hood/DONOTTOUCH", 2.5, TuningConstants.isTuningShooter);
+      offsetHoodAngle = new LoggableTunedNumber(name + "/Hood/DONOTTOUCH", 1, TuningConstants.isTuningShooter);
 
       hood_kP = new LoggableTunedNumber(name + "/Hood/kP", 15, TuningConstants.isTuningShooter); // 15
       hood_kD = new LoggableTunedNumber(name + "/Hood/kD", .01, TuningConstants.isTuningShooter); // 1.5
@@ -224,10 +224,10 @@ public class Turret extends SubsystemChecker {
     hoodToleranceRads = new LoggableTunedNumber(name + "/Tolerance/HoodRads", Math.toRadians(2),
         TuningConstants.isTuningShooter);
     flywheelToleranceRadsPerSec = new LoggableTunedNumber(name + "/Tolerance/FlywheelRadsPerSec",
-        Units.rotationsPerMinuteToRadiansPerSecond(1500), TuningConstants.isTuningShooter);
-    turretAngleSnapDeadbandDeg = new LoggableTunedNumber(name + "/Turret/SnapDeadbandDeg", 1.0,
+        Units.rotationsPerMinuteToRadiansPerSecond(800), TuningConstants.isTuningShooter);
+    turretAngleSnapDeadbandDeg = new LoggableTunedNumber(name + "/Turret/SnapDeadbandDeg", 0.2,
         TuningConstants.isTuningShooter);
-    turretAngleSnapAlpha = new LoggableTunedNumber(name + "/Turret/SnapAlpha", 0.35, TuningConstants.isTuningShooter);
+    turretAngleSnapAlpha = new LoggableTunedNumber(name + "/Turret/SnapAlpha", 1, TuningConstants.isTuningShooter); 
     shot_HUB_TOP_CENTER_RPM = new LoggableTunedNumber(name + "/Shot/HUB_TOP_CENTER_RPM", 3500,
         TuningConstants.isTuningShooter);
     shot_HUB_TOP_CENTER_HOOD_DEG = new LoggableTunedNumber(name + "/Shot/HUB_TOP_CENTER_HOOD_DEG", 13,
@@ -554,6 +554,8 @@ public class Turret extends SubsystemChecker {
     return isAzimuthConnected()
         && isHoodConnected()
         && isFlywheelConnected()
+        && isShootLikeGoal(goal)
+        && lastGoal == goal
         // && !isHoodForcedDown(getShooterControlGoal())
         && Math.abs(effectiveAimErrorRads()) < aimToleranceRads.get()
         && Math.abs(hoodInputs.positionRads - desiredHoodRads

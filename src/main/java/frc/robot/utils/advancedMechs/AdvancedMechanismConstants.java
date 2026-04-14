@@ -12,13 +12,13 @@ public class AdvancedMechanismConstants {
         public static class Turret {
                 public static final double leftMinTurretAngle = -.5;
                 public static final double leftMaxTurretAngle = 5.9;
-                public static final double rightMinTurretAngle = -5.9;
+                public static final double rightMinTurretAngle = -6;
                 public static final double rightMaxTurretAngle = 0;
                 public static final double leftMinHoodAngle = Math.toRadians(12.0);
                 public static final double leftMaxHoodAngle = Math.toRadians(43.0);
                 public static final double rightMinHoodAngle = Math.toRadians(12.0);
                 public static final double rightMaxHoodAngle = Math.toRadians(43.0);
-                public static final int currentLimitAzimuth = 50;
+                public static final int currentLimitAzimuth = 40;
                 public static final int currentLimitFlywheel = 80;
                 public static final int currentLimitHood = 20;
                 public static final int currentLimitKickup = 60;
