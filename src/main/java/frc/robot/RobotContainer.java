@@ -1457,7 +1457,7 @@ public class RobotContainer {
 			rightTurret.setGoal(Turret.Goal.VOMITING);
 			// The center indexer is mechanically reversed, so its shoot direction is
 			// already the correct physical "backwards" direction for vomiting.
-			kickup.setGoal(Kickup.Goal.SHOOTING);
+			kickup.setGoal(Kickup.Goal.VOMITING);
 		}, intake, leftTurret, rightTurret, kickup).finallyDo(() -> {
 			intake.setGoal(Goal.INTAKE_OUTER_IDLE);
 			leftTurret.setGoal(Turret.Goal.AIMING);
