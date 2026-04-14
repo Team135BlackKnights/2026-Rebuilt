@@ -1230,7 +1230,7 @@ public class RobotContainer {
 		}).andThen(Commands.run(() -> {
 			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.INTAKE_GROUND_SHOOT,
 					shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints());
-		}, leftTurret, rightTurret, intake, kickup).finallyDo(() -> {
+		}, leftTurret, rightTurret, kickup).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
 			intake.setGoal(Goal.INTAKE_OUTER_IDLE);
@@ -1442,7 +1442,7 @@ public class RobotContainer {
 						rightTurret.setGoal(Turret.Goal.SHOOTING);
 						kickup.setGoal(Kickup.Goal.IDLING);
 					}
-				}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
+				}, leftTurret, rightTurret, kickup).finallyDo(() -> {
 					leftTurret.setGoal(Turret.Goal.AIMING);
 					rightTurret.setGoal(Turret.Goal.AIMING);
 					intake.setGoal(Goal.INTAKE_OUTER_IDLE);
@@ -1453,9 +1453,15 @@ public class RobotContainer {
 		povUp.and(manipLeftTrigger.negate()).whileTrue(teleAutoIntake);
 		povDown.whileTrue(Commands.run(() -> {
 			intake.setGoal(Goal.VOMITING);
-			kickup.setGoal(Kickup.Goal.VOMITING);
-		}, intake, kickup).finallyDo(() -> {
+			leftTurret.setGoal(Turret.Goal.VOMITING);
+			rightTurret.setGoal(Turret.Goal.VOMITING);
+			// The center indexer is mechanically reversed, so its shoot direction is
+			// already the correct physical "backwards" direction for vomiting.
+			kickup.setGoal(Kickup.Goal.SHOOTING);
+		}, intake, leftTurret, rightTurret, kickup).finallyDo(() -> {
 			intake.setGoal(Goal.INTAKE_OUTER_IDLE);
+			leftTurret.setGoal(Turret.Goal.AIMING);
+			rightTurret.setGoal(Turret.Goal.AIMING);
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}));
 		povLeft.onTrue(targetHubBoth);
@@ -1736,7 +1742,7 @@ public class RobotContainer {
 		}).andThen(Commands.run(() -> {
 			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.SHOOTING,
 					shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints());
-		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
+		}, leftTurret, rightTurret, kickup).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
 			kickup.setGoal(Kickup.Goal.IDLING);
@@ -1753,7 +1759,7 @@ public class RobotContainer {
 		}).andThen(Commands.run(() -> {
 			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.INTAKE_GROUND_SHOOT,
 					shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints());
-		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
+		}, leftTurret, rightTurret, kickup).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
 			intake.setGoal(Goal.INTAKE_OUTER_IDLE);
@@ -1771,7 +1777,7 @@ public class RobotContainer {
 		}).andThen(Commands.run(() -> {
 			applyShootCycleGoals(Turret.Goal.SHOOTING, Goal.INTAKE_OUTER_IDLE,
 					shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints() || rightTurret.atShootSetpoints());
-		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
+		}, leftTurret, rightTurret, kickup).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);
 			intake.setGoal(Goal.INTAKE_OUTER_IDLE);

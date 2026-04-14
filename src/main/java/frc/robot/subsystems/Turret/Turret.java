@@ -97,6 +97,7 @@ public class Turret extends SubsystemChecker {
     SHOOTING_CUSTOM,
     SHOOTING_FROM_HUB,
     JACKHAMMER,
+    VOMITING,
     IDLE,
     TUNING_FLYWHEEL,
     TUNING_AZIMUTH,
@@ -171,7 +172,7 @@ public class Turret extends SubsystemChecker {
       azimuth_kV = new LoggableTunedNumber(name + "/Azimuth/kV", 0.0, TuningConstants.isTuningShooter);
       azimuth_kA = new LoggableTunedNumber(name + "/Azimuth/kA", 0.0, TuningConstants.isTuningShooter);
       azimuth_velMax = new LoggableTunedNumber(name + "/Azimuth/velMaxRadPerSec", 30, TuningConstants.isTuningShooter);
-      azimuth_accelMax = new LoggableTunedNumber(name + "/Azimuth/accelMaxRadPerSec2", 100.0,
+      azimuth_accelMax = new LoggableTunedNumber(name + "/Azimuth/accelMaxRadPerSec2", 80.0,
           TuningConstants.isTuningShooter);
       azimuth_ramp = new LoggableTunedNumber(name + "/Azimuth/ramp", 0.1, TuningConstants.isTuningShooter);
 
@@ -605,6 +606,18 @@ public class Turret extends SubsystemChecker {
         flywheelIO.stop();
         desiredHoodRads = SAFE_HOOD_DOWN_RADS;
       }
+      case VOMITING -> {
+        if (activePreset == PresetTarget.OVER_NEUTRAL_ZONE) {
+          target = getPresetTarget2d(PresetTarget.OVER_NEUTRAL_ZONE); // update for the robot pos, since target moves
+        }
+        var params = shotCalculator.getParameters(target, robotToTurret, profile, distanceOffset);
+
+        desiredTurretRads = params.turretAngle().getRadians();
+        desiredFlywheelRadsPerSec = 0.0;
+        commandTurretPositionForMode(desiredTurretRads);
+        flywheelIO.stop();
+        desiredHoodRads = SAFE_HOOD_DOWN_RADS;
+      }
 
       case AIMING -> {
         // Use HUB profile for turret + hood, but override flywheel speed to a constant
@@ -752,6 +765,10 @@ public class Turret extends SubsystemChecker {
       return Kickup.Goal.IDLING;
     }
     if (!isAzimuthConnected()){
+      return Kickup.Goal.VOMITING;
+    }
+    if (controlGoal == Goal.VOMITING || goal == Goal.VOMITING) {
+      kickupWaitStartSec = Double.NaN;
       return Kickup.Goal.VOMITING;
     }
     if (controlGoal == Goal.JACKHAMMER || goal == Goal.JACKHAMMER) {

@@ -80,7 +80,6 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
 
     private double lastTurretAngleRads = 0.0;
     private double lastMagSwitchContactSec = Double.NEGATIVE_INFINITY;
-    private boolean hasBeenEnabled = false;
     private String lastRezeroRequestResult = "NONE";
 
     public AzimuthIOKrakenFOC(
@@ -196,9 +195,6 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
     @Override
     public void updateInputs(AzimuthIOInputs inputs) {
         final double nowSec = Timer.getFPGATimestamp();
-        if (DriverStation.isEnabled()) {
-            hasBeenEnabled = true;
-        }
 
         inputs.motorConnected = BaseStatusSignal.refreshAll(
                 motorRotorRots,
@@ -213,12 +209,10 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         inputs.name = name;
         AM_MagSwitchData data = magSwitch.getData();
         final boolean magSwitchDetected = data.magnetDetected;
-        if (magSwitchDetected) {
-            lastMagSwitchContactSec = nowSec;
-        }
-        final boolean preMatchDisabled = DriverStation.isDisabled() && !hasBeenEnabled;
+        final int magSwitchTime = data.timeStamp;
+        lastMagSwitchContactSec = magSwitchTime;
         final boolean magSwitchRecentlySeen = (nowSec - lastMagSwitchContactSec) <= MAG_SWITCH_RECENT_CONTACT_SEC;
-        final boolean effectiveMagSwitchDetected = magSwitchDetected || preMatchDisabled;
+        final boolean effectiveMagSwitchDetected = magSwitchDetected;
         inputs.magSwitchDetected = magSwitchDetected;
         final double currentRotorRots = motorRotorRots.getValueAsDouble();
         inputs.motorPositionRads = Units.rotationsToRadians(currentRotorRots);
@@ -281,7 +275,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         Logger.recordOutput(name + "/Turret/ZeroingRequested", wantsZeroing);
         Logger.recordOutput(name + "/Turret/ZeroingReady", zeroingReady);
         Logger.recordOutput(name + "/Turret/MagSwitchRequiredForZero", true);
-        Logger.recordOutput(name + "/Turret/PreMatchDisabledActsLikeMag", preMatchDisabled);
+        Logger.recordOutput(name + "/Turret/PreMatchDisabledActsLikeMag", false);
         Logger.recordOutput(name + "/Turret/MagSwitchRecentlySeen", magSwitchRecentlySeen);
         Logger.recordOutput(name + "/Turret/EffectiveMagSwitchDetected", effectiveMagSwitchDetected);
         Logger.recordOutput(name + "/Turret/LastMagSwitchContactSec", lastMagSwitchContactSec);
@@ -435,6 +429,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         }
         zeroingRequested = true;
         haveLock = false;
+        lastMagSwitchContactSec = Double.NEGATIVE_INFINITY;
         lastRezeroRequestResult = "QUEUED";
         stop();
     }
