@@ -80,10 +80,10 @@ public class ShotCalculator {
           "ShotCalculator/MotionCompFullSpeedMps", 1.0, TuningConstants.isTuningShooter);
   private static final LoggableTunedNumber motionCompensationRangeGain =
       new LoggableTunedNumber(
-          "ShotCalculator/MotionCompRangeGain", 1.5, TuningConstants.isTuningShooter);
+          "ShotCalculator/MotionCompRangeGain", 1.2, TuningConstants.isTuningShooter);
   private static final LoggableTunedNumber motionCompensationLateralGain =
       new LoggableTunedNumber(
-          "ShotCalculator/MotionCompLateralGain", 4.5, TuningConstants.isTuningShooter);
+          "ShotCalculator/MotionCompLateralGain", 4.75, TuningConstants.isTuningShooter);
 
   private static final TurretBallisticsConfig LEFT_TURRET_CONFIG =
       new TurretBallisticsConfig(
