@@ -86,7 +86,7 @@ public class Turret extends SubsystemChecker {
 
   private final Transform2d robotToTurret;
 
-  private double distanceOffset = 0.0;
+  private double distanceOffset = -.375;
   private final AzimuthIOInputsAutoLogged azimuthInputs = new AzimuthIOInputsAutoLogged();
   private final FlywheelIOInputsAutoLogged flywheelInputs = new FlywheelIOInputsAutoLogged();
   private final HoodIOInputsAutoLogged hoodInputs = new HoodIOInputsAutoLogged();
