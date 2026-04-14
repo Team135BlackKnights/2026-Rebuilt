@@ -78,6 +78,12 @@ public class ShotCalculator {
   private static final LoggableTunedNumber motionCompensationFullSpeedMetersPerSec =
       new LoggableTunedNumber(
           "ShotCalculator/MotionCompFullSpeedMps", 1.0, TuningConstants.isTuningShooter);
+  private static final LoggableTunedNumber motionCompensationRangeGain =
+      new LoggableTunedNumber(
+          "ShotCalculator/MotionCompRangeGain", 1.0, TuningConstants.isTuningShooter);
+  private static final LoggableTunedNumber motionCompensationLateralGain =
+      new LoggableTunedNumber(
+          "ShotCalculator/MotionCompLateralGain", 1.25, TuningConstants.isTuningShooter);
 
   private static final TurretBallisticsConfig LEFT_TURRET_CONFIG =
       new TurretBallisticsConfig(
@@ -571,6 +577,12 @@ public class ShotCalculator {
     Logger.recordOutput(
         "SuperStructure/ShotCalculator/" + profile.name + "/MotionCompFullSpeedMps",
         motionCompensationFullSpeedMetersPerSec.get());
+    Logger.recordOutput(
+        "SuperStructure/ShotCalculator/" + profile.name + "/MotionCompRangeGain",
+        motionCompensationRangeGain.get());
+    Logger.recordOutput(
+        "SuperStructure/ShotCalculator/" + profile.name + "/MotionCompLateralGain",
+        motionCompensationLateralGain.get());
 
     return new ShootingParameters(turretAngle, turretVel, hoodAngle, hoodVel, flywheelSpeed);
   }
@@ -589,10 +601,13 @@ public class ShotCalculator {
     Pose2d turretCenterPose = robotPose.transformBy(robotToTurret);
     TurretBallisticsConfig turretConfig = resolveTurretConfig(robotToTurret);
     double turretToTargetDistance = target.getDistance(turretCenterPose.getTranslation()) + distanceOffset;
+    Rotation2d nominalShotHeadingField = target.minus(turretCenterPose.getTranslation()).getAngle();
     Translation2d rawTurretCenterVelocity =
         computeFieldVelocityAtRobotOffset(robotToTurret.getTranslation(), robotHeading, fieldChassisSpeeds);
     double turretCenterMotionCompScale = computeMotionCompensationScale(rawTurretCenterVelocity);
-    Translation2d turretCenterVelocity = rawTurretCenterVelocity.times(turretCenterMotionCompScale);
+    Translation2d turretCenterVelocity =
+        applyMotionCompensationGains(
+            rawTurretCenterVelocity.times(turretCenterMotionCompScale), nominalShotHeadingField);
     double leadTimeOfFlightSec = profile.getTimeOfFlight(turretToTargetDistance);
     double lookaheadDist = turretToTargetDistance;
     Pose2d lookaheadPose = turretCenterPose;
@@ -603,6 +618,8 @@ public class ShotCalculator {
     Logger.recordOutput(table2dLogPrefix + "/MotionCompScale", turretCenterMotionCompScale);
     Logger.recordOutput(table2dLogPrefix + "/RawTurretCenterVelocityMps", rawTurretCenterVelocity.getNorm());
     Logger.recordOutput(table2dLogPrefix + "/ScaledTurretCenterVelocityMps", turretCenterVelocity.getNorm());
+    Logger.recordOutput(table2dLogPrefix + "/MotionCompRangeGain", motionCompensationRangeGain.get());
+    Logger.recordOutput(table2dLogPrefix + "/MotionCompLateralGain", motionCompensationLateralGain.get());
     if (targetGeometry == null) {
       lookaheadPose =
           new Pose2d(
@@ -912,7 +929,8 @@ public class ShotCalculator {
         computeFieldVelocityAtRobotOffset(muzzleOffsetRobot, robotHeading, fieldChassisSpeeds);
     double motionCompensationScale = computeMotionCompensationScale(rawChassisVelocityAtMuzzle);
     Translation2d chassisVelocityAtMuzzle =
-        rawChassisVelocityAtMuzzle.times(motionCompensationScale);
+        applyMotionCompensationGains(
+            rawChassisVelocityAtMuzzle.times(motionCompensationScale), shotHeadingField);
 
     double[] crossingTimesSec =
         solvePlaneCrossTimesAtHeight(
@@ -1032,6 +1050,8 @@ public class ShotCalculator {
     Logger.recordOutput(prefix + "/MotionCompScale", ballisticState.motionCompensationScale());
     Logger.recordOutput(prefix + "/RawMuzzleVelocityMps", ballisticState.rawChassisVelocityAtMuzzle().getNorm());
     Logger.recordOutput(prefix + "/ScaledMuzzleVelocityMps", ballisticState.chassisVelocityAtMuzzle().getNorm());
+    Logger.recordOutput(prefix + "/MotionCompRangeGain", motionCompensationRangeGain.get());
+    Logger.recordOutput(prefix + "/MotionCompLateralGain", motionCompensationLateralGain.get());
     Logger.recordOutput(
         prefix + "/PredictedCrossPose",
         targetGeometry == null
@@ -1096,6 +1116,22 @@ public class ShotCalculator {
 
     return MathUtil.clamp(
         (compensationSpeed - deadbandSpeed) / (fullSpeed - deadbandSpeed), 0.0, 1.0);
+  }
+
+  private static Translation2d applyMotionCompensationGains(
+      Translation2d rampedCompensationVelocity,
+      Rotation2d shotHeadingField) {
+    Translation2d rangeUnit = new Translation2d(1.0, shotHeadingField);
+    Translation2d lateralUnit = rangeUnit.rotateBy(Rotation2d.fromDegrees(90.0));
+    double rangeVelocityMps =
+        (rampedCompensationVelocity.getX() * rangeUnit.getX())
+            + (rampedCompensationVelocity.getY() * rangeUnit.getY());
+    double lateralVelocityMps =
+        (rampedCompensationVelocity.getX() * lateralUnit.getX())
+            + (rampedCompensationVelocity.getY() * lateralUnit.getY());
+
+    return rangeUnit.times(rangeVelocityMps * Math.max(0.0, motionCompensationRangeGain.get()))
+        .plus(lateralUnit.times(lateralVelocityMps * Math.max(0.0, motionCompensationLateralGain.get())));
   }
 
   private static double[] solvePlaneCrossTimesAtHeight(
