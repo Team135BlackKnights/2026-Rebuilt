@@ -41,14 +41,24 @@ public class ShotCalculator {
   private static final Pose3d INVALID_POSE =
       new Pose3d(Double.NaN, Double.NaN, Double.NaN, new Rotation3d());
 
-  private record TrustedFitPoint(double distanceMeters, double rpm, double hoodRadians) {}
+  private record CalibrationPoint(
+      double distanceMeters,
+      double rpm,
+      double hoodRadians,
+      double timeOfFlightSeconds) {}
 
-  private static final TrustedFitPoint[] TRUSTED_FIT_POINTS = {
-      new TrustedFitPoint(1.691, 3000.0, 0.31),
-      new TrustedFitPoint(1.956, 3000.0, 0.37),
-      new TrustedFitPoint(2.170, 3200.0, 0.41),
-      new TrustedFitPoint(2.530, 3500.0, 0.45),
-      new TrustedFitPoint(2.761, 3600.0, 0.50)
+  private static final CalibrationPoint[] HUB_CALIBRATION_POINTS = {
+      new CalibrationPoint(1.014, 3000.0, 0.26, 0.900),
+      new CalibrationPoint(1.879, 3200.0, 0.33, 1.080),
+      new CalibrationPoint(2.092, 3200.0, 0.40, 1.200),
+      new CalibrationPoint(2.226, 3300.0, 0.42, 1.100),
+      new CalibrationPoint(2.415, 3500.0, 0.45, 1.210),
+      new CalibrationPoint(2.575, 3500.0, 0.45, 1.150),
+      new CalibrationPoint(2.800, 3600.0, 0.48, 1.150),
+      new CalibrationPoint(3.007, 3600.0, 0.49, 1.190),
+      new CalibrationPoint(3.294, 3650.0, 0.51, 1.190),
+      new CalibrationPoint(3.490, 3750.0, 0.56, 1.050),
+      new CalibrationPoint(3.747, 4100.0, 0.58, 1.000)
   };
 
   private static final LoggableTunedBoolean useHybrid3DLead =
@@ -419,14 +429,14 @@ public class ShotCalculator {
 
   private static ShotProfile buildHubProfile() {
     ShotProfile profile = new ShotProfile("Hub");
-    addCalibrationPoint(profile, 1.691, 3000.0, 0.31, 0.920);  // height of bottom of the hub, to be safe, distance in meters, rpms, hood angle in radians, time of flight in seconds
-    addCalibrationPoint(profile, 1.956, 3000.0, 0.37, 0.940);
-    addCalibrationPoint(profile, 2.170, 3200.0, 0.41, 0.970);
-    addCalibrationPoint(profile, 2.530, 3500.0, 0.45, 1.080);
-    addCalibrationPoint(profile, 2.761, 3600.0, 0.50, 1.170);
-    addCalibrationPoint(profile, 3.021, 3800.0, 0.53, 1.140);
-    addCalibrationPoint(profile, 3.318, 4000.0, 0.62, 1.070);
-    addCalibrationPoint(profile, 3.555, 4200.0, 0.70, 1.030);
+    for (CalibrationPoint point : HUB_CALIBRATION_POINTS) {
+      addCalibrationPoint(
+          profile,
+          point.distanceMeters(),
+          point.rpm(),
+          point.hoodRadians(),
+          point.timeOfFlightSeconds());
+    }
     return profile;
   }
 
@@ -1125,7 +1135,7 @@ public class ShotCalculator {
     double pitchScale = AdvancedMechanismConstants.Turret.leftLaunchPitchScale;
     double targetHeightMeters = AdvancedMechanismConstants.Turret.hubScoringPlaneHeightMeters;
 
-    for (TrustedFitPoint point : TRUSTED_FIT_POINTS) {
+    for (CalibrationPoint point : HUB_CALIBRATION_POINTS) {
       double launchPitchRad = pitchOffsetRad + (pitchScale * point.hoodRadians());
       double horizontalLaunchDistanceMeters =
           point.distanceMeters() - (launchPathLengthMeters * Math.cos(launchPitchRad));
