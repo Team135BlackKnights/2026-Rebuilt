@@ -89,7 +89,7 @@ public class HoodIOKrakenFOC implements HoodIO {
     protected boolean zeroingActive = false;
     protected boolean openLoop = false;
     private double zeroSpikeStartTimeSec = Double.NaN;
-    protected static boolean isLeft = false;
+    private final boolean isLeft;
 
     public HoodIOKrakenFOC(
             CANBus bus,
@@ -100,9 +100,7 @@ public class HoodIOKrakenFOC implements HoodIO {
             double maxAngleRads
     ) {
         this.name = name;
-        if (name.equals(AdvancedMechanismConstants.Turret.leftName)){
-            isLeft = true;
-        }
+        this.isLeft = name.equals(AdvancedMechanismConstants.Turret.leftName);
         this.minAngleRads = minAngleRads;
         this.maxAngleRads = maxAngleRads;
 
@@ -157,7 +155,7 @@ public class HoodIOKrakenFOC implements HoodIO {
         return MathUtil.clamp(deg, Math.toDegrees(minRad), Math.toDegrees(maxRad));
     }
 
-    private static double hoodDegToExtensionIn(double hoodDeg) {
+    private double hoodDegToExtensionIn(double hoodDeg) {
         return isLeft
             ? ((hoodDeg - START_ANGLE_DEG_LEFT) / getDegPerInchLeft())
             : ((hoodDeg - START_ANGLE_DEG_RIGHT) / getDegPerInchRight());
