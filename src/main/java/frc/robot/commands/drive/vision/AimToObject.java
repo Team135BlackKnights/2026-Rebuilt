@@ -22,6 +22,7 @@ import frc.robot.subsystems.vision.Vision.PreferredObjDetectObservation;
 import frc.robot.utils.GeomUtil;
 import frc.robot.utils.CompetitionFieldUtils.FieldConstants;
 import frc.robot.utils.LoggableTunedNumber;
+import frc.robot.utils.drive.DriveConstants;
 import frc.robot.utils.vision.VisionConstants;
 
 import frc.robot.subsystems.vision.VisionIO.CameraID;
@@ -67,6 +68,9 @@ public class AimToObject extends Command {
       new LoggableTunedNumber("AimToObjectTx/SearchFieldEdgeMarginMeters", 0.35, TuningConstants.isTuningMacros);
   private final LoggableTunedNumber autoCenterLineMarginMeters =
       new LoggableTunedNumber("AimToObjectTx/AutoCenterLineMarginMeters", 0.15, TuningConstants.isTuningMacros);
+  private final LoggableTunedNumber searchCircleDriverAssistDistanceMeters =
+      new LoggableTunedNumber("AimToObjectTx/SearchCircleDriverAssistDistanceMeters", 0.25,
+          TuningConstants.isTuningMacros);
 
   // tolerances
   private final LoggableTunedNumber txTolerance = new LoggableTunedNumber("AimToObjectTx/txToleranceRad", .05,
@@ -118,6 +122,14 @@ public class AimToObject extends Command {
     hasValidObservation = false;
     latestClusterCount = 0;
     latestClusterScore = 0.0;
+    Logger.recordOutput("Drive/AimToObject/SearchEnabled", false);
+    Logger.recordOutput("Drive/AimToObject/SearchCircleDriverAssistEnabled", false);
+    Logger.recordOutput("Drive/AimToObject/SearchCircleDriverAssistVx", 0.0);
+    Logger.recordOutput("Drive/AimToObject/SearchCircleDriverAssistVy", 0.0);
+    Logger.recordOutput("Drive/AimToObject/SearchDistance", Double.NaN);
+    Logger.recordOutput("Drive/AimToObject/SearchAngularCommand", Double.NaN);
+    Logger.recordOutput("Drive/AimToObject/SearchRadiusMeters", Double.NaN);
+    Logger.recordOutput("Drive/AimToObject/SearchRadiusErrorMeters", Double.NaN);
     Optional<PreferredObjDetectObservation> preferredObsOpt =
         RobotContainer.visionS.getPreferredObjDetectObservation(cam, desiredClassId);
 
@@ -159,7 +171,7 @@ public class AimToObject extends Command {
     }
 
     double distanceError = latestDistanceMeters - desiredDistanceMeters;
-    if (Math.abs(distanceError) > distanceTolerance.get()) {
+    if (desiredDistanceMeters <= 1e-6 || Math.abs(distanceError) > distanceTolerance.get()) {
       forwardCommand = kPDistance.get() * distanceError;
       forwardCommand = MathUtil.clamp(forwardCommand, -maxSpeed.get(), maxSpeed.get());
     }
@@ -223,12 +235,40 @@ public class AimToObject extends Command {
       driveVelocity = limitAutoIntakeVelocityToAllianceSide(driveVelocity, robotPose.getTranslation());
     }
 
+    Translation2d hubCenter = GeomUtil.apply(FieldConstants.Hub.innerCenterPoint, false).toTranslation2d();
+    Translation2d fromHub = robotPose.getTranslation().minus(hubCenter);
+    double currentSearchRadiusMeters = fromHub.getNorm();
+    double searchRadiusErrorMeters = Math.abs(currentSearchRadiusMeters - searchCircleRadiusMeters.get());
+    boolean searchCircleDriverAssistEnabled =
+        DriverStation.isTeleopEnabled()
+            && fromHub.getNorm() > 1e-6
+            && searchRadiusErrorMeters <= searchCircleDriverAssistDistanceMeters.get();
+    if (searchCircleDriverAssistEnabled) {
+      Translation2d tangentialDriverVelocity = getSearchCircleTangentialDriverVelocity(fromHub);
+      driveVelocity = driveVelocity.plus(tangentialDriverVelocity);
+      if (driveVelocity.getNorm() > searchMaxSpeedMetersPerSec.get()) {
+        driveVelocity = driveVelocity.div(driveVelocity.getNorm()).times(searchMaxSpeedMetersPerSec.get());
+      }
+      driveVelocity = GeomUtil.limitVelocityTowardFieldEdge(
+          driveVelocity,
+          robotPose.getTranslation(),
+          searchPose.getTranslation(),
+          wallSlowDistanceMeters.get(),
+          wallMaxApproachSpeedMetersPerSec.get());
+      driveVelocity = limitAutoIntakeVelocityToAllianceSide(driveVelocity, robotPose.getTranslation());
+      Logger.recordOutput("Drive/AimToObject/SearchCircleDriverAssistVx", tangentialDriverVelocity.getX());
+      Logger.recordOutput("Drive/AimToObject/SearchCircleDriverAssistVy", tangentialDriverVelocity.getY());
+    }
+
     double headingErrorRad = searchPose.getRotation().minus(robotPose.getRotation()).getRadians();
     double angularCommand = MathUtil.clamp(
         searchRotationKp.get() * headingErrorRad,
         -maxRotation.get(),
         maxRotation.get());
 
+    Logger.recordOutput("Drive/AimToObject/SearchCircleDriverAssistEnabled", searchCircleDriverAssistEnabled);
+    Logger.recordOutput("Drive/AimToObject/SearchRadiusMeters", currentSearchRadiusMeters);
+    Logger.recordOutput("Drive/AimToObject/SearchRadiusErrorMeters", searchRadiusErrorMeters);
     Logger.recordOutput("Drive/AimToObject/SearchPose", searchPose);
     Logger.recordOutput("Drive/AimToObject/SearchDistance", distanceToSearchPose);
     Logger.recordOutput("Drive/AimToObject/SearchAngularCommand", angularCommand);
@@ -237,6 +277,28 @@ public class AimToObject extends Command {
         driveVelocity.getY(),
         angularCommand,
         robotPose.getRotation());
+  }
+
+  private Translation2d getSearchCircleTangentialDriverVelocity(Translation2d fromHub) {
+    Translation2d rawDriverVelocity = getDriverFieldVelocity();
+    Translation2d tangentUnit = fromHub.div(fromHub.getNorm()).rotateBy(Rotation2d.fromDegrees(90.0));
+    double tangentialSpeedMetersPerSec =
+        rawDriverVelocity.getX() * tangentUnit.getX() + rawDriverVelocity.getY() * tangentUnit.getY();
+    return tangentUnit.times(tangentialSpeedMetersPerSec);
+  }
+
+  private Translation2d getDriverFieldVelocity() {
+    double xSpeed = -MathUtil.applyDeadband(
+        RobotContainer.driveController.getHID().getLeftY(),
+        DriveConstants.DriverConstants.kDeadband) * DriveConstants.kMaxSpeedMetersPerSecond;
+    double ySpeed = -MathUtil.applyDeadband(
+        RobotContainer.driveController.getHID().getLeftX(),
+        DriveConstants.DriverConstants.kDeadband) * DriveConstants.kMaxSpeedMetersPerSecond;
+    if (Robot.isRed) {
+      xSpeed *= -1.0;
+      ySpeed *= -1.0;
+    }
+    return new Translation2d(xSpeed, ySpeed);
   }
 
   private Pose2d getSearchPose(Pose2d robotPose) {

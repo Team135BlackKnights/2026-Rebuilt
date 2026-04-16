@@ -72,7 +72,7 @@ public class Vision extends SubsystemChecker {
 	private static final double preferredObjectMaxTyDeltaRad = Units.degreesToRadians(6.0);
 	private static final double preferredObjectMaxDistanceDeltaMeters = 0.75;
 	private static final double preferredObjectMinWeightedDistanceMeters = 0.25;
-	private static final double simObjectMaxVisibleDistanceMeters = 4.0;
+	private static final double simObjectMaxVisibleDistanceMeters = 2.5;
 	private static final double simObjectHalfVisibleConeRad = Units.degreesToRadians(40.0);
 
 	public enum CameraType {
@@ -778,7 +778,7 @@ public class Vision extends SubsystemChecker {
 				double yawCCW = bearingField - cameraPose.getRotation().getRadians();
 				yawCCW = Math.atan2(Math.sin(yawCCW), Math.cos(yawCCW));
 				if (Math.abs(yawCCW) > simObjectHalfVisibleConeRad) {
-					continue;
+					//continue;
 				}
 
 				visibleFuelCount++;
