@@ -92,7 +92,7 @@ public class VisionConstants {
 									Units.inchesToMeters(0), //it changes, we don't know
 									new Rotation3d(
 											Math.toRadians(0.0),
-											Math.toRadians(10.237350),
+											Math.toRadians(25),
 											Math.toRadians(0)))) //we don't know, but it faces forward so we assume no yaw/pitch
 					.id("SPCA2630 PC Camera:usb_05c8_0a00_003_004")
 					.location("0x02210000 / 3")  
