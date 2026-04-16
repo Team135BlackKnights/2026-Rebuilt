@@ -22,7 +22,6 @@ import frc.robot.subsystems.vision.Vision.PreferredObjDetectObservation;
 import frc.robot.utils.GeomUtil;
 import frc.robot.utils.CompetitionFieldUtils.FieldConstants;
 import frc.robot.utils.LoggableTunedNumber;
-import frc.robot.utils.drive.DriveConstants;
 import frc.robot.utils.vision.VisionConstants;
 
 import frc.robot.subsystems.vision.VisionIO.CameraID;
@@ -68,10 +67,6 @@ public class AimToObject extends Command {
       new LoggableTunedNumber("AimToObjectTx/SearchFieldEdgeMarginMeters", 0.35, TuningConstants.isTuningMacros);
   private final LoggableTunedNumber autoCenterLineMarginMeters =
       new LoggableTunedNumber("AimToObjectTx/AutoCenterLineMarginMeters", 0.15, TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber teleopDriverControlDistanceMeters =
-      new LoggableTunedNumber("AimToObjectTx/TeleopDriverControlDistanceMeters", 0.25, TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber teleopDriverControlRotationScale =
-      new LoggableTunedNumber("AimToObjectTx/TeleopDriverControlRotationScale", 0.75, TuningConstants.isTuningMacros);
 
   // tolerances
   private final LoggableTunedNumber txTolerance = new LoggableTunedNumber("AimToObjectTx/txToleranceRad", .05,
@@ -180,13 +175,6 @@ public class AimToObject extends Command {
                 ty,
                 latestDistanceMeters));
 
-    boolean teleopDriverControlEnabled = shouldAllowTeleopDriverControl(distanceError);
-    Logger.recordOutput("Drive/AimToObject/TeleopDriverControlEnabled", teleopDriverControlEnabled);
-    if (teleopDriverControlEnabled) {
-      prevTxRadians = latestTxRadians;
-      return buildTeleopDriverControlSpeeds(robotPose, objectField);
-    }
-
     Translation2d robotToObject = objectField.minus(robotPose.getTranslation());
     Translation2d driveVelocity = Translation2d.kZero;
     if (robotToObject.getNorm() > 1e-6 && Math.abs(forwardCommand) > 1e-6) {
@@ -208,48 +196,6 @@ public class AimToObject extends Command {
         driveVelocity.getX(),
         driveVelocity.getY(),
         angularCommand,
-        robotPose.getRotation());
-  }
-
-  private boolean shouldAllowTeleopDriverControl(double distanceError) {
-    return DriverStation.isTeleopEnabled()
-        && Math.abs(distanceError) <= teleopDriverControlDistanceMeters.get();
-  }
-
-  private ChassisSpeeds buildTeleopDriverControlSpeeds(Pose2d robotPose, Translation2d objectField) {
-    double xSpeed = -MathUtil.applyDeadband(
-        RobotContainer.driveController.getHID().getLeftY(),
-        DriveConstants.DriverConstants.kDeadband) * DriveConstants.kMaxSpeedMetersPerSecond;
-    double ySpeed = -MathUtil.applyDeadband(
-        RobotContainer.driveController.getHID().getLeftX(),
-        DriveConstants.DriverConstants.kDeadband) * DriveConstants.kMaxSpeedMetersPerSecond;
-    double angularSpeed = -MathUtil.applyDeadband(
-        RobotContainer.driveController.getHID().getRightX(),
-        DriveConstants.DriverConstants.kDeadband)
-        * DriveConstants.kMaxTurningSpeedRadPerSec
-        * teleopDriverControlRotationScale.get();
-
-    if (Robot.isRed) {
-      xSpeed *= -1.0;
-      ySpeed *= -1.0;
-    }
-
-    Translation2d driveVelocity = new Translation2d(xSpeed, ySpeed);
-    driveVelocity = GeomUtil.limitVelocityTowardFieldEdge(
-        driveVelocity,
-        robotPose.getTranslation(),
-        objectField,
-        wallSlowDistanceMeters.get(),
-        wallMaxApproachSpeedMetersPerSec.get());
-    driveVelocity = limitAutoIntakeVelocityToAllianceSide(driveVelocity, robotPose.getTranslation());
-
-    Logger.recordOutput("Drive/AimToObject/TeleopDriverControlVx", driveVelocity.getX());
-    Logger.recordOutput("Drive/AimToObject/TeleopDriverControlVy", driveVelocity.getY());
-    Logger.recordOutput("Drive/AimToObject/TeleopDriverControlOmega", angularSpeed);
-    return ChassisSpeeds.fromFieldRelativeSpeeds(
-        driveVelocity.getX(),
-        driveVelocity.getY(),
-        angularSpeed,
         robotPose.getRotation());
   }
 
