@@ -1,5 +1,6 @@
 package frc.robot.commands.drive;
 
+import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
@@ -11,6 +12,7 @@ import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
@@ -23,8 +25,12 @@ import frc.robot.subsystems.drive.DrivetrainS;
 import frc.robot.subsystems.drive.FastSwerve.Swerve;
 import frc.robot.subsystems.drive.FastSwerve.Swerve.ModuleLimits;
 import frc.robot.subsystems.drive.FastSwerve.Swerve.TxTyPoseRecord;
+import frc.robot.subsystems.vision.Vision.PreferredObjDetectObservation;
+import frc.robot.subsystems.vision.VisionIO.CameraID;
+import frc.robot.subsystems.vision.VisionIO.ObjDetectTxyObservation;
 import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.CompetitionFieldUtils.FieldConstants;
+import frc.robot.utils.GeomUtil;
 import frc.robot.utils.drive.DriveConstants;
 import frc.robot.utils.drive.TunedJoystick;
 import frc.robot.utils.drive.TunedJoystick.ResponseCurve;
@@ -53,6 +59,10 @@ public class DrivetrainC extends Command {
 			"Drive/RotationalSpeedMaxPercentage", .75, TuningConstants.isTuningDrivetrain);
 	static final LoggableTunedNumber autoIntakeAssistPercentage = new LoggableTunedNumber(
 			"Drive/AutoIntakeAssistPercentage", .5, TuningConstants.isTuningDrivetrain);
+	static final LoggableTunedNumber autoIntakeWallSlowDistanceMeters = new LoggableTunedNumber(
+			"Drive/AutoIntakeWallSlowDistanceMeters", 0.9, TuningConstants.isTuningDrivetrain);
+	static final LoggableTunedNumber autoIntakeWallMaxApproachSpeedMetersPerSec = new LoggableTunedNumber(
+			"Drive/AutoIntakeWallMaxApproachSpeedMetersPerSec", 1.2, TuningConstants.isTuningDrivetrain);
 	private static final double TELEOP_SHOOT_ACCEL_SCALE = 1.0 / 6.0;
 	private static final double SHOOT_TRIGGER_FULL_THRESHOLD = 0.875;
 	private Function<Double, Double> translationalCurve = ResponseCurve.QUADRATIC;
@@ -70,26 +80,85 @@ public class DrivetrainC extends Command {
 
 	}
 
-	private static final double MAX_CORAL_AGE_SECONDS = 3.0;
+	private static final double MAX_FUEL_AGE_SECONDS = 0.5;
 
-	private boolean isRecentValidCoral(TxTyPoseRecord coralRec) {
-		if (coralRec == null)
-			return false;
-		Pose3d p3 = coralRec.pose();
-		if (p3 == null)
-			return false;
-
-		double now = Timer.getFPGATimestamp();
-		double age = now - coralRec.timestamp();
-		if (age > MAX_CORAL_AGE_SECONDS)
-			return false;
-
-		// treat 0,0,0 as invalid since southmoon sometimes outputs that (idk why)
-		if (p3.getTranslation().equals(Translation3d.kZero)) {
+	private boolean isFreshFuelObservation(PreferredObjDetectObservation preferredFuelObservation) {
+		if (preferredFuelObservation == null || preferredFuelObservation.observation() == null) {
 			return false;
 		}
+		double age = Timer.getFPGATimestamp() - preferredFuelObservation.observation().timestamp();
+		return age <= MAX_FUEL_AGE_SECONDS;
+	}
 
-		return true;
+	private Optional<PreferredObjDetectObservation> getPreferredFuelObservation() {
+		Optional<PreferredObjDetectObservation> preferredFuelObservation = RobotContainer.visionS
+				.getPreferredObjDetectObservation(CameraID.INTAKE_CAM, VisionConstants.AITargets.FUEL.ordinal());
+		if (preferredFuelObservation.isEmpty() || !isFreshFuelObservation(preferredFuelObservation.get())) {
+			return Optional.empty();
+		}
+		return preferredFuelObservation;
+	}
+
+	private Optional<Translation2d> getPreferredFuelFieldTarget(Pose2d robotPose) {
+		if (robotPose == null) {
+			return Optional.empty();
+		}
+
+		Optional<PreferredObjDetectObservation> preferredFuelObservation = getPreferredFuelObservation();
+		if (preferredFuelObservation.isEmpty()) {
+			return Optional.empty();
+		}
+
+		ObjDetectTxyObservation fuelObservation = preferredFuelObservation.get().observation();
+		return Optional.of(GeomUtil.projectObjectObservationToField(
+				robotPose,
+				VisionConstants.cameras[CameraID.INTAKE_CAM.ordinal()].getPose().get(),
+				fuelObservation.tx(),
+				fuelObservation.ty(),
+				fuelObservation.distanceMeters()));
+	}
+
+	private void ensureAutoIntakeAimCommand() {
+		if (activeAimCommand != null || getPreferredFuelObservation().isEmpty()) {
+			return;
+		}
+
+		Supplier<Pose2d> fuelPoseSupplier = () -> {
+			Pose2d lookAheadPose = drivetrainS.getLookAheadPose();
+			if (lookAheadPose == null) {
+				return new Pose2d();
+			}
+			return getPreferredFuelFieldTarget(lookAheadPose)
+					.map(target -> new Pose2d(target, lookAheadPose.getRotation()))
+					.orElse(lookAheadPose);
+		};
+
+		PathConstraints constraints = new PathConstraints(
+				DriveConstants.kMaxSpeedMetersPerSecond,
+				DriveConstants.maxTranslationalAcceleration.get(),
+				DriveConstants.kMaxTurningSpeedRadPerSec,
+				DriveConstants.maxRotationalAcceleration.get());
+		activeAimCommand = new AimToRotation(fuelPoseSupplier, ApproachDirection.FRONT, drivetrainS, constraints);
+		try {
+			activeAimCommand.initialize();
+			aimInitialized = true;
+		} catch (Exception e) {
+			activeAimCommand = null;
+			aimInitialized = false;
+			System.out.println("DrivetrainC failed to initialize AimToRotation: " + e);
+		}
+	}
+
+	private void stopAutoIntakeAimCommand() {
+		if (activeAimCommand != null && aimInitialized) {
+			try {
+				activeAimCommand.end(true);
+			} catch (Exception e) {
+				System.out.println("DrivetrainC error ending AimToRotation: " + e);
+			}
+		}
+		activeAimCommand = null;
+		aimInitialized = false;
 	}
 
 	private ChassisSpeeds avoidRobots(ChassisSpeeds speeds) {
@@ -279,50 +348,17 @@ public class DrivetrainC extends Command {
 		ySpeed = ySpeed
 				* DriveConstants.kMaxSpeedMetersPerSecond;
 
-		if (DriveConstants.autoIntake && !lastAutoIntake) {
-			// went false->true: try to create aim if coral exists
-			if (drivetrainS instanceof Swerve) {
-					Supplier<Pose2d> coralPoseSupplier = () ->{
-						TxTyPoseRecord coralPose = ((Swerve) drivetrainS).getClosestCoralPose();
-						if (isRecentValidCoral(coralPose)) {
-							Pose2d pose = coralPose.pose().toPose2d();
-							return pose;
-						} else {
-							// fallback to current pose if coral lost
-							return drivetrainS.getLookAheadPose();
-						}
-					};
-					PathConstraints constraints = new PathConstraints(
-							DriveConstants.kMaxSpeedMetersPerSecond,
-							DriveConstants.maxTranslationalAcceleration.get(),
-							DriveConstants.kMaxTurningSpeedRadPerSec,
-							DriveConstants.maxRotationalAcceleration.get());
-					activeAimCommand = new AimToRotation(coralPoseSupplier, ApproachDirection.FRONT_RIGHT, drivetrainS,
-							constraints);
-					// initialize it
-					try {
-						activeAimCommand.initialize();
-						aimInitialized = true;
-					} catch (Exception e) {
-						activeAimCommand = null;
-						aimInitialized = false;
-						System.out.println("DrivetrainC failed to initialize AimToRotation: " + e.toString());
-					}
-				}
+		Optional<PreferredObjDetectObservation> preferredFuelObservation = getPreferredFuelObservation();
+		boolean hasFreshFuelTarget = preferredFuelObservation.isPresent();
+		Logger.recordOutput("Drive/AutoIntakeAssist/HasFuelTarget", hasFreshFuelTarget);
+		if (DriveConstants.autoIntake && hasFreshFuelTarget) {
+			ensureAutoIntakeAimCommand();
 		}
-		if (!DriveConstants.autoIntake && lastAutoIntake) {
-			if (activeAimCommand != null && aimInitialized) {
-				try {
-					activeAimCommand.end(true);
-				} catch (Exception e) {
-					System.out.println("DrivetrainC error ending AimToRotation: " + e.toString());
-				}
-			}
-			activeAimCommand = null;
-			aimInitialized = false;
+		if ((!DriveConstants.autoIntake || !hasFreshFuelTarget) && activeAimCommand != null) {
+			stopAutoIntakeAimCommand();
 		}
 
-		if (DriveConstants.autoIntake && activeAimCommand != null && aimInitialized) {
+		if (DriveConstants.autoIntake && hasFreshFuelTarget && activeAimCommand != null && aimInitialized) {
 			try {
 				activeAimCommand.execute();
 			} catch (Exception e) {
@@ -413,56 +449,71 @@ public class DrivetrainC extends Command {
 				Logger.recordOutput("Controller/SetY", ySpeed);
 				drivetrainS.setChassisSpeeds(new ChassisSpeeds(0, 0, 0));// for odom
 				drivetrainS.stopModules();
-			} else {
-				// Deal with opposing robots.
-				if (DriveConstants.autoAvoidance) {
-					chassisSpeeds = avoidRobots(chassisSpeeds);
-				}
-				// Deal with coral
-				if (DriveConstants.autoIntake && drivetrainS instanceof Swerve) {
-					TxTyPoseRecord coralRec = ((Swerve) drivetrainS).getClosestCoralPose();
-					Pose2d ourPose = drivetrainS.getLookAheadPose();
-					if (isRecentValidCoral(coralRec) && ourPose != null) {
-						Pose3d coralP3 = coralRec.pose();
-						double dx = coralP3.getTranslation().getX() - ourPose.getX();
-						double dy = coralP3.getTranslation().getY() - ourPose.getY();
-						double dist = Math.hypot(dx, dy);
-						if (dist < 1e-6) return;
-						Rotation2d robotRot = drivetrainS.getRotation2d();
-						double cos = Math.cos(-robotRot.getRadians());
-						double sin = Math.sin(-robotRot.getRadians());
+				} else {
+					// Deal with opposing robots.
+					if (DriveConstants.autoAvoidance) {
+						chassisSpeeds = avoidRobots(chassisSpeeds);
+					}
+					// Deal with FUEL
+					if (DriveConstants.autoIntake) {
+						Pose2d ourPose = drivetrainS.getLookAheadPose();
+						if (ourPose != null && preferredFuelObservation.isPresent()) {
+							ObjDetectTxyObservation fuelObservation = preferredFuelObservation.get().observation();
+							Translation2d fuelTarget = GeomUtil.projectObjectObservationToField(
+									ourPose,
+									VisionConstants.cameras[CameraID.INTAKE_CAM.ordinal()].getPose().get(),
+									fuelObservation.tx(),
+									fuelObservation.ty(),
+									fuelObservation.distanceMeters());
+							Translation2d robotToFuel = fuelTarget.minus(ourPose.getTranslation());
+							double dist = robotToFuel.getNorm();
+							if (dist > 1e-6) {
+								Rotation2d robotRot = drivetrainS.getRotation2d();
+								Translation2d robotRelativeFuel = robotToFuel.rotateBy(robotRot.unaryMinus());
+								double rx = robotRelativeFuel.getX() / dist;
 
-						double rx = (cos * dx - sin * dy) / dist; 
+								double driverVx = chassisSpeeds.vxMetersPerSecond;
+								double driverMag = Math.hypot(
+										chassisSpeeds.vxMetersPerSecond,
+										chassisSpeeds.vyMetersPerSecond);
+								double desiredVx = Math.signum(rx) * driverMag;
 
-						double driverVx = chassisSpeeds.vxMetersPerSecond;
+								double k = autoIntakeAssistPercentage.get();
+								double correctedVx = MathUtil.interpolate(driverVx, desiredVx, k);
 
-						double driverMag = Math.hypot(
-								chassisSpeeds.vxMetersPerSecond,
-								chassisSpeeds.vyMetersPerSecond
-						);
+								ChassisSpeeds assistedSpeeds = new ChassisSpeeds(
+										correctedVx,
+										chassisSpeeds.vyMetersPerSecond,
+										chassisSpeeds.omegaRadiansPerSecond);
+								Translation3d fieldRelativeVelocity3d = new Translation3d(
+										assistedSpeeds.vxMetersPerSecond,
+										assistedSpeeds.vyMetersPerSecond,
+										0.0).rotateBy(new edu.wpi.first.math.geometry.Rotation3d(0.0, 0.0, robotRot.getRadians()));
+								Translation2d limitedFieldVelocity = GeomUtil.limitVelocityTowardFieldEdge(
+										fieldRelativeVelocity3d.toTranslation2d(),
+										ourPose.getTranslation(),
+										fuelTarget,
+										autoIntakeWallSlowDistanceMeters.get(),
+										autoIntakeWallMaxApproachSpeedMetersPerSec.get());
+								Translation2d limitedRobotVelocity = limitedFieldVelocity.rotateBy(robotRot.unaryMinus());
 
-						double desiredVx = Math.signum(rx) * driverMag;
-
-						double k = autoIntakeAssistPercentage.get(); // 0–1 where 0.5 = can go ZERO speed "towards" coral, but cannot INCREASE distance from coral
-						//ANYTHING above .5 means that the input *must* move towards coral, cannot go away
-						//ANYTHING below .5 means that the input *does not have to* move towards coral, can go away if desired
-						double correctedVx = MathUtil.interpolate(driverVx, desiredVx, k);
-
-						chassisSpeeds = new ChassisSpeeds(
-								correctedVx,
-								chassisSpeeds.vyMetersPerSecond,
-								chassisSpeeds.omegaRadiansPerSecond
-						);
-					} else {
-						if (activeAimCommand != null && aimInitialized) {
-							try {
-								activeAimCommand.end(true);
-							} catch (Exception e) {}
-							activeAimCommand = null;
-							aimInitialized = false;
+								chassisSpeeds = new ChassisSpeeds(
+										limitedRobotVelocity.getX(),
+										limitedRobotVelocity.getY(),
+										assistedSpeeds.omegaRadiansPerSecond);
+							}
+							Logger.recordOutput("Drive/AutoIntakeAssist/FuelTarget",
+									new Pose2d(fuelTarget, ourPose.getRotation()));
+							Logger.recordOutput("Drive/AutoIntakeAssist/ClusterCount",
+									preferredFuelObservation.get().clusterCount());
+							Logger.recordOutput("Drive/AutoIntakeAssist/ClusterScore",
+									preferredFuelObservation.get().clusterScore());
+							Logger.recordOutput("Drive/AutoIntakeAssist/FuelTxDeg", fuelObservation.tx().getDegrees());
+							Logger.recordOutput("Drive/AutoIntakeAssist/FuelTyDeg", fuelObservation.ty().getDegrees());
+							Logger.recordOutput("Drive/AutoIntakeAssist/FuelDistanceMeters",
+									fuelObservation.distanceMeters());
 						}
 					}
-				}
 				Logger.recordOutput("Controller/autoAvoidance", DriveConstants.autoAvoidance);
 				Logger.recordOutput("Controller/SetTurn", turningSpeed);
 				if (RobotContainer.withinLineTolerance) {

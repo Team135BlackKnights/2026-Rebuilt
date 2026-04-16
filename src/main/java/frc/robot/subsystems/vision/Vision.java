@@ -67,10 +67,29 @@ public class Vision extends SubsystemChecker {
 	private final double disconnectedTimeout = 0.5;
 	private final Timer[] disconnectedTimers;
 	private final Alert[] disconnectedAlerts;
+	private static final double preferredObjectLatestFrameBucketSec = 0.02;
+	private static final double preferredObjectMaxTxDeltaRad = Units.degreesToRadians(8.0);
+	private static final double preferredObjectMaxTyDeltaRad = Units.degreesToRadians(6.0);
+	private static final double preferredObjectMaxDistanceDeltaMeters = 0.75;
+	private static final double preferredObjectMinWeightedDistanceMeters = 0.25;
+	private static final double simObjectMaxVisibleDistanceMeters = 4.0;
+	private static final double simObjectHalfVisibleConeRad = Units.degreesToRadians(40.0);
 
 	public enum CameraType {
 		PHOTONVISION,
 		Southmoon
+	}
+
+	public record PreferredObjDetectObservation(
+			VisionIO.ObjDetectTxyObservation observation,
+			int clusterCount,
+			double clusterScore) {
+	}
+
+	private record ObjDetectCluster(
+			VisionIO.ObjDetectTxyObservation representativeObservation,
+			int clusterCount,
+			double clusterScore) {
 	}
 
 	public Vision(Supplier<VisionConstants.AprilTagLayoutType> aprilTagLayoutSupplier, VisionIO... io) {
@@ -183,10 +202,10 @@ public class Vision extends SubsystemChecker {
 		if (Constants.currentMode == Mode.SIM) {
 			// Pose2d simedAIPose = new Pose2d(2,2,Rotation2d.fromDegrees(0));
 			// grab opposting robot sim poses
-			Pose2d simedAIPose = CompetitionFieldSimulation.getClosestRobotPose(currentOdomPose.getTranslation());
+			//Pose2d simedAIPose = CompetitionFieldSimulation.getClosestRobotPose(currentOdomPose.getTranslation());
 			Pose2d simedAICoralPose = RobotContainer.fieldSimulation
 					.getClosestGamePiecePose2d(List.of(Rebuilt2026FieldObjects.FuelOnFieldSimulated.class));
-			if (simedAIPose != null) {
+			/*if (simedAIPose != null) {
 				TxTyObservation simedAIObservation = new TxTyObservation(AITargets.FUEL.name(), 0, new double[4],
 						new double[4],
 						simedAIPose.getTranslation()
@@ -195,13 +214,13 @@ public class Vision extends SubsystemChecker {
 				allTxTyObservations.put(AITargets.FUEL.name(), simedAIObservation);
 				RobotContainer.drivetrainS
 						.addTxTyObservation(simedAIObservation);
-			}
+			}*/
 			if (simedAICoralPose != null) {
-				TxTyObservation simedAICoralObservation = new TxTyObservation("CORAL", 0, new double[4], new double[4],
+				TxTyObservation simedAICoralObservation = new TxTyObservation(AITargets.FUEL.name(), 0, new double[4], new double[4],
 						simedAICoralPose.getTranslation()
 								.getDistance(RobotContainer.drivetrainS.getPose().getTranslation()),
 						TimeUtil.getLogTimeSeconds(), Optional.of(new Pose3d(simedAICoralPose)));
-				allTxTyObservations.put("CORAL", simedAICoralObservation);
+				allTxTyObservations.put(AITargets.FUEL.name(), simedAICoralObservation);
 
 				RobotContainer.drivetrainS
 						.addTxTyObservation(simedAICoralObservation);
@@ -528,8 +547,8 @@ public class Vision extends SubsystemChecker {
 					double distanceMag = pose.toPose2d().getTranslation()
 							.getDistance(drivetrainPose.getTranslation());
 					allTxTyObservations.put(
-							"CORAL",
-							new TxTyObservation("CORAL", cameraIndex, tx,
+							AITargets.values()[classId].name(),
+							new TxTyObservation(AITargets.values()[classId].name(), cameraIndex, tx,
 									ty, distanceMag, timestamp, Optional.of(pose)));
 					continue; // done with the obv
 				}
@@ -593,8 +612,8 @@ public class Vision extends SubsystemChecker {
 					objectPose = objectPoseFirst;
 					distanceMag = distanceMagOne;
 					if (!objectPose.getTranslation().equals(Translation3d.kZero))
-						allTxTyObservations.put("CORAL",
-								new TxTyObservation("CORAL", cameraIndex, tx,
+						allTxTyObservations.put(AITargets.values()[classId].name(),
+								new TxTyObservation(AITargets.values()[classId].name(), cameraIndex, tx,
 										ty, distanceMag, timestamp, Optional.of(objectPose)));
 				} else {
 					if (distanceMagOne < 1 || distanceMagTwo < 1) {
@@ -730,72 +749,214 @@ public class Vision extends SubsystemChecker {
 		return inputs[cam.ordinal()].objDetectTxyObservations;
 	}
 
-	/**
-	 * Get the objdetect tx/ty-only observation closest to the camera centerline.
-	 */
-	public Optional<VisionIO.ObjDetectTxyObservation> getClosestObjDetectTxyObservation(CameraID cam) {
+	public Optional<PreferredObjDetectObservation> getPreferredObjDetectObservation(CameraID cam, int desiredClassId) {
 		if (Constants.currentMode == Mode.SIM) {
-			// In sim, get the closest game piece, and CREATE tx/ty from the cam.
-			Pose2d simedAIFuelPose = RobotContainer.fieldSimulation.getClosestFuelOnGround().getPose3d().toPose2d();
-			// create tx/ty for cam
-			if (simedAIFuelPose != null) {
-				Pose2d robotPose = RobotContainer.drivetrainS.getPose();
-				Transform2d robotToCamera = GeomUtil
-						.poseToTransform(VisionConstants.cameras[cam.ordinal()].getPose().get().toPose2d());
-				Pose2d cameraPose = robotPose.plus(robotToCamera);
-				Translation2d toTargetField = simedAIFuelPose.getTranslation().minus(cameraPose.getTranslation());
-
-				double distance = toTargetField.getNorm();
-
-				double bearingField = Math.atan2(toTargetField.getY(), toTargetField.getX());
-
-				double yawCCW = bearingField - cameraPose.getRotation().getRadians();
-				yawCCW = Math.atan2(Math.sin(yawCCW), Math.cos(yawCCW)); 
-				Rotation2d tx = new Rotation2d(-yawCCW);
-				Rotation2d ty = new Rotation2d(0.0);
-				Logger.recordOutput("Vision/Simulated/ClosestObjDetect/Tx", tx.getDegrees());
-				Logger.recordOutput("Vision/Simulated/ClosestObjDetect/Ty", ty.getDegrees());
-				Logger.recordOutput("Vision/Simulated/ClosestObjDetect/Distance", distance);
-				Logger.recordOutput("Vision/Simulated/ClosestObjDetect/TargetPose", simedAIFuelPose);
-				return Optional.of(new VisionIO.ObjDetectTxyObservation(
-						0,
-						1.0,
-						tx,
-						ty,
-						distance,
-						TimeUtil.getLogTimeSeconds()));
-			} else {
+			if (desiredClassId >= 0 && desiredClassId != VisionConstants.AITargets.FUEL.ordinal()) {
 				return Optional.empty();
 			}
+
+			Pose2d robotPose = RobotContainer.drivetrainS.getPose();
+			Transform2d robotToCamera = GeomUtil
+					.poseToTransform(VisionConstants.cameras[cam.ordinal()].getPose().get().toPose2d());
+			Pose2d cameraPose = robotPose.plus(robotToCamera);
+			VisionIO.ObjDetectTxyObservation bestObservation = null;
+			Pose2d bestFuelPose = null;
+			int visibleFuelCount = 0;
+			for (var gamePiece : RobotContainer.fieldSimulation.getGamePiecesByType("Fuel")) {
+				if (!gamePiece.isGrounded()) {
+					continue;
+				}
+
+				Pose2d simulatedFuelPose = gamePiece.getPose3d().toPose2d();
+				Translation2d toTargetField = simulatedFuelPose.getTranslation().minus(cameraPose.getTranslation());
+				double distance = toTargetField.getNorm();
+				if (distance > simObjectMaxVisibleDistanceMeters) {
+					continue;
+				}
+
+				double bearingField = Math.atan2(toTargetField.getY(), toTargetField.getX());
+				double yawCCW = bearingField - cameraPose.getRotation().getRadians();
+				yawCCW = Math.atan2(Math.sin(yawCCW), Math.cos(yawCCW));
+				if (Math.abs(yawCCW) > simObjectHalfVisibleConeRad) {
+					continue;
+				}
+
+				visibleFuelCount++;
+				VisionIO.ObjDetectTxyObservation candidateObservation = new VisionIO.ObjDetectTxyObservation(
+						VisionConstants.AITargets.FUEL.ordinal(),
+						1.0,
+						new Rotation2d(-yawCCW),
+						new Rotation2d(0.0),
+						distance,
+						TimeUtil.getLogTimeSeconds());
+				if (bestObservation == null || candidateObservation.distanceMeters() < bestObservation.distanceMeters()) {
+					bestObservation = candidateObservation;
+					bestFuelPose = simulatedFuelPose;
+				}
+			}
+
+			Logger.recordOutput("Vision/Simulated/VisibleFuelCount", visibleFuelCount);
+			Logger.recordOutput("Vision/Simulated/ObjectMaxDistanceMeters", simObjectMaxVisibleDistanceMeters);
+			Logger.recordOutput("Vision/Simulated/ObjectHalfVisibleConeDeg",
+					Units.radiansToDegrees(simObjectHalfVisibleConeRad));
+			if (bestObservation == null) {
+				return Optional.empty();
+			}
+			Logger.recordOutput("Vision/Simulated/ClosestObjDetect/Tx", bestObservation.tx().getDegrees());
+			Logger.recordOutput("Vision/Simulated/ClosestObjDetect/Ty", bestObservation.ty().getDegrees());
+			Logger.recordOutput("Vision/Simulated/ClosestObjDetect/Distance", bestObservation.distanceMeters());
+			Logger.recordOutput("Vision/Simulated/ClosestObjDetect/TargetPose", bestFuelPose);
+			return Optional.of(new PreferredObjDetectObservation(
+					bestObservation,
+					1,
+					getPreferredObjectWeight(bestObservation)));
 		}
-		VisionIO.ObjDetectTxyObservation[] observations = inputs[cam.ordinal()].objDetectTxyObservations;
-		if (observations == null || observations.length == 0) {
+
+		VisionIO.ObjDetectTxyObservation[] rawObservations = inputs[cam.ordinal()].objDetectTxyObservations;
+		if (rawObservations == null || rawObservations.length == 0) {
 			return Optional.empty();
 		}
-		VisionIO.ObjDetectTxyObservation best = null;
-		double bestDistance = Double.POSITIVE_INFINITY;
-		for (VisionIO.ObjDetectTxyObservation obs : observations) {
-			double d = obs.distanceMeters();
-			if (d > 0.0 && d < bestDistance) {
-				best = obs;
-				bestDistance = d;
+
+		ArrayList<VisionIO.ObjDetectTxyObservation> candidateObservations = new ArrayList<>();
+		double newestTimestamp = Double.NEGATIVE_INFINITY;
+		for (VisionIO.ObjDetectTxyObservation observation : rawObservations) {
+			boolean classOk = desiredClassId < 0 || observation.classId() == desiredClassId;
+			boolean confidenceOk = observation.confidence() >= VisionConstants.objDetectConfidenceThreshold;
+			if (!classOk || !confidenceOk) {
+				continue;
+			}
+			candidateObservations.add(observation);
+			newestTimestamp = Math.max(newestTimestamp, observation.timestamp());
+		}
+		if (candidateObservations.isEmpty()) {
+			return Optional.empty();
+		}
+
+		ArrayList<VisionIO.ObjDetectTxyObservation> latestFrameObservations = new ArrayList<>();
+		for (VisionIO.ObjDetectTxyObservation observation : candidateObservations) {
+			if (newestTimestamp - observation.timestamp() <= preferredObjectLatestFrameBucketSec) {
+				latestFrameObservations.add(observation);
 			}
 		}
-		if (best != null) {
-			return Optional.of(best);
+		if (latestFrameObservations.isEmpty()) {
+			return Optional.empty();
 		}
-		// Fallback to angular magnitude if no valid distance.
-		VisionIO.ObjDetectTxyObservation angularBest = observations[0];
-		double bestScore = Math.hypot(angularBest.tx().getRadians(), angularBest.ty().getRadians());
-		for (int i = 1; i < observations.length; i++) {
-			VisionIO.ObjDetectTxyObservation obs = observations[i];
-			double score = Math.hypot(obs.tx().getRadians(), obs.ty().getRadians());
-			if (score < bestScore) {
-				angularBest = obs;
-				bestScore = score;
+
+		boolean[] visited = new boolean[latestFrameObservations.size()];
+		ObjDetectCluster bestCluster = null;
+		for (int i = 0; i < latestFrameObservations.size(); i++) {
+			if (visited[i]) {
+				continue;
+			}
+
+			LinkedList<Integer> openSet = new LinkedList<>();
+			ArrayList<VisionIO.ObjDetectTxyObservation> clusterMembers = new ArrayList<>();
+			openSet.add(i);
+			visited[i] = true;
+			while (!openSet.isEmpty()) {
+				int currentIndex = openSet.removeFirst();
+				VisionIO.ObjDetectTxyObservation currentObservation = latestFrameObservations.get(currentIndex);
+				clusterMembers.add(currentObservation);
+				for (int j = 0; j < latestFrameObservations.size(); j++) {
+					if (visited[j]) {
+						continue;
+					}
+					VisionIO.ObjDetectTxyObservation nextObservation = latestFrameObservations.get(j);
+					if (areObservationsInSameCluster(currentObservation, nextObservation)) {
+						visited[j] = true;
+						openSet.add(j);
+					}
+				}
+			}
+
+			ObjDetectCluster cluster = summarizePreferredObjectCluster(clusterMembers);
+			if (bestCluster == null || comparePreferredObjectClusters(cluster, bestCluster) > 0) {
+				bestCluster = cluster;
 			}
 		}
-		return Optional.of(angularBest);
+
+		if (bestCluster == null) {
+			return Optional.empty();
+		}
+
+		return Optional.of(new PreferredObjDetectObservation(
+				bestCluster.representativeObservation(),
+				bestCluster.clusterCount(),
+				bestCluster.clusterScore()));
+	}
+
+	/**
+	 * Get the representative observation for the preferred object cluster.
+	 */
+	public Optional<VisionIO.ObjDetectTxyObservation> getClosestObjDetectTxyObservation(CameraID cam) {
+		return getPreferredObjDetectObservation(cam, -1)
+				.map(PreferredObjDetectObservation::observation);
+	}
+
+	private boolean areObservationsInSameCluster(
+			VisionIO.ObjDetectTxyObservation first,
+			VisionIO.ObjDetectTxyObservation second) {
+		return first.classId() == second.classId()
+				&& Math.abs(first.tx().getRadians() - second.tx().getRadians()) <= preferredObjectMaxTxDeltaRad
+				&& Math.abs(first.ty().getRadians() - second.ty().getRadians()) <= preferredObjectMaxTyDeltaRad
+				&& Math.abs(first.distanceMeters() - second.distanceMeters()) <= preferredObjectMaxDistanceDeltaMeters;
+	}
+
+	private ObjDetectCluster summarizePreferredObjectCluster(List<VisionIO.ObjDetectTxyObservation> members) {
+		double score = 0.0;
+		double weightedConfidence = 0.0;
+		double weightedTxRad = 0.0;
+		double weightedTyRad = 0.0;
+		double weightedDistanceMeters = 0.0;
+		double newestTimestamp = Double.NEGATIVE_INFINITY;
+		int classId = members.get(0).classId();
+
+		for (VisionIO.ObjDetectTxyObservation member : members) {
+			double weight = getPreferredObjectWeight(member);
+			score += weight;
+			weightedConfidence += weight * member.confidence();
+			weightedTxRad += weight * member.tx().getRadians();
+			weightedTyRad += weight * member.ty().getRadians();
+			weightedDistanceMeters += weight * member.distanceMeters();
+			newestTimestamp = Math.max(newestTimestamp, member.timestamp());
+		}
+
+		double safeScore = Math.max(score, 1e-9);
+		VisionIO.ObjDetectTxyObservation representativeObservation = new VisionIO.ObjDetectTxyObservation(
+				classId,
+				weightedConfidence / safeScore,
+				Rotation2d.fromRadians(weightedTxRad / safeScore),
+				Rotation2d.fromRadians(weightedTyRad / safeScore),
+				weightedDistanceMeters / safeScore,
+				newestTimestamp);
+		return new ObjDetectCluster(representativeObservation, members.size(), score);
+	}
+
+	private int comparePreferredObjectClusters(ObjDetectCluster first, ObjDetectCluster second) {
+		int scoreComparison = Double.compare(first.clusterScore(), second.clusterScore());
+		if (scoreComparison != 0) {
+			return scoreComparison;
+		}
+
+		int countComparison = Integer.compare(first.clusterCount(), second.clusterCount());
+		if (countComparison != 0) {
+			return countComparison;
+		}
+
+		int distanceComparison = Double.compare(
+				second.representativeObservation().distanceMeters(),
+				first.representativeObservation().distanceMeters());
+		if (distanceComparison != 0) {
+			return distanceComparison;
+		}
+
+		return Double.compare(
+				Math.abs(second.representativeObservation().tx().getRadians()),
+				Math.abs(first.representativeObservation().tx().getRadians()));
+	}
+
+	private double getPreferredObjectWeight(VisionIO.ObjDetectTxyObservation observation) {
+		return observation.confidence() / Math.max(observation.distanceMeters(), preferredObjectMinWeightedDistanceMeters);
 	}
 
 	/**

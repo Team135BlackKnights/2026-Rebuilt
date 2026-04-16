@@ -107,6 +107,7 @@ import com.pathplanner.lib.util.FileVersionException;
 import com.therekrab.autopilot.APTarget;
 
 import edu.wpi.first.math.Pair;
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.filter.Debouncer;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -186,6 +187,8 @@ public class RobotContainer {
 	/** Timer used to force a shot after 0.25 s even if setpoints aren't reached */
 	private final Timer shootTimer = new Timer();
 	public static boolean forceKickup = false;
+	private static final LoggableTunedNumber shootingDriveSpeedScale = new LoggableTunedNumber(
+			"Shooting/DriveSpeedScale", 0.5, TuningConstants.isTuningMacros);
 	/**
 	 * Start time (FPGA timestamp) of the current shoot/jackhammer cycle.
 	 * Used so the cycle always begins with SHOOTING when the command starts.
@@ -224,9 +227,41 @@ public class RobotContainer {
 		return kickupIsFiring || turretInShootingMode;
 	}
 
+	public static boolean shouldLimitDriveSpeedForShooting() {
+		boolean kickupActive = kickup != null
+				&& switch (kickup.getGoal()) {
+					case SHOOTING, TESTING -> true;
+					default -> false;
+				};
+		boolean turretActive = (leftTurret != null && isDriveSpeedLimitedShootingGoal(leftTurret.getGoal()))
+				|| (rightTurret != null && isDriveSpeedLimitedShootingGoal(rightTurret.getGoal()));
+		return kickupActive || turretActive || isShotTuningFireRequested();
+	}
+
+	public static double getDriveSpeedLimitScale() {
+		return shouldLimitDriveSpeedForShooting()
+				? MathUtil.clamp(shootingDriveSpeedScale.get(), 0.0, 1.0)
+				: 1.0;
+	}
+
+	public static ChassisSpeeds applyDriveSpeedLimits(ChassisSpeeds speeds) {
+		double scale = getDriveSpeedLimitScale();
+		return new ChassisSpeeds(
+				speeds.vxMetersPerSecond * scale,
+				speeds.vyMetersPerSecond * scale,
+				speeds.omegaRadiansPerSecond * scale);
+	}
+
 	private static boolean isGyroNoiseShootingGoal(Turret.Goal goal) {
 		return switch (goal) {
 			case SHOOTING, SHOOTING_CUSTOM, SHOOTING_FROM_HUB, TUNING_SHOT -> true;
+			default -> false;
+		};
+	}
+
+	private static boolean isDriveSpeedLimitedShootingGoal(Turret.Goal goal) {
+		return switch (goal) {
+			case SHOOTING, SHOOTING_CUSTOM, SHOOTING_FROM_HUB, JACKHAMMER, TUNING_SHOT -> true;
 			default -> false;
 		};
 	}
@@ -1285,14 +1320,14 @@ public class RobotContainer {
 		// Select = zero robot
 		// Left Stick Button = orient modules to circle for pushing
 		// Right Stick Button = backup robot-azimuth aiming mode
-		// POV-Up / BR paddle = vomit
+		// POV-Up / BR paddle = hold driver-assist auto intake
 		// POV-Right / TR paddle = manual turret control for aiming at right trench
 		// POV-Down / BL paddle = vomit
 		// POV-Left / TL paddle = manual turret control for aiming at left trench
 		// Left Trigger = auto align THRU the trench with velocity
 		// Right Trigger = fire while aiming at target
 		// Left Bumper = hold to intake from ground
-		// Right Bumper = hold to agitate intake (oscillate arm 0-30deg)
+		// Right Bumper = hold auto intake
 		// A button = vomit
 		// B button = clear logged shots
 		// Y button = (reserved)
@@ -1371,9 +1406,7 @@ public class RobotContainer {
 		leftBumperDrive.and(rightTriggerDriveFull.negate()).and(manipLeftTrigger.negate()).whileTrue(
 				Commands.run(() -> intake.setGoal(Goal.INTAKE_GROUND))
 						.finallyDo(() -> intake.setGoal(Goal.INTAKE_OUTER_IDLE)));
-		rightBumperDrive.and(rightTriggerDriveFull.negate()).and(manipLeftTrigger.negate()).whileTrue(
-				(Commands.runOnce(() -> intake.setGoal(Goal.AGITATING), intake).andThen(Commands.waitSeconds(999)))
-						.finallyDo(() -> intake.setGoal(Goal.INTAKE_OUTER_IDLE)));
+		rightBumperDrive.and(rightTriggerDriveFull.negate()).and(manipLeftTrigger.negate()).whileTrue(teleAutoIntake);
 		// leftBumperDrive.onTrue(Commands.runOnce(()));
 		xButtonDrive.and(manipLeftTrigger.negate()).whileTrue(Commands.either(
 				Commands.run(() -> {
@@ -1461,38 +1494,12 @@ public class RobotContainer {
 		rightTriggerDriveFull.and(shotTuningModeActive.negate()).and(leftBumperDrive).and(xButtonDrive.negate())
 				.whileTrue(shootTurretsWhileIntaking);
 		rightTriggerDriveFull.and(shotTuningModeActive).and(xButtonDrive.negate()).whileTrue(shotTuningShoot);
-		// Right trigger + right bumper = shoot while agitating intake
+		// Right trigger + right bumper = shoot while auto intaking
 		rightTriggerDriveFull.and(shotTuningModeActive.negate()).and(rightBumperDrive).and(leftBumperDrive.negate())
-				.and(xButtonDrive.negate()).whileTrue(
-				Commands.runOnce(() -> {
-					shootTimer.restart();
-					resetShootCycle();
-					intake.setGoal(Goal.AGITATING);
-				}).andThen(Commands.run(() -> {
-					// Agitate arm while cycling jackhammer on rollers/kickup
-					if (isInJackhammerPhase()) {
-						leftTurret.setGoal(Turret.Goal.JACKHAMMER);
-						rightTurret.setGoal(Turret.Goal.JACKHAMMER);
-						kickup.setGoal(Kickup.Goal.JACKHAMMER);
-					} else if (shootTimer.hasElapsed(0.5) || leftTurret.atShootSetpoints()
-							|| rightTurret.atShootSetpoints()) {
-						leftTurret.setGoal(Turret.Goal.SHOOTING);
-						rightTurret.setGoal(Turret.Goal.SHOOTING);
-						kickup.setGoal(Kickup.Goal.SHOOTING);
-					} else {
-						leftTurret.setGoal(Turret.Goal.SHOOTING);
-						rightTurret.setGoal(Turret.Goal.SHOOTING);
-						kickup.setGoal(Kickup.Goal.IDLING);
-					}
-				}, leftTurret, rightTurret, kickup).finallyDo(() -> {
-					leftTurret.setGoal(Turret.Goal.AIMING);
-					rightTurret.setGoal(Turret.Goal.AIMING);
-					intake.setGoal(Goal.INTAKE_OUTER_IDLE);
-					kickup.setGoal(Kickup.Goal.IDLING);
-					shootTimer.stop();
-					shootCycleStartSec = Double.NaN;
-				})));
-		povUp.and(manipLeftTrigger.negate()).whileTrue(teleAutoIntake);
+				.and(xButtonDrive.negate()).whileTrue(shootTurretsWhileIntaking);
+		povUp.whileTrue(Commands.startEnd(
+				() -> DriveConstants.autoIntake = true,
+				() -> DriveConstants.autoIntake = false));
 		povDown.whileTrue(Commands.run(() -> {
 			intake.setGoal(Goal.VOMITING);
 			leftTurret.setGoal(Turret.Goal.VOMITING);

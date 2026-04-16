@@ -6,6 +6,7 @@ import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -22,6 +23,13 @@ import frc.robot.utils.drive.DriveConstants;
 import frc.robot.utils.vision.VisionConstants;
 
 public class GeomUtil {
+	private record BoundaryProximity(
+			double distanceMeters,
+			Translation2d directionTowardBoundary,
+			Translation2d closestPoint,
+			String boundaryName) {
+	}
+
 	public static double interp(double y0, double y1, double x, double x0, double x1) {
 		if (x1 == x0)
 			return y0;
@@ -215,6 +223,24 @@ public class GeomUtil {
 		return new Transform3d(pose.getX(), pose.getY(), pose.getZ(), pose.getRotation());
 	}
 
+	public static Translation2d projectObjectObservationToField(
+			Pose2d robotPose,
+			Pose3d robotToCamera,
+			Rotation2d tx,
+			Rotation2d ty,
+			double distanceMeters) {
+		double clampedDistanceMeters = Math.max(0.0, distanceMeters);
+		Translation3d cameraToTarget = new Pose3d(
+				Translation3d.kZero,
+				new Rotation3d(0.0, ty.getRadians(), -tx.getRadians()))
+				.transformBy(new Transform3d(new Translation3d(clampedDistanceMeters, 0.0, 0.0), Rotation3d.kZero))
+				.getTranslation();
+		Pose3d fieldCameraPose = new Pose3d(robotPose).transformBy(poseToTransform(robotToCamera));
+		Translation3d fieldTarget = fieldCameraPose.getTranslation()
+				.plus(cameraToTarget.rotateBy(fieldCameraPose.getRotation()));
+		return fieldTarget.toTranslation2d();
+	}
+
 	/**
 	 * Creates a pure translating pose3d
 	 */
@@ -326,6 +352,207 @@ public class GeomUtil {
 	public static double calculateDistanceFromTranslation2d(
 			Translation2d currentTranslation, Translation2d objectTranslation) {
 		return currentTranslation.getDistance(objectTranslation);
+	}
+
+	public static double distanceToNearestFieldEdge(Translation2d point) {
+		double left = point.getX();
+		double right = FieldConstants.FIELD_WIDTH - point.getX();
+		double bottom = point.getY();
+		double top = FieldConstants.FIELD_HEIGHT - point.getY();
+		return Math.min(Math.min(left, right), Math.min(bottom, top));
+	}
+
+	public static Translation2d directionTowardNearestFieldEdge(Translation2d point) {
+		double left = point.getX();
+		double right = FieldConstants.FIELD_WIDTH - point.getX();
+		double bottom = point.getY();
+		double top = FieldConstants.FIELD_HEIGHT - point.getY();
+
+		double nearest = left;
+		Translation2d direction = new Translation2d(-1.0, 0.0);
+
+		if (right < nearest) {
+			nearest = right;
+			direction = new Translation2d(1.0, 0.0);
+		}
+		if (bottom < nearest) {
+			nearest = bottom;
+			direction = new Translation2d(0.0, -1.0);
+		}
+		if (top < nearest) {
+			direction = new Translation2d(0.0, 1.0);
+		}
+
+		return direction;
+	}
+
+	private static BoundaryProximity getFieldEdgeProximity(Translation2d point) {
+		double left = point.getX();
+		double right = FieldConstants.FIELD_WIDTH - point.getX();
+		double bottom = point.getY();
+		double top = FieldConstants.FIELD_HEIGHT - point.getY();
+
+		BoundaryProximity best = new BoundaryProximity(
+				left,
+				new Translation2d(-1.0, 0.0),
+				new Translation2d(0.0, point.getY()),
+				"FieldLeft");
+
+		if (right < best.distanceMeters()) {
+			best = new BoundaryProximity(
+					right,
+					new Translation2d(1.0, 0.0),
+					new Translation2d(FieldConstants.FIELD_WIDTH, point.getY()),
+					"FieldRight");
+		}
+		if (bottom < best.distanceMeters()) {
+			best = new BoundaryProximity(
+					bottom,
+					new Translation2d(0.0, -1.0),
+					new Translation2d(point.getX(), 0.0),
+					"FieldBottom");
+		}
+		if (top < best.distanceMeters()) {
+			best = new BoundaryProximity(
+					top,
+					new Translation2d(0.0, 1.0),
+					new Translation2d(point.getX(), FieldConstants.FIELD_HEIGHT),
+					"FieldTop");
+		}
+		return best;
+	}
+
+	private static BoundaryProximity getAxisAlignedRectangleProximity(
+			Translation2d point,
+			Translation2d cornerA,
+			Translation2d cornerB,
+			String boundaryName) {
+		double minX = Math.min(cornerA.getX(), cornerB.getX());
+		double maxX = Math.max(cornerA.getX(), cornerB.getX());
+		double minY = Math.min(cornerA.getY(), cornerB.getY());
+		double maxY = Math.max(cornerA.getY(), cornerB.getY());
+
+		double clampedX = MathUtil.clamp(point.getX(), minX, maxX);
+		double clampedY = MathUtil.clamp(point.getY(), minY, maxY);
+		Translation2d closestPoint = new Translation2d(clampedX, clampedY);
+		Translation2d toBoundary = closestPoint.minus(point);
+		double distanceMeters = toBoundary.getNorm();
+
+		if (distanceMeters > 1e-9) {
+			return new BoundaryProximity(
+					distanceMeters,
+					toBoundary.div(distanceMeters),
+					closestPoint,
+					boundaryName);
+		}
+
+		double distanceToLeft = Math.abs(point.getX() - minX);
+		double distanceToRight = Math.abs(maxX - point.getX());
+		double distanceToBottom = Math.abs(point.getY() - minY);
+		double distanceToTop = Math.abs(maxY - point.getY());
+
+		BoundaryProximity best = new BoundaryProximity(
+				distanceToLeft,
+				new Translation2d(-1.0, 0.0),
+				new Translation2d(minX, point.getY()),
+				boundaryName + "/LeftFace");
+		if (distanceToRight < best.distanceMeters()) {
+			best = new BoundaryProximity(
+					distanceToRight,
+					new Translation2d(1.0, 0.0),
+					new Translation2d(maxX, point.getY()),
+					boundaryName + "/RightFace");
+		}
+		if (distanceToBottom < best.distanceMeters()) {
+			best = new BoundaryProximity(
+					distanceToBottom,
+					new Translation2d(0.0, -1.0),
+					new Translation2d(point.getX(), minY),
+					boundaryName + "/BottomFace");
+		}
+		if (distanceToTop < best.distanceMeters()) {
+			best = new BoundaryProximity(
+					distanceToTop,
+					new Translation2d(0.0, 1.0),
+					new Translation2d(point.getX(), maxY),
+					boundaryName + "/TopFace");
+		}
+		return best;
+	}
+
+	private static BoundaryProximity getNearestDriveBoundary(Translation2d point) {
+		BoundaryProximity best = getFieldEdgeProximity(point);
+
+		BoundaryProximity allianceHub = getAxisAlignedRectangleProximity(
+				point,
+				FieldConstants.Hub.nearRightCorner,
+				FieldConstants.Hub.farLeftCorner,
+				"AllianceHub");
+		if (allianceHub.distanceMeters() < best.distanceMeters()) {
+			best = allianceHub;
+		}
+
+		BoundaryProximity oppositeHub = getAxisAlignedRectangleProximity(
+				point,
+				FieldConstants.Hub.oppNearRightCorner,
+				FieldConstants.Hub.oppFarLeftCorner,
+				"OppositeHub");
+		if (oppositeHub.distanceMeters() < best.distanceMeters()) {
+			best = oppositeHub;
+		}
+
+		return best;
+	}
+
+	public static Translation2d limitVelocityTowardFieldEdge(
+			Translation2d desiredFieldVelocity,
+			Translation2d robotPosition,
+			Translation2d targetPosition,
+			double slowDistanceMeters,
+			double maxTowardWallSpeedMetersPerSec) {
+		if (desiredFieldVelocity.getNorm() <= 1e-9 || slowDistanceMeters <= 0.0) {
+			return desiredFieldVelocity;
+		}
+
+		Translation2d referencePoint = robotPosition;
+		BoundaryProximity nearestBoundary = getNearestDriveBoundary(robotPosition);
+		if (targetPosition != null) {
+			BoundaryProximity targetBoundary = getNearestDriveBoundary(targetPosition);
+			if (targetBoundary.distanceMeters() < nearestBoundary.distanceMeters()) {
+				referencePoint = targetPosition;
+				nearestBoundary = targetBoundary;
+			}
+		}
+
+		double referenceDistance = nearestBoundary.distanceMeters();
+		if (referenceDistance >= slowDistanceMeters) {
+			return desiredFieldVelocity;
+		}
+
+		Translation2d towardWallDirection = nearestBoundary.directionTowardBoundary();
+		double towardWallSpeed =
+				desiredFieldVelocity.getX() * towardWallDirection.getX()
+						+ desiredFieldVelocity.getY() * towardWallDirection.getY();
+		if (towardWallSpeed <= 0.0) {
+			return desiredFieldVelocity;
+		}
+
+		double allowedTowardWallSpeed =
+				interp(
+							maxTowardWallSpeedMetersPerSec,
+							desiredFieldVelocity.getNorm(),
+							referenceDistance,
+							0.0,
+							slowDistanceMeters);
+		double limitedTowardWallSpeed = Math.min(towardWallSpeed, allowedTowardWallSpeed);
+		Logger.recordOutput("Drive/BoundaryLimiter/ReferencePoint", new Pose2d(referencePoint, new Rotation2d()));
+		Logger.recordOutput("Drive/BoundaryLimiter/ClosestBoundaryPoint",
+				new Pose2d(nearestBoundary.closestPoint(), new Rotation2d()));
+		Logger.recordOutput("Drive/BoundaryLimiter/DistanceMeters", referenceDistance);
+		Logger.recordOutput("Drive/BoundaryLimiter/BoundaryName", nearestBoundary.boundaryName());
+		Translation2d tangentialVelocity =
+				desiredFieldVelocity.minus(towardWallDirection.times(towardWallSpeed));
+		return tangentialVelocity.plus(towardWallDirection.times(limitedTowardWallSpeed));
 	}
 
 	public static double applyX(double x) {

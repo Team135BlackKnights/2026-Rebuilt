@@ -76,7 +76,6 @@ public class AutoPilotAlign extends Command {
 
     @Override
     public void execute() {
-        long startTime = System.currentTimeMillis();
         Pose2d robotPose = m_drivetrain.getLookAheadPose();
         ChassisSpeeds currentRobotRelative = m_drivetrain.getChassisSpeeds();
         adStar.setStartPosition(robotPose.getTranslation());
@@ -128,7 +127,6 @@ public class AutoPilotAlign extends Command {
         desiredRotation = goalEndState.rotation();
         thetaControllerCommand.execute();
 
-        long endTime = System.currentTimeMillis();
         // System.out.println("Execution time: " + (endTime - startTime) + " ms");
 
         m_drivetrain

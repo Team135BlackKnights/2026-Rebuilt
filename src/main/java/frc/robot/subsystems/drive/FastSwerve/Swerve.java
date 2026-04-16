@@ -667,8 +667,9 @@ public class Swerve extends SubsystemChecker implements DrivetrainS {
 	@Override
 	public void setChassisSpeeds(ChassisSpeeds speeds) {
 		currentDriveMode = DriveMode.TELEOP;
-		desiredSpeeds = new ChassisSpeeds(speeds.vxMetersPerSecond,
-				speeds.vyMetersPerSecond, speeds.omegaRadiansPerSecond);
+		ChassisSpeeds limitedSpeeds = RobotContainer.applyDriveSpeedLimits(speeds);
+		desiredSpeeds = new ChassisSpeeds(limitedSpeeds.vxMetersPerSecond,
+				limitedSpeeds.vyMetersPerSecond, limitedSpeeds.omegaRadiansPerSecond);
 		// desiredSpeeds = ChassisSpeeds.discretize(desiredSpeeds, 0.02);
 		for (int i = 0; i < 4; i++) {
 			pathPlannerNM.x_newtons[i] = 0;
@@ -679,8 +680,9 @@ public class Swerve extends SubsystemChecker implements DrivetrainS {
 	@Override
 	public void setPathplannerChassisSpeeds(ChassisSpeeds speeds, DriveFeedforwards feedforwards) {
 		currentDriveMode = DriveMode.TRAJECTORY;
-		desiredSpeeds = new ChassisSpeeds(speeds.vxMetersPerSecond,
-				speeds.vyMetersPerSecond, speeds.omegaRadiansPerSecond);
+		ChassisSpeeds limitedSpeeds = RobotContainer.applyDriveSpeedLimits(speeds);
+		desiredSpeeds = new ChassisSpeeds(limitedSpeeds.vxMetersPerSecond,
+				limitedSpeeds.vyMetersPerSecond, limitedSpeeds.omegaRadiansPerSecond);
 		double[] robotRelativeForcesXNewtons = feedforwards.robotRelativeForcesXNewtons();
 		double[] robotRelativeForcesYNewtons = feedforwards.robotRelativeForcesYNewtons();
 		for (int i = 0; i < 4; i++) {

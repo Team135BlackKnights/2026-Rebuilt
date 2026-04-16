@@ -60,7 +60,6 @@ import frc.robot.utils.CompetitionFieldUtils.Simulation.motorsims.SimulatedBatte
 import frc.robot.utils.Touchboard.PosePlotterUtil;
 import frc.robot.utils.Touchboard.TouchboardAutoPlan;
 import frc.robot.utils.maths.TimeUtil;
-import frc.robot.utils.vision.VisionConstants.AprilTagLayoutType;
 
 /*
 TODO: Setup TODOTree to go through the year-by-year updating checklist. 
@@ -160,7 +159,6 @@ public class Robot extends LoggedRobot {
 		// Sanity check for aprilTag fields (thx FIRST so cool),
 		// I'm assuming worlds will be a welded field while Indiana is AndyMark
 		//
-
 		switch (BuildConstants.DIRTY) {
 			case 0:
 				Logger.recordMetadata("GitDirty", "All changes committed");
