@@ -71,7 +71,7 @@ public class Hang extends SubsystemChecker {
     }
 
     @Override
-    public void periodic() {
+    protected void subsystemPeriodic() {
         wedgeArmIO.updateInputs(wedgeArmInputs);
         Logger.processInputs("Hang/WedgeArm", wedgeArmInputs);
         climber.periodic();

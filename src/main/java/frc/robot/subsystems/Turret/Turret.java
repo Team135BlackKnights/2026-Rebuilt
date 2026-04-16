@@ -183,8 +183,8 @@ public class Turret extends SubsystemChecker {
       flywheel_kA = new LoggableTunedNumber(name + "/Flywheel/kA", 0.0, TuningConstants.isTuningShooter);
       flywheel_ramp = new LoggableTunedNumber(name + "/Flywheel/Ramp", 0.25, TuningConstants.isTuningShooter);
 
-      hood_kP = new LoggableTunedNumber(name + "/Hood/kP", 15, TuningConstants.isTuningShooter); // 15
-      hood_kD = new LoggableTunedNumber(name + "/Hood/kD", 0.01, TuningConstants.isTuningShooter); // 1.5
+      hood_kP = new LoggableTunedNumber(name + "/Hood/kP", 60, TuningConstants.isTuningShooter); // 15
+      hood_kD = new LoggableTunedNumber(name + "/Hood/kD", 0.4, TuningConstants.isTuningShooter); // 1.5
       hood_kS = new LoggableTunedNumber(name + "/Hood/kS", 0.0, TuningConstants.isTuningShooter);
       hood_kV = new LoggableTunedNumber(name + "/Hood/kV", 0.0, TuningConstants.isTuningShooter);
       offsetRPM = new LoggableTunedNumber(name + "/Flywheel/offset", 0, TuningConstants.isTuningShooter);
@@ -210,18 +210,18 @@ public class Turret extends SubsystemChecker {
       flywheel_kA = new LoggableTunedNumber(name + "/Flywheel/kA", 0.0, TuningConstants.isTuningShooter);
       flywheel_ramp = new LoggableTunedNumber(name + "/Flywheel/Ramp", 0.25, TuningConstants.isTuningShooter);
       offsetRPM = new LoggableTunedNumber(name + "/Flywheel/Offset", 0, TuningConstants.isTuningShooter);
-      offsetHoodAngle = new LoggableTunedNumber(name + "/Hood/DONOTTOUCH", 1, TuningConstants.isTuningShooter);
+      offsetHoodAngle = new LoggableTunedNumber(name + "/Hood/DONOTTOUCH", 1.5, TuningConstants.isTuningShooter);
 
-      hood_kP = new LoggableTunedNumber(name + "/Hood/kP", 15, TuningConstants.isTuningShooter); // 15
-      hood_kD = new LoggableTunedNumber(name + "/Hood/kD", .01, TuningConstants.isTuningShooter); // 1.5
+      hood_kP = new LoggableTunedNumber(name + "/Hood/kP", 60, TuningConstants.isTuningShooter); // 15
+      hood_kD = new LoggableTunedNumber(name + "/Hood/kD", .4, TuningConstants.isTuningShooter); // 1.5
       hood_kS = new LoggableTunedNumber(name + "/Hood/kS", 0.0, TuningConstants.isTuningShooter);
       hood_kV = new LoggableTunedNumber(name + "/Hood/kV", 0.0, TuningConstants.isTuningShooter);
 
     }
     flywheel_idle = new LoggableTunedNumber(name + "/Flywheel/AimingSpeedRPM", 3000, TuningConstants.isTuningShooter);
-    aimToleranceRads = new LoggableTunedNumber(name + "/Tolerance/AimRads", Math.toRadians(5),
+    aimToleranceRads = new LoggableTunedNumber(name + "/Tolerance/AimRads", Math.toRadians(3),
         TuningConstants.isTuningShooter);
-    hoodToleranceRads = new LoggableTunedNumber(name + "/Tolerance/HoodRads", Math.toRadians(2),
+    hoodToleranceRads = new LoggableTunedNumber(name + "/Tolerance/HoodRads", Math.toRadians(.5),
         TuningConstants.isTuningShooter);
     flywheelToleranceRadsPerSec = new LoggableTunedNumber(name + "/Tolerance/FlywheelRadsPerSec",
         Units.rotationsPerMinuteToRadiansPerSecond(800), TuningConstants.isTuningShooter);
@@ -490,6 +490,10 @@ public class Turret extends SubsystemChecker {
   public void clearLoggedShots() {
     loggedShots.clear();
     canChangeGoal = true;
+    if (goal == Goal.TUNING_SHOT) {
+      goal = Goal.AIMING;
+      jackhammerBaseGoal = goal;
+    }
     kickupWaitStartSec = Double.NaN;
   }
 
@@ -565,7 +569,7 @@ public class Turret extends SubsystemChecker {
   }
 
   @Override
-  public void periodic() {
+  protected void subsystemPeriodic() {
     if (azimuthInputs.motorConnected && (azimuthInputs.zeroed || azimuthIO.wantsZeroing())) {
       azimuthIO.enable();
     } else {
@@ -709,15 +713,29 @@ public class Turret extends SubsystemChecker {
       Pose2d turretPose = RobotContainer.drivetrainS.getPose().transformBy(robotToTurret);
       double distToTarget = target.getDistance(turretPose.getTranslation()); // OUR FIELD iS .08M OFF (if we had 1, .92)
       double rpm = tuning_RPM.get();// flywheelInputs.velocityRadsPerSec * 60.0 / (2.0 * Math.PI);
-      double hoodDeg = Math.toRadians(tuning_hoodDeg.get());// Math.toDegrees(hoodInputs.positionRads);
+      double hoodDeg = tuning_hoodDeg.get();// Math.toDegrees(hoodInputs.positionRads);
       double tof = tuning_TOF.get();
-      String entry = String.format("dist=%.3fm  rpm=%.1f  hood=%.2frad  tof=%.3fs", distToTarget, rpm, hoodDeg, tof);
+      String entry = String.format("dist=%.3fm  rpm=%.1f  hood=%.2fdeg  tof=%.3fs", distToTarget, rpm, hoodDeg, tof);
       loggedShots.add(entry);
       tuning_logFlag.set(false);
     }
     lastLogFlag = logNow;
+    ShotCalculator.ShotTelemetry shotTelemetry = shotCalculator.getLatestShotTelemetry(robotToTurret);
     Logger.recordOutput(name + "/ShotTuning/LoggedShots", loggedShots.toArray(new String[0]));
     Logger.recordOutput(name + "/ShotTuning/ShotCount", loggedShots.size());
+    Logger.recordOutput(name + "/ShotTuning/ManualTOFSec", tuning_TOF.get());
+    Logger.recordOutput(name + "/ShotTuning/PredictedLeadTOFSec", shotTelemetry.empiricalLeadTimeOfFlightSec());
+    Logger.recordOutput(name + "/ShotTuning/PredictedBallisticTOFSec", shotTelemetry.ballisticTimeOfFlightSec());
+    Logger.recordOutput(
+        name + "/ShotTuning/LeadTOFErrorSec",
+        shotTelemetry.empiricalLeadTimeOfFlightSec() - tuning_TOF.get());
+    Logger.recordOutput(
+        name + "/ShotTuning/BallisticTOFErrorSec",
+        shotTelemetry.ballisticTimeOfFlightSec() - tuning_TOF.get());
+    Logger.recordOutput(name + "/ShotTuning/PredictedLaunchPitchDeg", Math.toDegrees(shotTelemetry.launchPitchRad()));
+    Logger.recordOutput(name + "/ShotTuning/PredictedLaunchSpeedMps", shotTelemetry.launchSpeedMps());
+    Logger.recordOutput(name + "/ShotTuning/PredictedRangeErrorM", shotTelemetry.rangeErrorMeters());
+    Logger.recordOutput(name + "/ShotTuning/PredictedLateralErrorM", shotTelemetry.lateralErrorMeters());
     // Live distance for tuning reference
     Pose2d currentTurretPose = RobotContainer.drivetrainS.getPose().transformBy(robotToTurret);
     Logger.recordOutput(name + "/ShotTuning/DistToTargetM",
@@ -779,7 +797,7 @@ public class Turret extends SubsystemChecker {
 
     if (isShotTuningActive()) {
       kickupWaitStartSec = Double.NaN;
-      return Kickup.Goal.TESTING;
+      return RobotContainer.isShotTuningFireRequested() ? Kickup.Goal.TESTING : Kickup.Goal.IDLING;
     }
 
     if (!isShootLikeGoal(controlGoal)) {

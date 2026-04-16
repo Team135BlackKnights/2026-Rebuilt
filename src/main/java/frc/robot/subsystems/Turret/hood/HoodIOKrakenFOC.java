@@ -136,7 +136,7 @@ public class HoodIOKrakenFOC implements HoodIO {
 
         BaseStatusSignal.setUpdateFrequencyForAll(
                 50.0, pos, vel, appliedVoltage, supplyCurrent, torqueCurrent, tempCelsius);
-        talon.optimizeBusUtilization(0, 1.0);
+        talon.optimizeBusUtilization(1, 1.0);
 
         zero();
     }

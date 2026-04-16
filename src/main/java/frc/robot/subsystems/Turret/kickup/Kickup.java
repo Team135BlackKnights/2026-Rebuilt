@@ -87,7 +87,7 @@ public class Kickup extends GenericRollerSystem<Kickup.Goal> {
     }
 
     @Override
-    public void periodic() {
+    protected void subsystemPeriodic() {
         io.updateInputs(inputs);
         Logger.processInputs(name, inputs);
         if (getGoal() != lastGoal) {

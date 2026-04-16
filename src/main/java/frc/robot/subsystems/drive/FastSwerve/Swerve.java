@@ -296,14 +296,14 @@ public class Swerve extends SubsystemChecker implements DrivetrainS {
 		}
 		// Solve for closed form Kalman gain for continuous Kalman filter with A = 0
 		// and C = I. See wpimath/algorithms.md.
-		Matrix<N3, N3> visionK = new Matrix<>(Nat.N3(), Nat.N3());
-		for (int row = 0; row < 3; ++row) {
-			double stdDev = qStdDevs.get(row, 0);
-			if (stdDev == 0.0) {
-				visionK.set(row, row, 0.0);
-			} else {
-				visionK.set(row, row,
-						stdDev / (stdDev + Math.sqrt(stdDev * r[row])));
+			Matrix<N3, N3> visionK = new Matrix<>(Nat.N3(), Nat.N3());
+			for (int row = 0; row < 3; ++row) {
+				double stdDev = getVisionProcessVariance(row);
+				if (stdDev == 0.0) {
+					visionK.set(row, row, 0.0);
+				} else {
+					visionK.set(row, row,
+							stdDev / (stdDev + Math.sqrt(stdDev * r[row])));
 			}
 		}
 		// difference between estimate and vision pose
@@ -317,8 +317,18 @@ public class Swerve extends SubsystemChecker implements DrivetrainS {
 				Rotation2d.fromRadians(kTimesTransform.get(2, 0)));
 		// Recalculate current estimate by applying scaled transform to old estimate
 		// then replaying odometry data
-		estimatedPose = estimateAtTime.plus(scaledTransform)
-				.plus(sampleToOdometryTransform);
+			estimatedPose = estimateAtTime.plus(scaledTransform)
+					.plus(sampleToOdometryTransform);
+		}
+
+	private double getVisionProcessVariance(int row) {
+		double variance = qStdDevs.get(row, 0);
+		if (row != 2 || !RobotContainer.shouldReduceGyroYawTrust()) {
+			return variance;
+		}
+
+		double trustScale = Math.max(1e-3, Math.min(1.0, VisionConstants.shootingGyroYawTrustScale.get()));
+		return variance / trustScale;
 	}
 
 	public void addVelocityData(Twist2d robotVelocity) {
@@ -424,11 +434,11 @@ public class Swerve extends SubsystemChecker implements DrivetrainS {
 		return currentModuleLimits;
 	}
 
-	public void periodic() {
+	protected void subsystemPeriodic() {
 		// Check if modules are skidding
 		// Update & process inputs
 		odometryThread.lockOdometry();
-		long inputTime = System.currentTimeMillis();
+		long inputStartNs = System.nanoTime();
 		odometryThread.updateInputs(odometryTimestampInputs);
 		Logger.processInputs("Drive/OdometryTimestamps", odometryTimestampInputs);
 		// Read inputs from gyro
@@ -438,8 +448,8 @@ public class Swerve extends SubsystemChecker implements DrivetrainS {
 		Arrays.stream(modules).forEach(Module::updateInputs);
 		odometryThread.unlockOdometry();
 		Logger.recordOutput("SystemStatus/Periodic/DriveInputsMS",
-				(System.currentTimeMillis() - inputTime));
-		long systemTime = System.currentTimeMillis();
+				(System.nanoTime() - inputStartNs) / 1.0e6);
+		long processStartNs = System.nanoTime();
 		// for each, see if we're disconnected
 		for (Module module : modules) {
 			if (!module.isDriveConnected()) {
@@ -651,7 +661,7 @@ public class Swerve extends SubsystemChecker implements DrivetrainS {
 			}
 		}
 		Logger.recordOutput("RobotState/AheadPose", getLookAheadPose().exp(getChassisSpeeds().toTwist2d(.05)));
-		Logger.recordOutput("SystemStatus/Periodic/DriveProcessMS", (systemTime - System.currentTimeMillis()));
+		Logger.recordOutput("SystemStatus/Periodic/DriveProcessMS", (System.nanoTime() - processStartNs) / 1.0e6);
 	}
 
 	@Override

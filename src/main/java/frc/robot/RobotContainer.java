@@ -176,6 +176,7 @@ public class RobotContainer {
 	public static XboxController testingController = new XboxController(5);
 	public static Optional<Rotation2d> angleOverrider = Optional.empty();
 	private static final double FIXED_HUB_SHOT_DISTANCE_OFFSET_METERS = Units.inchesToMeters(15.0);
+	private static final double DRIVE_RIGHT_TRIGGER_FULL_THRESHOLD = 0.875;
 	private static final double TOWER_CENTER_FIXED_HUB_SHOT_DISTANCE_METERS = computeFixedHubShotDistanceMeters(
 			FieldConstants.Tower.centerPoint);
 	private static final double RIGHT_TRENCH_FIXED_HUB_SHOT_DISTANCE_METERS = computeFixedHubShotDistanceMeters(
@@ -203,14 +204,40 @@ public class RobotContainer {
 	private Turret.PresetTarget rightTurretPresetBeforeFixedHubDistanceOverride = Turret.PresetTarget.HUB_TOP_CENTER;
 	private int fixedHubDistanceOverrideHoldCount = 0;
 
+	public static boolean isShotTuningActive() {
+		return leftTurret != null
+				&& rightTurret != null
+				&& (leftTurret.isShotTuningActive() || rightTurret.isShotTuningActive());
+	}
+
+	public static boolean isShotTuningFireRequested() {
+		return isShotTuningActive()
+				&& driveController != null
+				&& driveController.getHID().getRightTriggerAxis() >= DRIVE_RIGHT_TRIGGER_FULL_THRESHOLD;
+	}
+
+	public static boolean shouldReduceGyroYawTrust() {
+		boolean kickupIsFiring = kickup != null
+				&& (kickup.getGoal() == Kickup.Goal.SHOOTING || kickup.getGoal() == Kickup.Goal.TESTING);
+		boolean turretInShootingMode = (leftTurret != null && isGyroNoiseShootingGoal(leftTurret.getGoal()))
+				|| (rightTurret != null && isGyroNoiseShootingGoal(rightTurret.getGoal()));
+		return kickupIsFiring || turretInShootingMode;
+	}
+
+	private static boolean isGyroNoiseShootingGoal(Turret.Goal goal) {
+		return switch (goal) {
+			case SHOOTING, SHOOTING_CUSTOM, SHOOTING_FROM_HUB, TUNING_SHOT -> true;
+			default -> false;
+		};
+	}
+
 	public static void updateShotTuningIndexerGoals() {
 		if (kickup == null || leftTurret == null || rightTurret == null) {
 			return;
 		}
 
-		boolean shotTuningActive = leftTurret.isShotTuningActive() || rightTurret.isShotTuningActive();
-		if (shotTuningActive) {
-			kickup.setGoal(Kickup.Goal.TESTING);
+		if (isShotTuningActive()) {
+			kickup.setGoal(isShotTuningFireRequested() ? Kickup.Goal.TESTING : Kickup.Goal.IDLING);
 		} else if (kickup.getGoal() == Kickup.Goal.TESTING) {
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}
@@ -1194,9 +1221,11 @@ public class RobotContainer {
 		Debouncer trenchUnlockDebouncer = new Debouncer(trenchUnlockDebounceSec, Debouncer.DebounceType.kFalling);
 		Trigger nearAnyTrench = new Trigger(() -> trenchUnlockDebouncer.calculate(nearAnyTrenchRaw.getAsBoolean()));
 		Trigger hoodAboveSafeAngle = new Trigger(
-				() -> leftTurret.isHoodAboveDegrees(31.0) || rightTurret.isHoodAboveDegrees(31.0));
+				() -> leftTurret.isHoodAboveDegrees(39.0) || rightTurret.isHoodAboveDegrees(39.0));
+		Trigger shotTuningModeActive = new Trigger(RobotContainer::isShotTuningActive);
 		Command targetHubBoth = buildTargetHubBothCommand();
 		Command shootTurrets = buildShootTurretsCommand();
+		Command shotTuningShoot = buildShotTuningShootCommand();
 
 		var targetSplitTrenches = Commands.runOnce(() -> {
 			leftTurret.setPresetTarget(Turret.PresetTarget.LEFT_TRENCH_CENTER);
@@ -1292,33 +1321,42 @@ public class RobotContainer {
 		leftStickButtonDrive.onFalse(Commands.runOnce(() -> drivetrainS.stopModules(), drivetrainS));
 		rightStickButtonDrive.whileTrue(buildBackupRobotAimCommand());
 		// Test Commands
-		
+
 		aButtonDrive.whileTrue(Commands.run(() -> {
-		//leftTurret.setCharTurretPos(0);
-		//rightTurret.setCharRPM(3000);
-		//intake.setGoal(Goal.VOMITING);
-		//kickup.setGoal(Kickup.Goal.VOMITING);
-		// flywheel go to 5000 rpm
-		// leftTurret.setCharHoodPos(0);(4.1);
-		// leftTurret.setCharHoodPos(Units.degreesToRadians(12));
-		// rightTurret.setCharHoodPos(Units.degreesToRadians(12));
-		 //intake.setGoal(Goal.STOW);
-		// leftTurret.setCharTurretPos(-1.49);
-		  // hang.setGoal(HangState.STOWED);
-		  }));
-		 
-				bButtonDrive.onTrue(Commands.runOnce(() -> {
-		//rightTurret.setCharRPM(5000);
-		 leftTurret.clearLoggedShots();
-		 rightTurret.clearLoggedShots();
-		//intake.setGoal(Goal.INTAKE_OUTER_IDLE);
-		}, leftTurret, rightTurret, kickup));
+			// leftTurret.setCharTurretPos(0);
+			// rightTurret.setCharRPM(3000);
+			// intake.setGoal(Goal.VOMITING);
+			// kickup.setGoal(Kickup.Goal.VOMITING);
+			// flywheel go to 5000 rpm
+			// leftTurret.setCharHoodPos(0);(4.1);
+			leftTurret.setCharHoodPos(Units.degreesToRadians(15));
+			rightTurret.setCharHoodPos(Units.degreesToRadians(15));
+			// intake.setGoal(Goal.STOW);
+			// leftTurret.setCharTurretPos(-1.49);
+			// hang.setGoal(HangState.STOWED);
+		}));
+
+		bButtonDrive.onTrue(Commands.runOnce(() -> {
+			leftTurret.clearLoggedShots();
+			rightTurret.clearLoggedShots();
+			leftTurret.setGoal(Turret.Goal.AIMING);
+			rightTurret.setGoal(Turret.Goal.AIMING);
+			intake.setGoal(Goal.INTAKE_OUTER_IDLE);
+			kickup.setGoal(Kickup.Goal.IDLING);
+			forceKickup = false;
+			shootTimer.stop();
+			shootCycleStartSec = Double.NaN;
+		}, leftTurret, rightTurret, kickup, intake));
 		yButtonDrive.onTrue(Commands.runOnce(() -> {
-		leftTurret.enterShotTuning();
-		rightTurret.enterShotTuning();
-		kickup.setGoal(Kickup.Goal.TESTING);
-		}, leftTurret, rightTurret, kickup));
-		
+			leftTurret.enterShotTuning();
+			rightTurret.enterShotTuning();
+			intake.setGoal(Goal.INTAKE_OUTER_IDLE);
+			kickup.setGoal(Kickup.Goal.IDLING);
+			forceKickup = false;
+			shootTimer.stop();
+			shootCycleStartSec = Double.NaN;
+		}, leftTurret, rightTurret, kickup, intake));
+
 		// Climber controls
 		// aButtonDrive.onTrue(Commands.either(Commands.runOnce(() ->
 		// hang.setGoal(HangState.EXTENDED)), Commands.runOnce(() ->
@@ -1417,11 +1455,15 @@ public class RobotContainer {
 			rightTurret.setCharTurretPos(0.0);
 		}, leftTurret, rightTurret).withName("Zero Turrets At 1s"));
 		// Turret Controls
-		rightTriggerDriveFull.and(leftBumperDrive.negate()).and(rightBumperDrive.negate()).and(xButtonDrive.negate())
+		rightTriggerDriveFull.and(shotTuningModeActive.negate()).and(leftBumperDrive.negate())
+				.and(rightBumperDrive.negate()).and(xButtonDrive.negate())
 				.whileTrue(shootTurrets);
-		rightTriggerDriveFull.and(leftBumperDrive).and(xButtonDrive.negate()).whileTrue(shootTurretsWhileIntaking);
+		rightTriggerDriveFull.and(shotTuningModeActive.negate()).and(leftBumperDrive).and(xButtonDrive.negate())
+				.whileTrue(shootTurretsWhileIntaking);
+		rightTriggerDriveFull.and(shotTuningModeActive).and(xButtonDrive.negate()).whileTrue(shotTuningShoot);
 		// Right trigger + right bumper = shoot while agitating intake
-		rightTriggerDriveFull.and(rightBumperDrive).and(leftBumperDrive.negate()).and(xButtonDrive.negate()).whileTrue(
+		rightTriggerDriveFull.and(shotTuningModeActive.negate()).and(rightBumperDrive).and(leftBumperDrive.negate())
+				.and(xButtonDrive.negate()).whileTrue(
 				Commands.runOnce(() -> {
 					shootTimer.restart();
 					resetShootCycle();
@@ -1767,6 +1809,17 @@ public class RobotContainer {
 			shootTimer.stop();
 			shootCycleStartSec = Double.NaN;
 		}));
+	}
+
+	private Command buildShotTuningShootCommand() {
+		return Commands.startEnd(
+				() -> intake.setGoal(Goal.INTAKE_GROUND_SHOOT),
+				() -> {
+					intake.setGoal(Goal.INTAKE_OUTER_IDLE);
+					kickup.setGoal(Kickup.Goal.IDLING);
+					forceKickup = false;
+				},
+				intake).withName("Shot Tuning Shoot");
 	}
 
 	private Command buildAutoShootTurretsCommand() {

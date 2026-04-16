@@ -36,6 +36,9 @@ public abstract class SubsystemChecker extends SubsystemBase {
 	private final ConcurrentLinkedQueue<SelfChecking> hardware = new ConcurrentLinkedQueue<>();
 	private final String statusTable;
 	private boolean checkErrors;
+	private double periodicAvgMs = 0.0;
+	private double periodicMaxMs = 0.0;
+	private long periodicSamples = 0;
 
 	public SubsystemChecker() {
 		System.out.println(this.getName());
@@ -83,6 +86,34 @@ public abstract class SubsystemChecker extends SubsystemBase {
 		Robot.addPeriodic(() -> checkForFaults(false), 0.5);
 		Robot.addPeriodic(() -> publishStatus(false), 1.5);
 	}
+
+	private String getPeriodicTable() {
+		String subsystemName = getName();
+		if (subsystemName == null || subsystemName.isBlank()) {
+			subsystemName = getClass().getSimpleName();
+		}
+		return "SystemStatus/Periodic/" + subsystemName;
+	}
+
+	@Override
+	public final void periodic() {
+		long startTimeNs = System.nanoTime();
+		try {
+			subsystemPeriodic();
+		} finally {
+			double elapsedMs = (System.nanoTime() - startTimeNs) / 1.0e6;
+			periodicSamples++;
+			periodicAvgMs += (elapsedMs - periodicAvgMs) / periodicSamples;
+			periodicMaxMs = Math.max(periodicMaxMs, elapsedMs);
+			String periodicTable = getPeriodicTable();
+			Logger.recordOutput(periodicTable + "/LastMS", elapsedMs);
+			Logger.recordOutput(periodicTable + "/AvgMS", periodicAvgMs);
+			Logger.recordOutput(periodicTable + "/MaxMS", periodicMaxMs);
+			Logger.recordOutput(periodicTable + "/Samples", periodicSamples);
+		}
+	}
+
+	protected void subsystemPeriodic() {}
 
 	//Elastic.Notification currentNotif;
 	Timer lastSentFaultTimer = new Timer();

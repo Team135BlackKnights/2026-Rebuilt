@@ -735,7 +735,7 @@ public class LEDs extends SubsystemChecker {
 	}
 
 	@Override
-	public void periodic() {
+	protected void subsystemPeriodic() {
 		// called every 20ms
 		currentTimeMs = TimeUtil.getLogTimeSeconds() * 1000.0;
 		timeCheck += 20;

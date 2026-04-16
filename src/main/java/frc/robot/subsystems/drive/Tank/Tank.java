@@ -33,12 +33,14 @@ import edu.wpi.first.math.numbers.N3;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Commands;
 import frc.robot.Robot;
+import frc.robot.RobotContainer;
 import frc.robot.subsystems.SubsystemChecker;
 import frc.robot.subsystems.drive.DrivetrainS;
 import frc.robot.utils.drive.DriveConstants;
 import frc.robot.utils.drive.LocalADStarAK;
 import frc.robot.utils.drive.Position;
 import frc.robot.utils.selfCheck.SelfChecking;
+import frc.robot.utils.vision.VisionConstants;
 
 import org.littletonrobotics.junction.AutoLogOutput;
 import org.littletonrobotics.junction.Logger;
@@ -164,14 +166,14 @@ public class Tank extends SubsystemChecker implements DrivetrainS {
 		}
 		// Solve for closed form Kalman gain for continuous Kalman filter with A = 0
 		// and C = I. See wpimath/algorithms.md.
-		Matrix<N3, N3> visionK = new Matrix<>(Nat.N3(), Nat.N3());
-		for (int row = 0; row < 3; ++row) {
-			double stdDev = qStdDevs.get(row, 0);
-			if (stdDev == 0.0) {
-				visionK.set(row, row, 0.0);
-			} else {
-				visionK.set(row, row,
-						stdDev / (stdDev + Math.sqrt(stdDev * r[row])));
+			Matrix<N3, N3> visionK = new Matrix<>(Nat.N3(), Nat.N3());
+			for (int row = 0; row < 3; ++row) {
+				double stdDev = getVisionProcessVariance(row);
+				if (stdDev == 0.0) {
+					visionK.set(row, row, 0.0);
+				} else {
+					visionK.set(row, row,
+							stdDev / (stdDev + Math.sqrt(stdDev * r[row])));
 			}
 		}
 		// difference between estimate and vision pose
@@ -185,8 +187,18 @@ public class Tank extends SubsystemChecker implements DrivetrainS {
 				Rotation2d.fromRadians(kTimesTransform.get(2, 0)));
 		// Recalculate current estimate by applying scaled transform to old estimate
 		// then replaying odometry data
-		estimatedPose = estimateAtTime.plus(scaledTransform)
-				.plus(sampleToOdometryTransform);
+			estimatedPose = estimateAtTime.plus(scaledTransform)
+					.plus(sampleToOdometryTransform);
+		}
+
+	private double getVisionProcessVariance(int row) {
+		double variance = qStdDevs.get(row, 0);
+		if (row != 2 || !RobotContainer.shouldReduceGyroYawTrust()) {
+			return variance;
+		}
+
+		double trustScale = Math.max(1e-3, Math.min(1.0, VisionConstants.shootingGyroYawTrustScale.get()));
+		return variance / trustScale;
 	}
 
 	@Override
@@ -231,12 +243,12 @@ public class Tank extends SubsystemChecker implements DrivetrainS {
 	}
 
 	@Override
-	public void periodic() {
-		long timestamp = System.currentTimeMillis();
+	protected void subsystemPeriodic() {
+		long timestampNs = System.nanoTime();
 		io.updateInputs(inputs);
 		Logger.processInputs("Drive", inputs);
-		Logger.recordOutput("SystemStatus/Periodic/DriveInputsMS", System.currentTimeMillis() - timestamp);
-		timestamp = System.currentTimeMillis();
+		Logger.recordOutput("SystemStatus/Periodic/DriveInputsMS", (System.nanoTime() - timestampNs) / 1.0e6);
+		timestampNs = System.nanoTime();
 		// Update odometry
 		wheelPositions = getPositionsWithTimestamp(getWheelPositions());
 		if (debounce == 1 && isConnected()) {
@@ -275,7 +287,7 @@ public class Tank extends SubsystemChecker implements DrivetrainS {
 				break;
 		}
 		DrivetrainS.super.periodic();
-		Logger.recordOutput("SystemStatus/Periodic/DriveProcessMS", System.currentTimeMillis() - timestamp);
+		Logger.recordOutput("SystemStatus/Periodic/DriveProcessMS", (System.nanoTime() - timestampNs) / 1.0e6);
 
 	}
 

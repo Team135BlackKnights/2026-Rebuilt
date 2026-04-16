@@ -50,7 +50,7 @@ public abstract class GenericRollerSystem<G extends GenericRollerSystem.RollGoal
   }
 
   @Override
-  public void periodic() {
+  protected void subsystemPeriodic() {
     io.updateInputs(inputs);
     Logger.processInputs(name, inputs);
     if (getGoal() != lastGoal) {

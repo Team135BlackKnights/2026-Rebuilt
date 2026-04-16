@@ -271,6 +271,7 @@ public class Robot extends LoggedRobot {
 	 */
 	@Override
 	public void robotPeriodic() {
+		long robotPeriodicStartNs = System.nanoTime();
 		// Every 10 seconds, call the GC. Yes, CPU cycles, BUT it's better than running
 		// out of memory.
 		if (System.currentTimeMillis() % 10000 < 20) {
@@ -343,12 +344,24 @@ public class Robot extends LoggedRobot {
 		// and running subsystem periodic() methods. This must be called from the
 		// robot's periodic
 		// block in order for anything in the Command-based framework to work.
+		long schedulerStartNs = System.nanoTime();
 		CommandScheduler.getInstance().run();
+		Logger.recordOutput("SystemStatus/Periodic/CommandSchedulerMS",
+				(System.nanoTime() - schedulerStartNs) / 1.0e6);
+		long shotTuningIndexerStartNs = System.nanoTime();
 		RobotContainer.updateShotTuningIndexerGoals();
+		Logger.recordOutput("SystemStatus/Periodic/ShotTuningIndexerGoalsMS",
+				(System.nanoTime() - shotTuningIndexerStartNs) / 1.0e6);
+		long virtualSubsystemsStartNs = System.nanoTime();
 		VirtualSubsystem.periodicAll();
+		Logger.recordOutput("SystemStatus/Periodic/VirtualSubsystemsMS",
+				(System.nanoTime() - virtualSubsystemsStartNs) / 1.0e6);
+		long registeredPeriodicStartNs = System.nanoTime();
 		for (PeriodicFunction f : periodicFunctions) {
 			f.runIfReady();
 		}
+		Logger.recordOutput("SystemStatus/Periodic/RegisteredCallbacksMS",
+				(System.nanoTime() - registeredPeriodicStartNs) / 1.0e6);
 		Logger.recordOutput("SystemStatus/MemoryTotal", Runtime.getRuntime().totalMemory());
 		Logger.recordOutput("SystemStatus/MemoryFree", Runtime.getRuntime().freeMemory());
 		matchTime = DriverStation.getMatchTime();
@@ -360,9 +373,12 @@ public class Robot extends LoggedRobot {
 
 		Logger.recordOutput("SystemStatus/BatteryVoltage", batteryVoltage);
 
+		long advantageScopeStartNs = System.nanoTime();
 		updateAdvantageScopePiecesLive();
+		Logger.recordOutput("SystemStatus/Periodic/AdvantageScopeMS",
+				(System.nanoTime() - advantageScopeStartNs) / 1.0e6);
 
-		double runtimeMS = (System.currentTimeMillis() - currentTime);
+		double runtimeMS = (System.nanoTime() - robotPeriodicStartNs) / 1.0e6;
 		// long to double for the recordOutput
 		Logger.recordOutput("SystemStatus/RobotPeriodicMS", runtimeMS);
 		Threads.setCurrentThreadPriority(false, 10); // Return to normal thread priority (so when next loop comes, max

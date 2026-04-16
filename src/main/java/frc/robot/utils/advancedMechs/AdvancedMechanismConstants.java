@@ -70,7 +70,7 @@ public class AdvancedMechanismConstants {
                 public static final double leftAzimuthSmallEncoderOffset = .201904296875;
                 public static final double leftHoodEncoderOffset = 0.2294921875;
                 public static final double leftLaunchPitchOffsetRads = Math.PI / 2.0;
-                public static final double leftLaunchPitchScale = -1.0;
+                public static final double leftLaunchPitchScale = -1.2;
                 public static final double leftLaunchPathLengthMeters = 0.20746;
                 // Right Turret
                 public static final int rightAzimuthID = 29;
@@ -88,8 +88,9 @@ public class AdvancedMechanismConstants {
                 public static final double rightAzimuthSmallEncoderOffset = .084716;
                 public static final double rightHoodEncoderOffset = 0.385986328125;
                 public static final double rightLaunchPitchOffsetRads = Math.PI / 2.0;
-                public static final double rightLaunchPitchScale = -1.0;
+                public static final double rightLaunchPitchScale = -1.2;
                 public static final double rightLaunchPathLengthMeters = 0.20746;
+                public static final double ballisticBallSpeedMetersPerSecPerRPM = 0.001682;
                 public static final double hubScoringPlaneHeightMeters = Units.inchesToMeters(72.0);
                 public static final double hubScoringPlaneLateralToleranceMeters = Units.inchesToMeters(18.0);
         }

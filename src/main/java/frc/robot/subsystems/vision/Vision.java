@@ -96,8 +96,8 @@ public class Vision extends SubsystemChecker {
 	}
 
 	@Override
-	public void periodic() {
-		long timestamp = System.currentTimeMillis();
+	protected void subsystemPeriodic() {
+		long timestampNs = System.nanoTime();
 
 		// Update all cameras
 		for (int i = 0; i < io.length; i++) {
@@ -113,11 +113,13 @@ public class Vision extends SubsystemChecker {
 			Logger.recordOutput("Vision/" + inputs[i].name + "/LatestObjTxy",
 					inputs[i].objDetectTxyObservations[inputs[i].objDetectTxyObservations.length - 1]);
 		}
-		}
+			}
 
-		Logger.recordOutput("SystemStatus/Periodic/VisionInputsMS", System.currentTimeMillis() - timestamp);
+			Logger.recordOutput("SystemStatus/Periodic/VisionInputsMS", (System.nanoTime() - timestampNs) / 1.0e6);
+			Logger.recordOutput("Vision/ShootingYawTrustReductionActive", RobotContainer.shouldReduceGyroYawTrust());
+			Logger.recordOutput("Vision/ShootingGyroYawTrustScale", VisionConstants.shootingGyroYawTrustScale.get());
 
-		// Update recording state for Southmoon cameras
+			// Update recording state for Southmoon cameras
 		boolean shouldRecord = DriverStation.isFMSAttached() || recordingRequest.get();
 		for (int i = 0; i < io.length; i++) {
 			if (cameraTypes[i] == CameraType.Southmoon) {
@@ -125,7 +127,7 @@ public class Vision extends SubsystemChecker {
 			}
 		}
 
-		timestamp = System.currentTimeMillis();
+		timestampNs = System.nanoTime();
 
 		// Initialize logging values
 		List<Pose3d> allTagPoses = new LinkedList<>();
@@ -259,7 +261,7 @@ public class Vision extends SubsystemChecker {
 				allRobotPosesRejected.toArray(new Pose3d[allRobotPosesRejected.size()]));
 		Logger.recordOutput("Vision/FieldTrusts", VisionConstants.FieldConstants.aprilTagOffsets);
 		Logger.recordOutput("SystemStatus/Periodic/VisionProcessMS",
-				System.currentTimeMillis() - timestamp);
+				(System.nanoTime() - timestampNs) / 1.0e6);
 	}
 
 	private void processPhotonVisionCamera(int cameraIndex, List<Pose3d> allTagPoses,

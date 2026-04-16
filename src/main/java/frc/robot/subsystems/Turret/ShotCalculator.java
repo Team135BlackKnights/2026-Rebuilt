@@ -1,7 +1,9 @@
 package frc.robot.subsystems.Turret;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.littletonrobotics.junction.Logger;
 
@@ -19,7 +21,6 @@ import edu.wpi.first.math.util.Units;
 import frc.robot.Constants.TuningConstants;
 import frc.robot.RobotContainer;
 import frc.robot.utils.GeomUtil;
-import frc.robot.utils.LoggableTunedBoolean;
 import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.CompetitionFieldUtils.FieldConstants;
 import frc.robot.utils.advancedMechs.AdvancedMechanismConstants;
@@ -33,7 +34,7 @@ public class ShotCalculator {
   private static final double GRAVITY_METERS_PER_SEC2 = FieldConstants.COEFFICIENT_OF_GRAVITY;
   private static final double HUB_TARGET_MATCH_EPSILON_METERS = 1e-3;
   private static final int HYBRID_HEADING_SOLVE_ITERATIONS = 5;
-  private static final int TABLE_2D_BALLISTIC_TOF_ITERATIONS = 3;
+  private static final int PROFILE_LEAD_ITERATIONS = 3;
   private static final double MAX_FLYWHEEL_SPEED_RAD_PER_SEC =
       Units.rotationsPerMinuteToRadiansPerSecond(AdvancedMechanismConstants.Turret.flywheelMaxRPM);
   private static final Translation2d INVALID_TRANSLATION =
@@ -48,42 +49,38 @@ public class ShotCalculator {
       double timeOfFlightSeconds) {}
 
   private static final CalibrationPoint[] HUB_CALIBRATION_POINTS = {
-      new CalibrationPoint(1.014, 3000.0, 0.26, 0.900),
-      new CalibrationPoint(1.879, 3200.0, 0.33, 1.080),
-      new CalibrationPoint(2.092, 3200.0, 0.40, 1.200),
-      new CalibrationPoint(2.226, 3300.0, 0.42, 1.100),
-      new CalibrationPoint(2.415, 3500.0, 0.45, 1.210),
-      new CalibrationPoint(2.575, 3500.0, 0.45, 1.150),
-      new CalibrationPoint(2.800, 3600.0, 0.48, 1.150),
-      new CalibrationPoint(3.007, 3600.0, 0.49, 1.190),
-      new CalibrationPoint(3.294, 3650.0, 0.51, 1.190),
-      new CalibrationPoint(3.490, 3750.0, 0.56, 1.050),
-      new CalibrationPoint(3.747, 4100.0, 0.58, 1.000)
+      new CalibrationPoint(1.215, 3000.0, Units.degreesToRadians(16.50), 1.040),
+      new CalibrationPoint(1.536, 3000.0, Units.degreesToRadians(18.00), 0.930),
+      new CalibrationPoint(1.791, 3000.0, Units.degreesToRadians(19.00), 1.040),
+      new CalibrationPoint(1.964, 3000.0, Units.degreesToRadians(20.00), 1.100),
+      new CalibrationPoint(2.235, 3200.0, Units.degreesToRadians(24.00), 1.000),
+      new CalibrationPoint(2.515, 3450.0, Units.degreesToRadians(26.00), 1.000),
+      new CalibrationPoint(2.800, 3600.0, 0.48, 1.160),
+      new CalibrationPoint(3.007, 3700.0, 0.50, 1.180),
+      new CalibrationPoint(3.294, 3800.0, 0.53, 1.200),
+      new CalibrationPoint(3.490, 3925.0, 0.56, 1.210),
+      new CalibrationPoint(3.747, 4100.0, 0.58, 1.220)
   };
-
-  private static final LoggableTunedBoolean useHybrid3DLead =
-      new LoggableTunedBoolean(
-          "ShotCalculator/UseHybrid3DLead", true, TuningConstants.isTuningShooter);
 
   private static final double FITTED_BALL_SPEED_MPS_PER_RPM = fitBaseBallSpeedMetersPerSecPerRPM();
 
   private static final LoggableTunedNumber ballisticBallSpeedMetersPerSecPerRPM =
       new LoggableTunedNumber(
           "ShotCalculator/BallSpeedMpsPerRPM",
-          FITTED_BALL_SPEED_MPS_PER_RPM,
+          AdvancedMechanismConstants.Turret.ballisticBallSpeedMetersPerSecPerRPM,
           TuningConstants.isTuningShooter);
   private static final LoggableTunedNumber motionCompensationDeadbandSpeedMetersPerSec =
       new LoggableTunedNumber(
-          "ShotCalculator/MotionCompDeadbandSpeedMps", 0.2, TuningConstants.isTuningShooter);
+          "ShotCalculator/MotionCompDeadbandSpeedMps", 0.1, TuningConstants.isTuningShooter);
   private static final LoggableTunedNumber motionCompensationFullSpeedMetersPerSec =
       new LoggableTunedNumber(
           "ShotCalculator/MotionCompFullSpeedMps", 1.0, TuningConstants.isTuningShooter);
   private static final LoggableTunedNumber motionCompensationRangeGain =
       new LoggableTunedNumber(
-          "ShotCalculator/MotionCompRangeGain", 1.2, TuningConstants.isTuningShooter);
+          "ShotCalculator/MotionCompRangeGain", 0.85, TuningConstants.isTuningShooter);
   private static final LoggableTunedNumber motionCompensationLateralGain =
       new LoggableTunedNumber(
-          "ShotCalculator/MotionCompLateralGain", 4.75, TuningConstants.isTuningShooter);
+          "ShotCalculator/MotionCompLateralGain", 2.4, TuningConstants.isTuningShooter);
 
   private static final TurretBallisticsConfig LEFT_TURRET_CONFIG =
       new TurretBallisticsConfig(
@@ -137,8 +134,32 @@ public class ShotCalculator {
       double hoodAngle,
       double flywheelSpeed) {}
 
+  public record ShotTelemetry(
+      String turretName,
+      String profileName,
+      String selectedModel,
+      double empiricalLeadTimeOfFlightSec,
+      double ballisticTimeOfFlightSec,
+      double launchPitchRad,
+      double launchSpeedMps,
+      double rangeErrorMeters,
+      double lateralErrorMeters) {
+    private static ShotTelemetry empty(String turretName) {
+      return new ShotTelemetry(
+          turretName,
+          "",
+          "",
+          Double.NaN,
+          Double.NaN,
+          Double.NaN,
+          Double.NaN,
+          Double.NaN,
+          Double.NaN);
+    }
+  }
+
   private enum ShotModel {
-    TABLE_2D,
+    PROFILE_LEAD,
     HYBRID_3D_LEAD
   }
 
@@ -467,12 +488,15 @@ public class ShotCalculator {
       USE_HUB_PROFILE_FOR_TRENCH_AND_NEUTRAL ? HUB_PROFILE : DEDICATED_TRENCH_PROFILE;
   public static final ShotProfile NEUTRAL_ZONE_PROFILE =
       USE_HUB_PROFILE_FOR_TRENCH_AND_NEUTRAL ? HUB_PROFILE : DEDICATED_NEUTRAL_ZONE_PROFILE;
+  private static class TurretFilterState {
+    private final LinearFilter turretAngleFilter = LinearFilter.movingAverage((int) (0.1 / 0.02));
+    private final LinearFilter hoodAngleFilter = LinearFilter.movingAverage((int) (0.1 / 0.02));
+    private Rotation2d lastTurretAngle = null;
+    private double lastHoodAngle = Double.NaN;
+  }
 
-  private final LinearFilter turretAngleFilter = LinearFilter.movingAverage((int) (0.1 / 0.02));
-  private final LinearFilter hoodAngleFilter = LinearFilter.movingAverage((int) (0.1 / 0.02));
-
-  private Rotation2d lastTurretAngle = null;
-  private double lastHoodAngle = Double.NaN;
+  private final Map<String, TurretFilterState> turretFilterStates = new HashMap<>();
+  private final Map<String, ShotTelemetry> latestShotTelemetryByTurret = new HashMap<>();
 
   public ShootingParameters getParameters(Translation2d target, Transform2d robotToTurret) {
     return getParameters(target, robotToTurret, HUB_PROFILE, 0.0);
@@ -483,15 +507,7 @@ public class ShotCalculator {
       ShotProfile profile,
       double distanceMeters) {
     if (profile == null) profile = HUB_PROFILE;
-    TurretBallisticsConfig turretConfig = resolveTurretConfig(robotToTurret);
-    StaticShotCommand shotCommand =
-        getStaticShotCommandForDistance(
-            profile,
-            distanceMeters,
-            null,
-            turretConfig,
-            new Pose2d(),
-            new Rotation2d());
+    StaticShotCommand shotCommand = getStaticShotCommandForDistance(profile, distanceMeters, robotToTurret);
     return new FixedDistanceShotParameters(
         shotCommand.hoodAngleRad(),
         shotCommand.flywheelSpeedRadPerSec());
@@ -508,45 +524,64 @@ public class ShotCalculator {
     Rotation2d robotHeading = robotPose.getRotation();
     ChassisSpeeds fieldChassisSpeeds = RobotContainer.drivetrainS.getFieldChassisSpeeds();
     TargetPlaneGeometry targetGeometry = resolveTargetPlaneGeometry(target);
+    TurretBallisticsConfig turretConfig = resolveTurretConfig(robotToTurret);
     Translation2d fieldLinearVelocity =
         new Translation2d(fieldChassisSpeeds.vxMetersPerSecond, fieldChassisSpeeds.vyMetersPerSecond);
-
-    ShotSolution table2dSolution =
-        createTable2dSolution(
-            target,
-            robotToTurret,
-            profile,
-            distanceOffset,
-            robotPose,
-            robotHeading,
-            fieldChassisSpeeds,
-            targetGeometry);
-    ShotSolution hybridSolution =
-        createHybrid3dLeadSolution(
-            target, robotToTurret, profile, distanceOffset, robotPose, robotHeading, fieldChassisSpeeds, targetGeometry);
-
-    boolean wantsHybrid = useHybrid3DLead.get();
-    ShotSolution selectedSolution =
-        wantsHybrid && hybridSolution.valid() ? hybridSolution : table2dSolution;
+    ShotSolution selectedSolution;
+    if (targetGeometry != null) {
+      selectedSolution =
+          createHybrid3dLeadSolution(
+              target,
+              robotToTurret,
+              profile,
+              distanceOffset,
+              turretConfig,
+              robotPose,
+              robotHeading,
+              fieldChassisSpeeds,
+              targetGeometry);
+      if (!selectedSolution.valid()) {
+        selectedSolution =
+            createProfileLeadSolution(
+                target,
+                robotToTurret,
+                profile,
+                distanceOffset,
+                robotPose,
+                robotHeading,
+                fieldChassisSpeeds);
+      }
+    } else {
+      selectedSolution =
+          createProfileLeadSolution(
+              target,
+              robotToTurret,
+              profile,
+              distanceOffset,
+              robotPose,
+              robotHeading,
+              fieldChassisSpeeds);
+    }
 
     Rotation2d turretAngle = selectedSolution.turretAngle();
     double hoodAngle = selectedSolution.hoodAngle();
     double flywheelSpeed = selectedSolution.flywheelSpeed();
-
-    if (lastTurretAngle == null) lastTurretAngle = turretAngle;
-    if (Double.isNaN(lastHoodAngle)) lastHoodAngle = hoodAngle;
+    TurretFilterState filterState =
+        turretFilterStates.computeIfAbsent(turretConfig.name, key -> new TurretFilterState());
+    if (filterState.lastTurretAngle == null) filterState.lastTurretAngle = turretAngle;
+    if (Double.isNaN(filterState.lastHoodAngle)) filterState.lastHoodAngle = hoodAngle;
 
     double turretVel =
-        turretAngleFilter.calculate(turretAngle.minus(lastTurretAngle).getRadians() / 0.02);
-    double hoodVel = hoodAngleFilter.calculate((hoodAngle - lastHoodAngle) / 0.02);
+        filterState.turretAngleFilter.calculate(
+            turretAngle.minus(filterState.lastTurretAngle).getRadians() / 0.02);
+    double hoodVel =
+        filterState.hoodAngleFilter.calculate((hoodAngle - filterState.lastHoodAngle) / 0.02);
 
-    lastTurretAngle = turretAngle;
-    lastHoodAngle = hoodAngle;
+    filterState.lastTurretAngle = turretAngle;
+    filterState.lastHoodAngle = hoodAngle;
 
-    logSolution(profile.name, "Table2D", table2dSolution, targetGeometry);
-    logSolution(profile.name, "Hybrid3DLead", hybridSolution, targetGeometry);
+    logTurretSolution(turretConfig, profile, selectedSolution, targetGeometry);
 
-    Logger.recordOutput("SuperStructure/ShotCalculator/" + profile.name + "/UseHybrid3DLeadRequested", wantsHybrid);
     Logger.recordOutput(
         "SuperStructure/ShotCalculator/" + profile.name + "/SelectedModel",
         selectedSolution.model().toString());
@@ -583,23 +618,36 @@ public class ShotCalculator {
     Logger.recordOutput(
         "SuperStructure/ShotCalculator/" + profile.name + "/MotionCompLateralGain",
         motionCompensationLateralGain.get());
+    Logger.recordOutput(
+        "SuperStructure/ShotCalculator/" + profile.name + "/UsesTargetPlaneGeometry",
+        targetGeometry != null);
+    Logger.recordOutput(
+        "SuperStructure/ShotCalculator/" + profile.name + "/UsingProfileLeadFallback",
+        targetGeometry != null && selectedSolution.model() == ShotModel.PROFILE_LEAD);
 
     return new ShootingParameters(turretAngle, turretVel, hoodAngle, hoodVel, flywheelSpeed);
   }
 
-  public void clearShootingParameters() {}
+  public ShotTelemetry getLatestShotTelemetry(Transform2d robotToTurret) {
+    TurretBallisticsConfig turretConfig = resolveTurretConfig(robotToTurret);
+    return latestShotTelemetryByTurret.getOrDefault(
+        turretConfig.name, ShotTelemetry.empty(turretConfig.name));
+  }
 
-  private ShotSolution createTable2dSolution(
+  public void clearShootingParameters() {
+    turretFilterStates.clear();
+    latestShotTelemetryByTurret.clear();
+  }
+
+  private ShotSolution createProfileLeadSolution(
       Translation2d target,
       Transform2d robotToTurret,
       ShotProfile profile,
       double distanceOffset,
       Pose2d robotPose,
       Rotation2d robotHeading,
-      ChassisSpeeds fieldChassisSpeeds,
-      TargetPlaneGeometry targetGeometry) {
+      ChassisSpeeds fieldChassisSpeeds) {
     Pose2d turretCenterPose = robotPose.transformBy(robotToTurret);
-    TurretBallisticsConfig turretConfig = resolveTurretConfig(robotToTurret);
     double turretToTargetDistance = target.getDistance(turretCenterPose.getTranslation()) + distanceOffset;
     Rotation2d nominalShotHeadingField = target.minus(turretCenterPose.getTranslation()).getAngle();
     Translation2d rawTurretCenterVelocity =
@@ -611,70 +659,29 @@ public class ShotCalculator {
     double leadTimeOfFlightSec = profile.getTimeOfFlight(turretToTargetDistance);
     double lookaheadDist = turretToTargetDistance;
     Pose2d lookaheadPose = turretCenterPose;
-    StaticShotCommand shotCommand =
-        getStaticShotCommandForDistance(
-            profile, turretToTargetDistance, targetGeometry, turretConfig, robotPose, robotHeading);
-    String table2dLogPrefix = "SuperStructure/ShotCalculator/" + profile.name + "/Table2D";
-    Logger.recordOutput(table2dLogPrefix + "/MotionCompScale", turretCenterMotionCompScale);
-    Logger.recordOutput(table2dLogPrefix + "/RawTurretCenterVelocityMps", rawTurretCenterVelocity.getNorm());
-    Logger.recordOutput(table2dLogPrefix + "/ScaledTurretCenterVelocityMps", turretCenterVelocity.getNorm());
-    Logger.recordOutput(table2dLogPrefix + "/MotionCompRangeGain", motionCompensationRangeGain.get());
-    Logger.recordOutput(table2dLogPrefix + "/MotionCompLateralGain", motionCompensationLateralGain.get());
-    if (targetGeometry == null) {
+    StaticShotCommand shotCommand = getStaticShotCommandForDistance(profile, turretToTargetDistance, robotToTurret);
+    for (int i = 0; i < PROFILE_LEAD_ITERATIONS; i++) {
       lookaheadPose =
           new Pose2d(
               turretCenterPose.getTranslation().plus(turretCenterVelocity.times(leadTimeOfFlightSec)),
               turretCenterPose.getRotation());
       lookaheadDist = target.getDistance(lookaheadPose.getTranslation()) + distanceOffset;
-    } else {
-      for (int i = 0; i < TABLE_2D_BALLISTIC_TOF_ITERATIONS; i++) {
-        Double ballisticLeadTimeSec =
-            estimateStationaryBallisticTimeOfFlightSec(
-                targetGeometry,
-                turretConfig,
-                robotPose,
-                robotHeading,
-                shotCommand.hoodAngleRad(),
-                shotCommand.flywheelSpeedRadPerSec());
-        if (ballisticLeadTimeSec == null || !Double.isFinite(ballisticLeadTimeSec)) {
-          break;
-        }
-        leadTimeOfFlightSec = ballisticLeadTimeSec;
-        lookaheadPose =
-            new Pose2d(
-                turretCenterPose.getTranslation().plus(turretCenterVelocity.times(leadTimeOfFlightSec)),
-                turretCenterPose.getRotation());
-        lookaheadDist = target.getDistance(lookaheadPose.getTranslation()) + distanceOffset;
-        shotCommand =
-            getStaticShotCommandForDistance(
-                profile, lookaheadDist, targetGeometry, turretConfig, robotPose, robotHeading);
-      }
+      shotCommand = getStaticShotCommandForDistance(profile, lookaheadDist, robotToTurret);
+      leadTimeOfFlightSec = profile.getTimeOfFlight(lookaheadDist);
     }
-    if (targetGeometry == null) {
-      shotCommand =
-          getStaticShotCommandForDistance(
-              profile, lookaheadDist, targetGeometry, turretConfig, robotPose, robotHeading);
-    }
+    lookaheadPose =
+        new Pose2d(
+            turretCenterPose.getTranslation().plus(turretCenterVelocity.times(leadTimeOfFlightSec)),
+            turretCenterPose.getRotation());
+    lookaheadDist = target.getDistance(lookaheadPose.getTranslation()) + distanceOffset;
+    shotCommand = getStaticShotCommandForDistance(profile, lookaheadDist, robotToTurret);
 
     Rotation2d turretAngle = target.minus(lookaheadPose.getTranslation()).getAngle().minus(robotHeading);
     double hoodAngle = shotCommand.hoodAngleRad();
     double flywheelSpeed = shotCommand.flywheelSpeedRadPerSec();
 
-    BallisticState ballisticState =
-        targetGeometry == null
-            ? BallisticState.invalid()
-            : computeBallisticState(
-                robotHeading.plus(turretAngle),
-                hoodAngle,
-                flywheelSpeed,
-                targetGeometry,
-                turretConfig,
-                robotPose,
-                robotHeading,
-                fieldChassisSpeeds);
-
     return new ShotSolution(
-        ShotModel.TABLE_2D,
+        ShotModel.PROFILE_LEAD,
         true,
         turretAngle,
         hoodAngle,
@@ -682,7 +689,7 @@ public class ShotCalculator {
         leadTimeOfFlightSec,
         lookaheadPose,
         lookaheadDist,
-        ballisticState);
+        BallisticState.invalid());
   }
 
   private ShotSolution createHybrid3dLeadSolution(
@@ -690,26 +697,22 @@ public class ShotCalculator {
       Transform2d robotToTurret,
       ShotProfile profile,
       double distanceOffset,
+      TurretBallisticsConfig turretConfig,
       Pose2d robotPose,
       Rotation2d robotHeading,
       ChassisSpeeds fieldChassisSpeeds,
       TargetPlaneGeometry targetGeometry) {
     Pose2d turretCenterPose = robotPose.transformBy(robotToTurret);
     double staticDistance = target.getDistance(turretCenterPose.getTranslation()) + distanceOffset;
-    TurretBallisticsConfig turretConfig = resolveTurretConfig(robotToTurret);
-    StaticShotCommand shotCommand =
-        getStaticShotCommandForDistance(
-            profile, staticDistance, targetGeometry, turretConfig, robotPose, robotHeading);
-    double hoodAngle = shotCommand.hoodAngleRad();
-    double flywheelSpeed = shotCommand.flywheelSpeedRadPerSec();
 
     if (targetGeometry == null) {
+      StaticShotCommand shotCommand = getStaticShotCommandForDistance(profile, staticDistance, robotToTurret);
       return new ShotSolution(
           ShotModel.HYBRID_3D_LEAD,
           false,
           new Rotation2d(),
-          hoodAngle,
-          flywheelSpeed,
+          shotCommand.hoodAngleRad(),
+          shotCommand.flywheelSpeedRadPerSec(),
           Double.NaN,
           new Pose2d(),
           staticDistance,
@@ -719,6 +722,11 @@ public class ShotCalculator {
     Translation2d launchBasePosition =
         robotPose.getTranslation().plus(turretConfig.launchBaseOffsetRobot().rotateBy(robotHeading));
     Rotation2d shotHeadingField = targetGeometry.center().minus(launchBasePosition).getAngle();
+    double lookaheadDist = staticDistance;
+    double leadTimeOfFlightSec = profile.getTimeOfFlight(lookaheadDist);
+    StaticShotCommand shotCommand = getStaticShotCommandForDistance(profile, lookaheadDist, robotToTurret);
+    double hoodAngle = shotCommand.hoodAngleRad();
+    double flywheelSpeed = shotCommand.flywheelSpeedRadPerSec();
 
     BallisticState ballisticState = BallisticState.invalid();
     for (int i = 0; i < HYBRID_HEADING_SOLVE_ITERATIONS; i++) {
@@ -731,7 +739,8 @@ public class ShotCalculator {
               turretConfig,
               robotPose,
               robotHeading,
-              fieldChassisSpeeds);
+              fieldChassisSpeeds,
+              leadTimeOfFlightSec);
       if (!ballisticState.valid()) {
         return new ShotSolution(
             ShotModel.HYBRID_3D_LEAD,
@@ -745,6 +754,12 @@ public class ShotCalculator {
             ballisticState);
       }
 
+      lookaheadDist =
+          ballisticState.correctedTargetPoint().getDistance(turretCenterPose.getTranslation()) + distanceOffset;
+      leadTimeOfFlightSec = profile.getTimeOfFlight(lookaheadDist);
+      shotCommand = getStaticShotCommandForDistance(profile, lookaheadDist, robotToTurret);
+      hoodAngle = shotCommand.hoodAngleRad();
+      flywheelSpeed = shotCommand.flywheelSpeedRadPerSec();
       Rotation2d updatedHeading =
           ballisticState.correctedTargetPoint().minus(ballisticState.launchBasePosition()).getAngle();
       if (Math.abs(updatedHeading.minus(shotHeadingField).getRadians()) < 1e-6) {
@@ -763,7 +778,8 @@ public class ShotCalculator {
             turretConfig,
             robotPose,
             robotHeading,
-            fieldChassisSpeeds);
+            fieldChassisSpeeds,
+            leadTimeOfFlightSec);
     if (!ballisticState.valid()) {
       return new ShotSolution(
           ShotModel.HYBRID_3D_LEAD,
@@ -785,19 +801,15 @@ public class ShotCalculator {
         turretAngle,
         hoodAngle,
         flywheelSpeed,
-        ballisticState.timeOfFlightSec(),
+        leadTimeOfFlightSec,
         lookaheadPose,
-        staticDistance,
+        lookaheadDist,
         ballisticState);
   }
 
   private StaticShotCommand getStaticShotCommandForDistance(
-      ShotProfile profile,
-      double distanceMeters,
-      TargetPlaneGeometry targetGeometry,
-      TurretBallisticsConfig turretConfig,
-      Pose2d robotPose,
-      Rotation2d robotHeading) {
+      ShotProfile profile, double distanceMeters, Transform2d robotToTurret) {
+    TurretBallisticsConfig turretConfig = resolveTurretConfig(robotToTurret);
     double hoodAngleRad =
         MathUtil.clamp(
             profile.getHoodAngle(distanceMeters).getRadians(),
@@ -806,93 +818,7 @@ public class ShotCalculator {
     double flywheelSpeedRadPerSec =
         MathUtil.clamp(profile.getFlywheelSpeed(distanceMeters), 0.0, MAX_FLYWHEEL_SPEED_RAD_PER_SEC);
 
-    if (targetGeometry != null) {
-      Double requiredFlywheelSpeedRadPerSec =
-          estimateRequiredFlywheelSpeedRadPerSec(
-              targetGeometry, turretConfig, robotPose, robotHeading, hoodAngleRad);
-      if (requiredFlywheelSpeedRadPerSec != null && Double.isFinite(requiredFlywheelSpeedRadPerSec)) {
-        flywheelSpeedRadPerSec =
-            MathUtil.clamp(
-                Math.max(flywheelSpeedRadPerSec, requiredFlywheelSpeedRadPerSec),
-                0.0,
-                MAX_FLYWHEEL_SPEED_RAD_PER_SEC);
-      }
-    }
-
     return new StaticShotCommand(hoodAngleRad, flywheelSpeedRadPerSec);
-  }
-
-  private static Double estimateRequiredFlywheelSpeedRadPerSec(
-      TargetPlaneGeometry targetGeometry,
-      TurretBallisticsConfig turretConfig,
-      Pose2d robotPose,
-      Rotation2d robotHeading,
-      double hoodAngleRad) {
-    double launchPitchRad = turretConfig.launchPitchRad(hoodAngleRad);
-    double launchPathLengthMeters = turretConfig.launchPathLengthMeters;
-    double launchForwardMeters = launchPathLengthMeters * Math.cos(launchPitchRad);
-    double launchHeightMeters =
-        turretConfig.launchBaseHeightMeters() + (launchPathLengthMeters * Math.sin(launchPitchRad));
-
-    Translation2d launchBasePosition =
-        robotPose.getTranslation().plus(turretConfig.launchBaseOffsetRobot().rotateBy(robotHeading));
-    Rotation2d shotHeadingField = targetGeometry.center().minus(launchBasePosition).getAngle();
-    Rotation2d turretRelativeHeading = shotHeadingField.minus(robotHeading);
-    Translation2d muzzleOffsetRobot =
-        turretConfig.launchBaseOffsetRobot().plus(new Translation2d(launchForwardMeters, turretRelativeHeading));
-    Translation2d launchPosition =
-        robotPose.getTranslation().plus(muzzleOffsetRobot.rotateBy(robotHeading));
-
-    double horizontalDistanceMeters = targetGeometry.center().getDistance(launchPosition);
-    double verticalDeltaMeters = targetGeometry.heightMeters() - launchHeightMeters;
-    double cosPitch = Math.cos(launchPitchRad);
-    double denominator =
-        2.0
-            * cosPitch
-            * cosPitch
-            * ((horizontalDistanceMeters * Math.tan(launchPitchRad)) - verticalDeltaMeters);
-
-    if (horizontalDistanceMeters <= 1e-6 || denominator <= 1e-9) {
-      return MAX_FLYWHEEL_SPEED_RAD_PER_SEC;
-    }
-
-    double launchSpeedMps =
-        Math.sqrt(
-            (GRAVITY_METERS_PER_SEC2 * horizontalDistanceMeters * horizontalDistanceMeters)
-                / denominator);
-    double coefficient = ballisticBallSpeedMetersPerSecPerRPM.get();
-    if (!Double.isFinite(coefficient) || coefficient <= 1e-9) {
-      return MAX_FLYWHEEL_SPEED_RAD_PER_SEC;
-    }
-
-    double requiredRpm = launchSpeedMps / coefficient;
-    return Units.rotationsPerMinuteToRadiansPerSecond(requiredRpm);
-  }
-
-  private static Double estimateStationaryBallisticTimeOfFlightSec(
-      TargetPlaneGeometry targetGeometry,
-      TurretBallisticsConfig turretConfig,
-      Pose2d robotPose,
-      Rotation2d robotHeading,
-      double hoodAngleRad,
-      double flywheelSpeedRadPerSec) {
-    Translation2d launchBasePosition =
-        robotPose.getTranslation().plus(turretConfig.launchBaseOffsetRobot().rotateBy(robotHeading));
-    Rotation2d shotHeadingField = targetGeometry.center().minus(launchBasePosition).getAngle();
-    BallisticState ballisticState =
-        computeBallisticState(
-            shotHeadingField,
-            hoodAngleRad,
-            flywheelSpeedRadPerSec,
-            targetGeometry,
-            turretConfig,
-            robotPose,
-            robotHeading,
-            new ChassisSpeeds());
-    if (!ballisticState.valid() || !Double.isFinite(ballisticState.timeOfFlightSec())) {
-      return null;
-    }
-    return ballisticState.timeOfFlightSec();
   }
 
   private static BallisticState computeBallisticState(
@@ -903,7 +829,8 @@ public class ShotCalculator {
       TurretBallisticsConfig turretConfig,
       Pose2d robotPose,
       Rotation2d robotHeading,
-      ChassisSpeeds fieldChassisSpeeds) {
+      ChassisSpeeds fieldChassisSpeeds,
+      double leadTimeOfFlightSec) {
     double launchPitchRad = turretConfig.launchPitchRad(hoodAngleRad);
     double launchPathLengthMeters = turretConfig.launchPathLengthMeters;
     double launchForwardMeters = launchPathLengthMeters * Math.cos(launchPitchRad);
@@ -931,6 +858,10 @@ public class ShotCalculator {
     Translation2d chassisVelocityAtMuzzle =
         applyMotionCompensationGains(
             rawChassisVelocityAtMuzzle.times(motionCompensationScale), shotHeadingField);
+    Translation2d correctedTargetPoint =
+        Double.isFinite(leadTimeOfFlightSec)
+            ? targetGeometry.center().minus(chassisVelocityAtMuzzle.times(Math.max(0.0, leadTimeOfFlightSec)))
+            : INVALID_TRANSLATION;
 
     double[] crossingTimesSec =
         solvePlaneCrossTimesAtHeight(
@@ -939,7 +870,7 @@ public class ShotCalculator {
       return new BallisticState(
           false,
           launchBasePosition,
-          INVALID_TRANSLATION,
+          correctedTargetPoint,
           launchPose,
           launchPitchRad,
           launchSpeedMps,
@@ -959,8 +890,6 @@ public class ShotCalculator {
     double targetDistance = launchToTarget.getNorm();
     BallisticCandidate bestCandidate = null;
     for (double crossingTimeSec : crossingTimesSec) {
-      Translation2d correctedTargetPoint =
-          targetGeometry.center().minus(chassisVelocityAtMuzzle.times(crossingTimeSec));
       Translation2d predictedCrossingPoint =
           launchPosition.plus(totalHorizontalVelocity.times(crossingTimeSec));
 
@@ -1000,7 +929,7 @@ public class ShotCalculator {
       return new BallisticState(
           false,
           launchBasePosition,
-          INVALID_TRANSLATION,
+          correctedTargetPoint,
           launchPose,
           launchPitchRad,
           launchSpeedMps,
@@ -1031,39 +960,46 @@ public class ShotCalculator {
         bestCandidate.withinLateralTolerance());
   }
 
-  private void logSolution(
-      String profileName, String solutionName, ShotSolution solution, TargetPlaneGeometry targetGeometry) {
-    String prefix = "SuperStructure/ShotCalculator/" + profileName + "/" + solutionName;
+  private void logTurretSolution(
+      TurretBallisticsConfig turretConfig,
+      ShotProfile profile,
+      ShotSolution solution,
+      TargetPlaneGeometry targetGeometry) {
+    String prefix = "SuperStructure/ShotCalculator/" + turretConfig.name + "/" + profile.name + "/Selected";
     BallisticState ballisticState = solution.ballisticState();
+    latestShotTelemetryByTurret.put(
+        turretConfig.name,
+        new ShotTelemetry(
+            turretConfig.name,
+            profile.name,
+            solution.model().toString(),
+            solution.leadTimeOfFlightSec(),
+            ballisticState.timeOfFlightSec(),
+            ballisticState.launchPitchRad(),
+            ballisticState.launchSpeedMps(),
+            ballisticState.rangeErrorMeters(),
+            ballisticState.lateralErrorMeters()));
 
+    Logger.recordOutput(prefix + "/Model", solution.model().toString());
     Logger.recordOutput(prefix + "/Valid", solution.valid());
-    Logger.recordOutput(prefix + "/TurretAngleRad", solution.turretAngle().getRadians());
-    Logger.recordOutput(prefix + "/HoodAngleRad", solution.hoodAngle());
-    Logger.recordOutput(prefix + "/FlywheelRadsPerSec", solution.flywheelSpeed());
-    Logger.recordOutput(prefix + "/LeadTimeOfFlightSec", solution.leadTimeOfFlightSec());
-    Logger.recordOutput(prefix + "/LookaheadPose", solution.lookaheadPose());
-    Logger.recordOutput(prefix + "/LookaheadDist", solution.lookaheadDist());
-    Logger.recordOutput(prefix + "/LaunchPose", ballisticState.launchPose());
+    Logger.recordOutput(prefix + "/EmpiricalLeadTimeOfFlightSec", solution.leadTimeOfFlightSec());
+    Logger.recordOutput(prefix + "/BallisticTimeOfFlightSec", ballisticState.timeOfFlightSec());
+    Logger.recordOutput(
+        prefix + "/TimeOfFlightDeltaSec",
+        ballisticState.timeOfFlightSec() - solution.leadTimeOfFlightSec());
     Logger.recordOutput(prefix + "/LaunchPitchDeg", Math.toDegrees(ballisticState.launchPitchRad()));
     Logger.recordOutput(prefix + "/LaunchSpeedMps", ballisticState.launchSpeedMps());
-    Logger.recordOutput(prefix + "/BallisticTimeOfFlightSec", ballisticState.timeOfFlightSec());
-    Logger.recordOutput(prefix + "/MotionCompScale", ballisticState.motionCompensationScale());
-    Logger.recordOutput(prefix + "/RawMuzzleVelocityMps", ballisticState.rawChassisVelocityAtMuzzle().getNorm());
-    Logger.recordOutput(prefix + "/ScaledMuzzleVelocityMps", ballisticState.chassisVelocityAtMuzzle().getNorm());
-    Logger.recordOutput(prefix + "/MotionCompRangeGain", motionCompensationRangeGain.get());
-    Logger.recordOutput(prefix + "/MotionCompLateralGain", motionCompensationLateralGain.get());
+    Logger.recordOutput(prefix + "/RangeErrorM", ballisticState.rangeErrorMeters());
+    Logger.recordOutput(prefix + "/LateralErrorM", ballisticState.lateralErrorMeters());
     Logger.recordOutput(
-        prefix + "/PredictedCrossPose",
+        prefix + "/CorrectedTargetPose",
         targetGeometry == null
             ? INVALID_POSE
             : new Pose3d(
-                ballisticState.predictedCrossingPoint().getX(),
-                ballisticState.predictedCrossingPoint().getY(),
+                ballisticState.correctedTargetPoint().getX(),
+                ballisticState.correctedTargetPoint().getY(),
                 targetGeometry.heightMeters(),
                 new Rotation3d()));
-    Logger.recordOutput(prefix + "/RangeErrorM", ballisticState.rangeErrorMeters());
-    Logger.recordOutput(prefix + "/LateralErrorM", ballisticState.lateralErrorMeters());
-    Logger.recordOutput(prefix + "/WithinLateralTolerance", ballisticState.withinLateralTolerance());
   }
 
   private static TargetPlaneGeometry resolveTargetPlaneGeometry(Translation2d target) {

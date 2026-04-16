@@ -92,7 +92,7 @@ public abstract class GenericSlamElevator<G extends GenericSlamElevator.SlamElev
         io.setBrakeMode(brakeModeEnabled);
     }
 
-    public void periodic() {
+    protected void subsystemPeriodic() {
         io.updateInputs(inputs);
         Logger.processInputs(name, inputs);
 

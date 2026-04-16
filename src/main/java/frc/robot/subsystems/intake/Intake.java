@@ -97,7 +97,7 @@ public class Intake extends SubsystemChecker {
     }
 
     @Override
-    public void periodic() {
+    protected void subsystemPeriodic() {
         armIO.updateInputs(armInputs);
         Logger.processInputs("Intake/Arm", armInputs);
         frontRollers.periodic();

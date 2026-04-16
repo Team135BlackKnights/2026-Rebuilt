@@ -53,9 +53,11 @@ public class VisionConstants {
 	public static final double maxYawError = 90.0;
 	public static final double linearStdDevBaseline = 0.025;
 	public static final double angularStdDevBaseline = 0.04;
+	public static final LoggableTunedNumber shootingGyroYawTrustScale = new LoggableTunedNumber(
+			"Vision/ShootingGyroYawTrustScale", 0.7, TuningConstants.isTuningVision);
 
-	public static final LoggableTunedNumber offsetPoseX = new LoggableTunedNumber("Cams/X",.05,true);
-	public static final LoggableTunedNumber offsetPoseY = new LoggableTunedNumber("Cams/Y",.035,true);
+	public static final LoggableTunedNumber offsetPoseX = new LoggableTunedNumber("Cams/X",.0,true); //was .05
+	public static final LoggableTunedNumber offsetPoseY = new LoggableTunedNumber("Cams/Y",.0,true); //was .035
 	public static final double limeLightAngleOffsetDegrees = -40.0;
 	public static final double limelightLensHeightoffFloorInches = 22.5;
 	public static final String limelightName = "limelight-swerve";
@@ -90,14 +92,14 @@ public class VisionConstants {
 									Units.inchesToMeters(0), //it changes, we don't know
 									new Rotation3d(
 											Math.toRadians(0.0),
-											Math.toRadians(30.237350),
+											Math.toRadians(10.237350),
 											Math.toRadians(0)))) //we don't know, but it faces forward so we assume no yaw/pitch
-					.id("")
-					.location("")  
-					.width(1600)//1600
-					.height(1304)//1304
-					.exposure(35)
-					.saturation(50)
+					.id("SPCA2630 PC Camera:usb_05c8_0a00_003_004")
+					.location("0x02210000 / 3")  
+					.width(1280)//1600
+					.height(800)//1304
+					.exposure(16)
+					.saturation(0)
 					.hue(0)
 					.whiteBalance(4500)
 					.autoWhiteBalance(0)
@@ -114,12 +116,12 @@ public class VisionConstants {
 										Math.toRadians(0.0),
 										Math.toRadians(-25),
 										Math.toRadians(160))))
-					.id("SPCA2630 PC Camera:usb_05c8_0a00_002_003")
-					.location("0x02210000 / 3")
+					.id("Arducam OV9782 USB Camera:usb_0c45_6366_UC852")
+					.location("0x03130000 / 3")
 										.width(1600)
 					.height(1304)
-					.exposure(16)
-					.saturation(0)
+					.exposure(35)
+					.saturation(50)
 					.hue(0)
 					.whiteBalance(4000)
 					.autoWhiteBalance(0)
@@ -136,8 +138,8 @@ public class VisionConstants {
 											Math.toRadians(0.0),
 											Math.toRadians(-25),
 											Math.toRadians(-160))))
-															.id("SPCA2630 PC Camera:usb_05c8_0a00_003_001")
-										.location("0x03200000 / 1")
+															.id("SPCA2630 PC Camera:usb_05c8_0a00_002_003")
+										.location("0x03220000 / 4")
 					.width(1600)
 					.height(1304)
 					.exposure(16)
