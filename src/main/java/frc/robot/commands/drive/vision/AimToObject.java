@@ -32,7 +32,7 @@ import frc.robot.subsystems.vision.VisionIO.CameraID;
 import frc.robot.subsystems.vision.VisionIO.ObjDetectTxyObservation;
 
 public class AimToObject extends Command {
-  private static final double TRENCH_WALL_THICKNESS_METERS = Units.inchesToMeters(40.0);
+  private static final double TRENCH_WALL_THICKNESS_METERS = Units.inchesToMeters(12.0);
   private static final double MAX_SPEED_METERS_PER_SEC = 4.5;
   private static final double MAX_ROTATION_RAD_PER_SEC = 15.0;
   private static final double MAX_ACCEL_METERS_PER_SEC_SQ = 4.0;
@@ -42,6 +42,7 @@ public class AimToObject extends Command {
   private static final double SEARCH_DRIVE_KP = 2.0;
   private static final double SEARCH_MAX_SPEED_METERS_PER_SEC = 2.0;
   private static final double SEARCH_ROTATION_KP = 4.0;
+  private static final double SEARCH_OUT_OF_ZONE_SPIN_RAD_PER_SEC = Units.degreesToRadians(180.0);
   private static final double SEARCH_BIAS_DEG = 15.0;
   private static final double SEARCH_SWEEP_DEG = 20.0;
   private static final double SEARCH_SWEEP_PERIOD_SEC = 1.5;
@@ -304,13 +305,39 @@ public class AimToObject extends Command {
   }
 
   private ChassisSpeeds buildSearchSpeeds(Pose2d robotPose) {
+    Translation2d protectedIntakePoint = getProtectedIntakePoint(robotPose);
+    Translation2d hubCenter = GeomUtil.apply(FieldConstants.Hub.innerCenterPoint, false).toTranslation2d();
+    Translation2d fromHub = protectedIntakePoint.minus(hubCenter);
+    if (fromHub.getNorm() < 1e-6) {
+      fromHub = new Translation2d(1.0, 0.0);
+    }
+    double currentSearchRadiusMeters = fromHub.getNorm();
+    double searchRadiusErrorMeters = Math.abs(currentSearchRadiusMeters - SEARCH_CIRCLE_RADIUS_METERS);
+
     if (!isInAllianceZone(robotPose)) {
-      Logger.recordOutput("Drive/AimToObject/SearchEnabled", false);
-      return new ChassisSpeeds(0.0, 0.0, 0.0);
+      double angularCommand = MathUtil.clamp(
+          Robot.isRed ? -SEARCH_OUT_OF_ZONE_SPIN_RAD_PER_SEC : SEARCH_OUT_OF_ZONE_SPIN_RAD_PER_SEC,
+          -MAX_ROTATION_RAD_PER_SEC,
+          MAX_ROTATION_RAD_PER_SEC);
+
+      Logger.recordOutput("Drive/AimToObject/SearchEnabled", true);
+      Logger.recordOutput("Drive/AimToObject/SearchCircleDriverAssistEnabled", false);
+      Logger.recordOutput("Drive/AimToObject/SearchCircleDriverAssistVx", 0.0);
+      Logger.recordOutput("Drive/AimToObject/SearchCircleDriverAssistVy", 0.0);
+      Logger.recordOutput(
+          "Drive/AimToObject/SearchPose",
+          new Pose2d(robotPose.getTranslation(), robotPose.getRotation()));
+      Logger.recordOutput("Drive/AimToObject/SearchDistance", 0.0);
+      Logger.recordOutput("Drive/AimToObject/SearchRadiusMeters", currentSearchRadiusMeters);
+      Logger.recordOutput("Drive/AimToObject/SearchRadiusErrorMeters", searchRadiusErrorMeters);
+      Logger.recordOutput(
+          "Drive/AimToObject/ProtectedIntakePoint",
+          new Pose2d(protectedIntakePoint, robotPose.getRotation()));
+      Logger.recordOutput("Drive/AimToObject/SearchAngularCommand", angularCommand);
+      return new ChassisSpeeds(0.0, 0.0, angularCommand);
     }
 
     Logger.recordOutput("Drive/AimToObject/SearchEnabled", true);
-    Translation2d protectedIntakePoint = getProtectedIntakePoint(robotPose);
     Pose2d searchPose = getSearchPose(robotPose);
     Translation2d toSearchPose = searchPose.getTranslation().minus(protectedIntakePoint);
     double distanceToSearchPose = toSearchPose.getNorm();
@@ -322,10 +349,6 @@ public class AimToObject extends Command {
       driveVelocity = applyMotionLimits(driveVelocity, protectedIntakePoint, searchPose.getTranslation(), robotPose, 0.0);
     }
 
-    Translation2d hubCenter = GeomUtil.apply(FieldConstants.Hub.innerCenterPoint, false).toTranslation2d();
-    Translation2d fromHub = protectedIntakePoint.minus(hubCenter);
-    double currentSearchRadiusMeters = fromHub.getNorm();
-    double searchRadiusErrorMeters = Math.abs(currentSearchRadiusMeters - SEARCH_CIRCLE_RADIUS_METERS);
     boolean searchCircleDriverAssistEnabled =
         DriverStation.isTeleopEnabled()
             && fromHub.getNorm() > 1e-6
@@ -537,41 +560,33 @@ public class AimToObject extends Command {
 
   private Translation2d pushSearchPointOutOfTrenchWallNoGoZone(Translation2d point) {
     double margin = Math.max(0.0, TRENCH_WALL_NO_GO_MARGIN_METERS);
+    double blueMinX = getBlueAllianceTrenchWallMinX(margin);
+    double blueMaxX = getBlueAllianceTrenchWallMaxX(margin);
+    double redMinX = getRedAllianceTrenchWallMinX(margin);
+    double redMaxX = getRedAllianceTrenchWallMaxX(margin);
+    double bottomMinY = getBottomTrenchWallMinY(margin);
+    double bottomMaxY = getBottomTrenchWallMaxY(margin);
+    double topMinY = getTopTrenchWallMinY(margin);
+    double topMaxY = getTopTrenchWallMaxY(margin);
 
-    double blueOpeningX = FieldConstants.RightTrench.openingTopLeft.getX();
-    double blueMinX = blueOpeningX - FieldConstants.RightTrench.depth - margin;
-    double blueMaxX = blueOpeningX + margin;
-
-    double blueBottomMinY = FieldConstants.RightTrench.openingTopLeft.getY() - margin;
-    double blueBottomMaxY = FieldConstants.RightTrench.openingTopLeft.getY() + TRENCH_WALL_THICKNESS_METERS + margin;
     if (point.getX() >= blueMinX && point.getX() <= blueMaxX
-        && point.getY() >= blueBottomMinY && point.getY() <= blueBottomMaxY) {
-      return new Translation2d(point.getX(), blueBottomMaxY + 1e-3);
+        && point.getY() >= bottomMinY && point.getY() <= bottomMaxY) {
+      return new Translation2d(point.getX(), bottomMaxY + 1e-3);
     }
 
-    double blueTopMinY = FieldConstants.LeftTrench.openingTopRight.getY() - TRENCH_WALL_THICKNESS_METERS - margin;
-    double blueTopMaxY = FieldConstants.LeftTrench.openingTopRight.getY() + margin;
     if (point.getX() >= blueMinX && point.getX() <= blueMaxX
-        && point.getY() >= blueTopMinY && point.getY() <= blueTopMaxY) {
-      return new Translation2d(point.getX(), blueTopMinY - 1e-3);
+        && point.getY() >= topMinY && point.getY() <= topMaxY) {
+      return new Translation2d(point.getX(), topMinY - 1e-3);
     }
 
-    double redOpeningX = FieldConstants.RightTrench.oppOpeningTopLeft.getX();
-    double redMinX = redOpeningX - margin;
-    double redMaxX = redOpeningX + FieldConstants.RightTrench.depth + margin;
-
-    double redBottomMinY = FieldConstants.RightTrench.oppOpeningTopLeft.getY() - margin;
-    double redBottomMaxY = FieldConstants.RightTrench.oppOpeningTopLeft.getY() + TRENCH_WALL_THICKNESS_METERS + margin;
     if (point.getX() >= redMinX && point.getX() <= redMaxX
-        && point.getY() >= redBottomMinY && point.getY() <= redBottomMaxY) {
-      return new Translation2d(point.getX(), redBottomMaxY + 1e-3);
+        && point.getY() >= bottomMinY && point.getY() <= bottomMaxY) {
+      return new Translation2d(point.getX(), bottomMaxY + 1e-3);
     }
 
-    double redTopMinY = FieldConstants.LeftTrench.oppOpeningTopRight.getY() - TRENCH_WALL_THICKNESS_METERS - margin;
-    double redTopMaxY = FieldConstants.LeftTrench.oppOpeningTopRight.getY() + margin;
     if (point.getX() >= redMinX && point.getX() <= redMaxX
-        && point.getY() >= redTopMinY && point.getY() <= redTopMaxY) {
-      return new Translation2d(point.getX(), redTopMinY - 1e-3);
+        && point.getY() >= topMinY && point.getY() <= topMaxY) {
+      return new Translation2d(point.getX(), topMinY - 1e-3);
     }
 
     return point;
@@ -604,15 +619,20 @@ public class AimToObject extends Command {
   private boolean isInsideTrenchWallNoGoZone(Translation2d point) {
     double margin = Math.max(0.0, TRENCH_WALL_NO_GO_MARGIN_METERS);
 
-    double blueOpeningX = FieldConstants.RightTrench.openingTopLeft.getX();
-    double blueMinX = blueOpeningX - FieldConstants.RightTrench.depth - margin;
-    double blueMaxX = blueOpeningX + margin;
+    double blueMinX = getBlueAllianceTrenchWallMinX(margin);
+    double blueMaxX = getBlueAllianceTrenchWallMaxX(margin);
+    double redMinX = getRedAllianceTrenchWallMinX(margin);
+    double redMaxX = getRedAllianceTrenchWallMaxX(margin);
+    double bottomMinY = getBottomTrenchWallMinY(margin);
+    double bottomMaxY = getBottomTrenchWallMaxY(margin);
+    double topMinY = getTopTrenchWallMinY(margin);
+    double topMaxY = getTopTrenchWallMaxY(margin);
 
     boolean insideBlueBottom =
         point.getX() >= blueMinX
             && point.getX() <= blueMaxX
-            && point.getY() >= FieldConstants.RightTrench.openingTopLeft.getY() - margin
-            && point.getY() <= FieldConstants.RightTrench.openingTopLeft.getY() + TRENCH_WALL_THICKNESS_METERS + margin;
+            && point.getY() >= bottomMinY
+            && point.getY() <= bottomMaxY;
     if (insideBlueBottom) {
       return true;
     }
@@ -620,29 +640,57 @@ public class AimToObject extends Command {
     boolean insideBlueTop =
         point.getX() >= blueMinX
             && point.getX() <= blueMaxX
-            && point.getY() >= FieldConstants.LeftTrench.openingTopRight.getY() - TRENCH_WALL_THICKNESS_METERS - margin
-            && point.getY() <= FieldConstants.LeftTrench.openingTopRight.getY() + margin;
+            && point.getY() >= topMinY
+            && point.getY() <= topMaxY;
     if (insideBlueTop) {
       return true;
     }
 
-    double redOpeningX = FieldConstants.RightTrench.oppOpeningTopLeft.getX();
-    double redMinX = redOpeningX - margin;
-    double redMaxX = redOpeningX + FieldConstants.RightTrench.depth + margin;
-
     boolean insideRedBottom =
         point.getX() >= redMinX
             && point.getX() <= redMaxX
-            && point.getY() >= FieldConstants.RightTrench.oppOpeningTopLeft.getY() - margin
-            && point.getY() <= FieldConstants.RightTrench.oppOpeningTopLeft.getY() + TRENCH_WALL_THICKNESS_METERS + margin;
+            && point.getY() >= bottomMinY
+            && point.getY() <= bottomMaxY;
     if (insideRedBottom) {
       return true;
     }
 
     return point.getX() >= redMinX
         && point.getX() <= redMaxX
-        && point.getY() >= FieldConstants.LeftTrench.oppOpeningTopRight.getY() - TRENCH_WALL_THICKNESS_METERS - margin
-        && point.getY() <= FieldConstants.LeftTrench.oppOpeningTopRight.getY() + margin;
+        && point.getY() >= topMinY
+        && point.getY() <= topMaxY;
+  }
+
+  private double getBlueAllianceTrenchWallMinX(double margin) {
+    return FieldConstants.Hub.nearRightCorner.getX() - margin;
+  }
+
+  private double getBlueAllianceTrenchWallMaxX(double margin) {
+    return FieldConstants.Hub.nearRightCorner.getX() + FieldConstants.RightTrench.depth + margin;
+  }
+
+  private double getRedAllianceTrenchWallMinX(double margin) {
+    return FieldConstants.Hub.oppNearRightCorner.getX() - margin;
+  }
+
+  private double getRedAllianceTrenchWallMaxX(double margin) {
+    return FieldConstants.Hub.oppNearRightCorner.getX() + FieldConstants.RightTrench.depth + margin;
+  }
+
+  private double getBottomTrenchWallMinY(double margin) {
+    return FieldConstants.LinesHorizontal.rightTrenchOpenStart - margin;
+  }
+
+  private double getBottomTrenchWallMaxY(double margin) {
+    return FieldConstants.LinesHorizontal.rightBumpEnd + margin;
+  }
+
+  private double getTopTrenchWallMinY(double margin) {
+    return FieldConstants.LinesHorizontal.leftBumpStart - margin;
+  }
+
+  private double getTopTrenchWallMaxY(double margin) {
+    return FieldConstants.LinesHorizontal.leftTrenchOpenEnd + margin;
   }
 
   private Translation2d limitVelocityToAvoidTowerNoGoZone(

@@ -11,6 +11,7 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 
 import org.littletonrobotics.junction.LogFileUtil;
+import org.littletonrobotics.junction.LoggedPowerDistribution;
 import org.littletonrobotics.junction.LoggedRobot;
 import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.networktables.NT4Publisher;
@@ -45,6 +46,7 @@ import edu.wpi.first.math.util.Units;
 import edu.wpi.first.net.PortForwarder;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.IterativeRobotBase;
+import edu.wpi.first.wpilibj.PowerDistribution;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.Threads;
 import edu.wpi.first.wpilibj.Watchdog;
@@ -56,6 +58,7 @@ import frc.robot.Constants.TuningConstants;
 import frc.robot.utils.GeomUtil;
 import frc.robot.utils.LogTimingReceiver;
 import frc.robot.utils.VirtualSubsystem;
+import frc.robot.utils.CompetitionFieldUtils.ReferencePoses.FieldReferencePoseLogger;
 import frc.robot.utils.CompetitionFieldUtils.Simulation.motorsims.SimulatedBattery;
 import frc.robot.utils.Touchboard.PosePlotterUtil;
 import frc.robot.utils.Touchboard.TouchboardAutoPlan;
@@ -88,6 +91,7 @@ public class Robot extends LoggedRobot {
 	public static double matchTime = 0;
 	private double lastMatchTime = 0, previousTime = Logger.getTimestamp(), accumulatedCharge = 0;
 	private static final List<PeriodicFunction> periodicFunctions = new ArrayList<>();
+	public static final PowerDistribution pdh = new PowerDistribution();
 	public static final CANBus rioCanBus = CANBus.roboRIO();
 	public static final CANBus everythingCanBus = new CANBus("everything");
 	public static Pose3d elevatorPose = new Pose3d();
@@ -286,7 +290,7 @@ public class Robot extends LoggedRobot {
 			previousTime = currentTime;
 			// Calculate the charge used since the last update (this is borked by the new
 			// AKit PDP)
-			double chargeUsed = 0 * deltaTime;// pdh.getInstance().pdpTotalCurrent * deltaTime; //pdpTotalCurrent is the
+			double chargeUsed = pdh.getTotalCurrent() * deltaTime;// pdh.getInstance().pdpTotalCurrent * deltaTime; //pdpTotalCurrent is the
 												// total current draw in amps from the PDP AT THIS MOMENT!
 			accumulatedCharge += chargeUsed;
 
@@ -373,6 +377,7 @@ public class Robot extends LoggedRobot {
 
 		long advantageScopeStartNs = System.nanoTime();
 		updateAdvantageScopePiecesLive();
+		FieldReferencePoseLogger.logIfEnabled();
 		Logger.recordOutput("SystemStatus/Periodic/AdvantageScopeMS",
 				(System.nanoTime() - advantageScopeStartNs) / 1.0e6);
 
