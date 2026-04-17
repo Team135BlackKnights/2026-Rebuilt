@@ -235,7 +235,8 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         final boolean wantsZeroing = zeroingRequested || !haveLock;
         final boolean zeroingReady = wantsZeroing
                 && inputs.motorConnected
-                && inputs.referenceEncoderConnected;
+                && inputs.referenceEncoderConnected
+                && magSwitchRecentlySeen;
         final boolean shouldUseMagRangeReference = inputs.referenceEncoderConnected
                 && effectiveMagSwitchDetected;
         final boolean shouldHomeToMag = zeroingReady
