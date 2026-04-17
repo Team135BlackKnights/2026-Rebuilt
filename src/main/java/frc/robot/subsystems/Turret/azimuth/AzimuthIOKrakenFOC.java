@@ -25,6 +25,8 @@ import edu.wpi.first.units.measure.Temperature;
 import edu.wpi.first.units.measure.Voltage;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
+import frc.robot.Constants;
+import frc.robot.Constants.FRCMatchState;
 import frc.robot.Constants.TuningConstants;
 import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.advancedMechs.AdvancedMechanismConstants;
@@ -211,7 +213,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         final int magSwitchTime = data.timeStamp;
         lastMagSwitchContactSec = magSwitchTime;
         final boolean magSwitchRecentlySeen = (nowSec - lastMagSwitchContactSec) <= MAG_SWITCH_RECENT_CONTACT_SEC;
-        final boolean effectiveMagSwitchDetected = magSwitchDetected;
+        final boolean effectiveMagSwitchDetected = (Constants.currentMatchState == FRCMatchState.DISABLED) || (magSwitchDetected && magSwitchRecentlySeen);
         inputs.magSwitchDetected = magSwitchDetected;
         final double currentRotorRots = motorRotorRots.getValueAsDouble();
         inputs.motorPositionRads = Units.rotationsToRadians(currentRotorRots);
@@ -233,7 +235,8 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         final boolean wantsZeroing = zeroingRequested || !haveLock;
         final boolean zeroingReady = wantsZeroing
                 && inputs.motorConnected
-                && inputs.referenceEncoderConnected;
+                && inputs.referenceEncoderConnected
+                && magSwitchRecentlySeen;
         final boolean shouldUseMagRangeReference = inputs.referenceEncoderConnected
                 && effectiveMagSwitchDetected;
         final boolean shouldHomeToMag = zeroingReady
