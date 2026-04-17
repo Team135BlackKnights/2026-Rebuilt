@@ -70,8 +70,8 @@ public class AdvancedMechanismConstants {
                 public static final double leftAzimuthBigEncoderOffset = .2841796875;
                 public static final double leftAzimuthSmallEncoderOffset = .201904296875;
                 public static final double leftHoodEncoderOffset = 0.2294921875;
-                public static final double leftLaunchPitchOffsetRads = 1.8;
-                public static final double leftLaunchPitchScale = -1.4;
+                public static final double leftLaunchPitchOffsetRads = 1.57;
+                public static final double leftLaunchPitchScale = -.9;
                 public static final double leftLaunchPathLengthMeters = 0.20746;
                 // Right Turret
                 public static final int rightAzimuthID = 29;
@@ -88,10 +88,10 @@ public class AdvancedMechanismConstants {
                 public static final double rightAzimuthBigEncoderOffset = .38916;
                 public static final double rightAzimuthSmallEncoderOffset = .084716;
                 public static final double rightHoodEncoderOffset = 0.385986328125;
-                public static final double rightLaunchPitchOffsetRads = 1.8;
-                public static final double rightLaunchPitchScale = -1.35;
+                public static final double rightLaunchPitchOffsetRads = 1.57;
+                public static final double rightLaunchPitchScale = -0.9;
                 public static final double rightLaunchPathLengthMeters = 0.20746;
-                public static final double ballisticBallSpeedMetersPerSecPerRPM = 0.00197;
+                public static final double ballisticBallSpeedMetersPerSecPerRPM = 0.00178;
                 // Use the actual inner scoring opening, not the top catcher height.
                 public static final double hubScoringPlaneHeightMeters = FieldConstants.Hub.innerHeight;
                 public static final double hubScoringPlaneLateralToleranceMeters = Units.inchesToMeters(18.0);

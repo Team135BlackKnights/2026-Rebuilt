@@ -166,10 +166,14 @@ public final class Rebuilt2026FieldObjects {
 		public String getTypeName() {
 			return "Fuel";
 		}
-@Override
+		@Override
     public boolean isGrounded() {
         return true;
     }
+		@Override
+		public boolean isVisibleToSimObjectDetection() {
+			return false;
+		}
 		@Override
 		public Pose3d getPose3d() {
 			double currentTime = Logger.getTimestamp();
@@ -181,12 +185,13 @@ public final class Rebuilt2026FieldObjects {
 			// manipulatorPose3d = new Pose3d(manipulatorPose3d.getTranslation(),
 			// new
 			// Rotation3d(0,-RobotContainer.armS.getDistance(),RobotContainer.drivetrainS.getPose().getRotation().getRadians()));
-			if ((currentTime - launchingTimeStampSec) > (launchingTimeStampSec
-					+ totalTimeSec)) {
+			double elapsedTime = currentTime - launchingTimeStampSec;
+			double safeTotalTime = Math.max(totalTimeSec, 1.0);
+			if (elapsedTime >= safeTotalTime) {
 				return manipulatorPose3d;
 			}
-			double timeProportion = (currentTime - launchingTimeStampSec)
-					/ totalTimeSec;
+			double timeProportion = Math.max(0.0,
+					Math.min(1.0, elapsedTime / safeTotalTime));
 			currentPose = startingPose.interpolate(manipulatorPose3d,
 					timeProportion);
 			return currentPose;

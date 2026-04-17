@@ -108,6 +108,9 @@ public final class Constants {
 		public static final double shotSpeed = 15;
 		public static final double intakeSpeed = 3;
 		public static final double intakeDistance = Units.inchesToMeters(10);
+		public static final double simIntakeWidth = Units.inchesToMeters(28.0);
+		public static final double simIntakeDepth = Units.inchesToMeters(12.0);
+		public static final double simIntakeFrontEdgeFromRobotCenter = DriveConstants.kBumperToBumperLength / 2.0;
 		public static double intakeOffset = Units.inchesToMeters(17.5);
 		public static double ObjectDistanceZeroSpeed = Units.inchesToMeters(12);
 		public static final Transform3d hopperStartTransform = new Transform3d(-Units.inchesToMeters(20),

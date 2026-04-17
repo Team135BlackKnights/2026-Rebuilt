@@ -14,12 +14,12 @@ import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.geometry.Twist2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.wpilibj.DriverStation;
-import edu.wpi.first.wpilibj.Timer;
 import frc.robot.RobotContainer;
 import frc.robot.subsystems.drive.FastSwerve.Swerve;
 import frc.robot.subsystems.drive.FastSwerve.Swerve.TxTyPoseRecord;
 import frc.robot.utils.CompetitionFieldUtils.FieldConstants;
 import frc.robot.utils.drive.DriveConstants;
+import frc.robot.utils.maths.TimeUtil;
 import frc.robot.utils.vision.VisionConstants;
 
 public class GeomUtil {
@@ -53,7 +53,7 @@ public class GeomUtil {
 		final double MAX_AVOID_SPEED = DriveConstants.kMaxSpeedMetersPerSecond * 10;
 
 		Pose2d ourPose = RobotContainer.drivetrainS.getLookAheadPose();
-		double now = Timer.getFPGATimestamp();
+		double now = TimeUtil.getLogTimeSeconds();
 
 		double avoidRobotX = 0.0;
 		double avoidRobotY = 0.0;

@@ -188,7 +188,7 @@ public class Turret extends SubsystemChecker {
       hood_kS = new LoggableTunedNumber(name + "/Hood/kS", 0.0, TuningConstants.isTuningShooter);
       hood_kV = new LoggableTunedNumber(name + "/Hood/kV", 0.0, TuningConstants.isTuningShooter);
       offsetRPM = new LoggableTunedNumber(name + "/Flywheel/offset", 0, TuningConstants.isTuningShooter);
-      offsetHoodAngle = new LoggableTunedNumber(name + "/Hood/DONOTTOUCH", 0, TuningConstants.isTuningShooter);
+      offsetHoodAngle = new LoggableTunedNumber(name + "/Hood/DONOTTOUCH", -1, TuningConstants.isTuningShooter);
 
     } else {
       // right turret

@@ -97,6 +97,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
 import org.littletonrobotics.junction.AutoLogOutput;
+import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.networktables.LoggedDashboardChooser;
 
 import com.pathplanner.lib.config.PIDConstants;
@@ -319,6 +320,7 @@ public class RobotContainer {
 	public static boolean grabbingAlgae = false; // auto updates from Pathfinder, DON'T TOUCH!
 	int currentUpdate = 0;
 	public static Pose2d startingPoseCache = new Pose2d();
+
 	// Adjustable PathFollowing
 	public static LoggableTunedNumber pathFollowingMaxLinearSpeed = new LoggableTunedNumber(
 			"PathFollowing/MaxLinearSpeed", 5.5,
@@ -1307,7 +1309,8 @@ public class RobotContainer {
 						drivetrainS,
 						intake,
 						CameraID.INTAKE_CAM),
-				Set.of(drivetrainS, intake));
+				Set.of(drivetrainS, intake))
+				.withName("TeleAutoIntake");
 		// Auto factory setup
 		touchboardAutoFactory = new TouchboardAutoFactory(pathFinder, drivetrainS,
 				() -> new AutoIntake(drivetrainS, intake, CameraID.INTAKE_CAM), Set.of(intake, drivetrainS),
@@ -1406,7 +1409,8 @@ public class RobotContainer {
 		leftBumperDrive.and(rightTriggerDriveFull.negate()).and(manipLeftTrigger.negate()).whileTrue(
 				Commands.run(() -> intake.setGoal(Goal.INTAKE_GROUND))
 						.finallyDo(() -> intake.setGoal(Goal.INTAKE_OUTER_IDLE)));
-		rightBumperDrive.and(rightTriggerDriveFull.negate()).and(manipLeftTrigger.negate()).whileTrue(teleAutoIntake);
+		rightBumperDrive.and(rightTriggerDriveFull.negate()).and(manipLeftTrigger.negate())
+				.whileTrue(teleAutoIntake.repeatedly());
 		// leftBumperDrive.onTrue(Commands.runOnce(()));
 		xButtonDrive.and(manipLeftTrigger.negate()).whileTrue(Commands.either(
 				Commands.run(() -> {

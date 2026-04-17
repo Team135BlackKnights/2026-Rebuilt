@@ -38,6 +38,7 @@ import frc.robot.subsystems.drive.FastSwerve.Setpoints.SwerveSetpointGenerator.S
 import frc.robot.utils.GeomUtil;
 import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.drive.DriveConstants;
+import frc.robot.utils.maths.TimeUtil;
 import frc.robot.utils.drive.EqualsUtil;
 import frc.robot.utils.drive.DriveConstants.SwerveModuleType;
 import frc.robot.utils.drive.Sensors.GyroIO;
@@ -647,7 +648,7 @@ public class Swerve extends SubsystemChecker implements DrivetrainS {
 		for (Map.Entry<String, TxTyPoseRecord> entry : txTyPoses.entrySet()) {
 			String name = entry.getKey();
 			TxTyPoseRecord record = entry.getValue();
-			double age = Timer.getFPGATimestamp() - record.timestamp;
+			double age = TimeUtil.getLogTimeSeconds() - record.timestamp;
 			boolean isStale = age > txTyObservationStaleSecs;
 			Logger.recordOutput("Vision/" + name + "/Age", age);
 			Logger.recordOutput("Vision/" + name + "/IsStale", isStale);
@@ -1131,7 +1132,7 @@ public class Swerve extends SubsystemChecker implements DrivetrainS {
 		}
 		var data = txTyPoses.get(tagId);
 		// Check if stale
-		if (Timer.getTimestamp() - data.timestamp() >= txTyObservationStaleSecs) {
+		if (TimeUtil.getLogTimeSeconds() - data.timestamp() >= txTyObservationStaleSecs) {
 			return Optional.empty();
 		}
 		// Get odometry based pose at timestamp

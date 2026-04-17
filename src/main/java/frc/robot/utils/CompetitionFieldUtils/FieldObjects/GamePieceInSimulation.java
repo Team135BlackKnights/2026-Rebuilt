@@ -284,4 +284,8 @@ public GamePieceInSimulation withTouchGroundHeight(double heightAsTouchGround) {
 	public boolean shouldBecomeGamePieceOnFieldAfterTouchGround() {
 		return becomesGamePieceOnGroundAfterTouchGround;
 	}
+
+	public boolean isVisibleToSimObjectDetection() {
+		return isGrounded();
+	}
 }

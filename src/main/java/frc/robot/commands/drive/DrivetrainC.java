@@ -34,6 +34,7 @@ import frc.robot.utils.GeomUtil;
 import frc.robot.utils.drive.DriveConstants;
 import frc.robot.utils.drive.TunedJoystick;
 import frc.robot.utils.drive.TunedJoystick.ResponseCurve;
+import frc.robot.utils.maths.TimeUtil;
 import frc.robot.utils.vision.VisionConstants;
 import frc.robot.utils.GeomUtil.ApproachDirection;
 
@@ -68,9 +69,8 @@ public class DrivetrainC extends Command {
 	private Function<Double, Double> translationalCurve = ResponseCurve.QUADRATIC;
 	private Function<Double, Double> rotationalCurve = ResponseCurve.SOFT;
 
-	private Command activeAimCommand = null; 
-	private boolean aimInitialized = false; 
-	private boolean lastAutoIntake = false; 
+	private Command activeAimCommand = null;
+	private boolean aimInitialized = false;
 
 	public DrivetrainC(DrivetrainS drivetrainS) {
 		this.drivetrainS = drivetrainS;
@@ -86,7 +86,7 @@ public class DrivetrainC extends Command {
 		if (preferredFuelObservation == null || preferredFuelObservation.observation() == null) {
 			return false;
 		}
-		double age = Timer.getFPGATimestamp() - preferredFuelObservation.observation().timestamp();
+		double age = TimeUtil.getLogTimeSeconds() - preferredFuelObservation.observation().timestamp();
 		return age <= MAX_FUEL_AGE_SECONDS;
 	}
 
@@ -372,9 +372,6 @@ public class DrivetrainC extends Command {
 				aimInitialized = false;
 			}
 		}
-		// record last state for next tick
-		lastAutoIntake = DriveConstants.autoIntake;
-
 		if (RobotContainer.userDrive) {
 			if (DriveConstants.driveType == DriveConstants.DriveTrainType.TANK) {
 				turningSpeed = turningSpeed

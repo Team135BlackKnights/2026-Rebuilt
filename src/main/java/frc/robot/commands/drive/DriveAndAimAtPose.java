@@ -39,7 +39,7 @@ public class DriveAndAimAtPose extends Command {
 	driveTolerance = new LoggableTunedNumber("AimToPose/driveTolerance", .015, TuningConstants.isTuningMacros), 
 	maxThetaSpeed = new LoggableTunedNumber("AimToPose/maxThetaSpeed", Math.PI*2, TuningConstants.isTuningMacros), 
 	thetaKp = new LoggableTunedNumber("AimToPose/thetaKp", 5, TuningConstants.isTuningMacros), 
-	thetaKd = new LoggableTunedNumber("AimToPose/thetaKp", 5, TuningConstants.isTuningMacros), 
+	thetaKd = new LoggableTunedNumber("AimToPose/thetaKd", 5, TuningConstants.isTuningMacros), 
 	thetaTolerance = new LoggableTunedNumber("AimToPose/thetaTolerance", Units.degreesToRadians(1), TuningConstants.isTuningMacros), 
 	ffMaxRadius = new LoggableTunedNumber("AimToPose/ffMaxRadius", 2, TuningConstants.isTuningMacros), 
 	ffMinRadius = new LoggableTunedNumber("AimToPose/ffMinRadius", .125, TuningConstants.isTuningMacros); 

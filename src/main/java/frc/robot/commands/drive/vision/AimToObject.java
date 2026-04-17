@@ -17,6 +17,7 @@ import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Robot;
 import frc.robot.RobotContainer;
+import frc.robot.Constants.GeometryConstants;
 import frc.robot.Constants.TuningConstants;
 import frc.robot.subsystems.drive.DrivetrainS;
 import frc.robot.subsystems.vision.Vision.PreferredObjDetectObservation;
@@ -24,13 +25,40 @@ import frc.robot.utils.GeomUtil;
 import frc.robot.utils.CompetitionFieldUtils.FieldConstants;
 import frc.robot.utils.LoggableTunedNumber;
 import frc.robot.utils.drive.DriveConstants;
+import frc.robot.utils.maths.TimeUtil;
 import frc.robot.utils.vision.VisionConstants;
 
 import frc.robot.subsystems.vision.VisionIO.CameraID;
 import frc.robot.subsystems.vision.VisionIO.ObjDetectTxyObservation;
 
 public class AimToObject extends Command {
-  private static final double TRENCH_WALL_THICKNESS_METERS = Units.inchesToMeters(12.0);
+  private static final double TRENCH_WALL_THICKNESS_METERS = Units.inchesToMeters(40.0);
+  private static final double MAX_SPEED_METERS_PER_SEC = 4.5;
+  private static final double MAX_ROTATION_RAD_PER_SEC = 15.0;
+  private static final double MAX_ACCEL_METERS_PER_SEC_SQ = 4.0;
+  private static final double MAX_ANGULAR_ACCEL_RAD_PER_SEC_SQ = 8.0;
+  private static final double SEARCH_CIRCLE_RADIUS_METERS = 2.5;
+  private static final double SEARCH_POSE_TOLERANCE_METERS = 0.2;
+  private static final double SEARCH_DRIVE_KP = 2.0;
+  private static final double SEARCH_MAX_SPEED_METERS_PER_SEC = 2.0;
+  private static final double SEARCH_ROTATION_KP = 4.0;
+  private static final double SEARCH_BIAS_DEG = 15.0;
+  private static final double SEARCH_SWEEP_DEG = 20.0;
+  private static final double SEARCH_SWEEP_PERIOD_SEC = 1.5;
+  private static final double SEARCH_FIELD_EDGE_MARGIN_METERS = 0.35;
+  private static final double AUTO_CENTER_LINE_MARGIN_METERS = 0.15;
+  private static final double SEARCH_CIRCLE_DRIVER_ASSIST_DISTANCE_METERS = 0.25;
+  private static final double TOWER_NO_GO_MARGIN_METERS = 0.3;
+  private static final double TRENCH_WALL_NO_GO_MARGIN_METERS = 0.15;
+  private static final double INTAKE_SAFETY_MARGIN_METERS = 0.0;
+  private static final double TX_TOLERANCE_RAD = 0.05;
+  private static final double DISTANCE_TOLERANCE_METERS = Units.inchesToMeters(.05);
+  private static final double STALE_TIME_SEC = 0.5;
+  private static final double VELOCITY_COMPARE_EPSILON = 1e-4;
+  private static final double BLIND_INTAKE_COMMIT_SEC = 0.06;
+  private static final double BLIND_INTAKE_COMMIT_MAX_TARGET_DISTANCE_METERS = 0.25;
+  private static final double BLIND_INTAKE_COMMIT_MIN_FORWARD_SPEED_METERS_PER_SEC = .5;
+  private static final double BLIND_INTAKE_COMMIT_MAX_FORWARD_SPEED_METERS_PER_SEC = 2.0;
 
   private final DrivetrainS drive;
   private final CameraID cam;
@@ -41,63 +69,12 @@ public class AimToObject extends Command {
       TuningConstants.isTuningMacros);
   private final LoggableTunedNumber kDTx = new LoggableTunedNumber("AimToObjectTx/kD", 0.6,
       TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber kPDistance = new LoggableTunedNumber("AimToObjectTx/kPDistance", 3.5,
+  private final LoggableTunedNumber kPDistance = new LoggableTunedNumber("AimToObjectTx/kPDistance", 3,
       TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber maxSpeed = new LoggableTunedNumber("AimToObjectTx/maxSpeedMetersPerSec", 4.5,
-      TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber maxRotation = new LoggableTunedNumber("AimToObjectTx/MaxRotationRadPerSec", 15,
-      TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber maxAccelMetersPerSecSq =
-      new LoggableTunedNumber("AimToObjectTx/MaxAccelMetersPerSecSq", 2.0, TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber maxAngularAccelRadPerSecSq =
-      new LoggableTunedNumber("AimToObjectTx/MaxAngularAccelRadPerSecSq", 8.0, TuningConstants.isTuningMacros);
   private final LoggableTunedNumber wallSlowDistanceMeters =
       new LoggableTunedNumber("AimToObjectTx/WallSlowDistanceMeters", 0.9, TuningConstants.isTuningMacros);
   private final LoggableTunedNumber wallMaxApproachSpeedMetersPerSec =
-      new LoggableTunedNumber("AimToObjectTx/WallMaxApproachSpeedMetersPerSec", 1.2, TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber searchCircleRadiusMeters =
-      new LoggableTunedNumber("AimToObjectTx/SearchCircleRadiusMeters", 2.5, TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber searchPoseToleranceMeters =
-      new LoggableTunedNumber("AimToObjectTx/SearchPoseToleranceMeters", 0.2, TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber searchDriveKp =
-      new LoggableTunedNumber("AimToObjectTx/SearchDriveKp", 2.0, TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber searchMaxSpeedMetersPerSec =
-      new LoggableTunedNumber("AimToObjectTx/SearchMaxSpeedMetersPerSec", 2.0, TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber searchRotationKp =
-      new LoggableTunedNumber("AimToObjectTx/SearchRotationKp", 4.0, TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber searchBiasDeg =
-      new LoggableTunedNumber("AimToObjectTx/SearchBiasDeg", 15.0, TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber searchSweepDeg =
-      new LoggableTunedNumber("AimToObjectTx/SearchSweepDeg", 20.0, TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber searchSweepPeriodSec =
-      new LoggableTunedNumber("AimToObjectTx/SearchSweepPeriodSec", 1.5, TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber searchFieldEdgeMarginMeters =
-      new LoggableTunedNumber("AimToObjectTx/SearchFieldEdgeMarginMeters", 0.35, TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber autoCenterLineMarginMeters =
-      new LoggableTunedNumber("AimToObjectTx/AutoCenterLineMarginMeters", 0.15, TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber searchCircleDriverAssistDistanceMeters =
-      new LoggableTunedNumber("AimToObjectTx/SearchCircleDriverAssistDistanceMeters", 0.25,
-          TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber towerNoGoMarginMeters =
-      new LoggableTunedNumber("AimToObjectTx/TowerNoGoMarginMeters", 0.3, TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber trenchWallNoGoMarginMeters =
-      new LoggableTunedNumber("AimToObjectTx/TrenchWallNoGoMarginMeters", 0.15, TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber robotCenterToFrontMeters =
-      new LoggableTunedNumber("AimToObjectTx/RobotCenterToFrontMeters", Units.inchesToMeters(15.0),
-          TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber intakeExtensionBeyondFrontMeters =
-      new LoggableTunedNumber("AimToObjectTx/IntakeExtensionBeyondFrontMeters", Units.inchesToMeters(12.0),
-          TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber intakeSafetyMarginMeters =
-      new LoggableTunedNumber("AimToObjectTx/IntakeSafetyMarginMeters", 0.0, TuningConstants.isTuningMacros);
-
-  // tolerances
-  private final LoggableTunedNumber txTolerance = new LoggableTunedNumber("AimToObjectTx/txToleranceRad", .05,
-      TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber distanceTolerance = new LoggableTunedNumber("AimToObjectTx/distanceToleranceMeters",
-      Units.inchesToMeters(3), TuningConstants.isTuningMacros);
-  private final LoggableTunedNumber staleTime = new LoggableTunedNumber("AimToObjectTx/staleTime", .5,
-      TuningConstants.isTuningMacros);
+      new LoggableTunedNumber("AimToObjectTx/WallMaxApproachSpeedMetersPerSec", 1, TuningConstants.isTuningMacros);
 
   private double prevTxRadians = 0.0; // raw tx (negative=left)
   private double latestTxRadians = 0.0; // raw tx (negative=left)
@@ -108,12 +85,18 @@ public class AimToObject extends Command {
   private boolean hasValidObservation = false;
   private boolean isFinished = false;
   private double searchStartTimestampSec = 0.0;
+  private double lastValidObservationTimestampSec = Double.NEGATIVE_INFINITY;
   private Translation2d latestObjectFieldTarget = Translation2d.kZero;
   private boolean latestObservationBlockedByTower = false;
-  private SlewRateLimiter xVelocityLimiter = new SlewRateLimiter(maxAccelMetersPerSecSq.get());
-  private SlewRateLimiter yVelocityLimiter = new SlewRateLimiter(maxAccelMetersPerSecSq.get());
-  private SlewRateLimiter angularVelocityLimiter = new SlewRateLimiter(maxAngularAccelRadPerSecSq.get());
+  private SlewRateLimiter xVelocityLimiter = new SlewRateLimiter(MAX_ACCEL_METERS_PER_SEC_SQ);
+  private SlewRateLimiter yVelocityLimiter = new SlewRateLimiter(MAX_ACCEL_METERS_PER_SEC_SQ);
+  private SlewRateLimiter angularVelocityLimiter = new SlewRateLimiter(MAX_ANGULAR_ACCEL_RAD_PER_SEC_SQ);
   private ChassisSpeeds lastLimitedSpeeds = new ChassisSpeeds();
+  private boolean slowingDueToWall = false;
+  private boolean stoppedDueToTowerNoGo = false;
+  private boolean stoppedDueToTrenchWallNoGo = false;
+  private boolean blindIntakeCommitActive = false;
+  private String motionLimitReason = "None";
 
   /**
    * Aim at the preferred detected object cluster in a given camera.
@@ -132,6 +115,7 @@ public class AimToObject extends Command {
     this.cam = cam;
     this.desiredClassId = desiredClassId;
     this.desiredDistanceMeters = desiredDistanceMeters;
+    addRequirements(drive);
   }
 
   @Override
@@ -140,6 +124,7 @@ public class AimToObject extends Command {
     prevTxRadians = 0.0;
     isFinished = false;
     searchStartTimestampSec = Timer.getFPGATimestamp();
+    lastValidObservationTimestampSec = Double.NEGATIVE_INFINITY;
     configureAccelerationLimiters(drive.getChassisSpeeds());
   }
 
@@ -157,13 +142,16 @@ public class AimToObject extends Command {
     Logger.recordOutput("Drive/AimToObject/SearchAngularCommand", Double.NaN);
     Logger.recordOutput("Drive/AimToObject/SearchRadiusMeters", Double.NaN);
     Logger.recordOutput("Drive/AimToObject/SearchRadiusErrorMeters", Double.NaN);
+    resetMotionLimitDiagnostics();
+    blindIntakeCommitActive = false;
     Pose2d robotPose = drive.getPose();
     Optional<PreferredObjDetectObservation> preferredObsOpt =
         RobotContainer.visionS.getPreferredObjDetectObservation(cam, desiredClassId);
 
     if (preferredObsOpt.isPresent()) {
       ObjDetectTxyObservation obs = preferredObsOpt.get().observation();
-      boolean freshOk = (Timer.getTimestamp() - obs.timestamp()) < staleTime.get();
+      double observationAgeSec = TimeUtil.getLogTimeSeconds() - obs.timestamp();
+      boolean freshOk = observationAgeSec < STALE_TIME_SEC;
       if (freshOk) {
         latestTxRadians = obs.tx().getRadians();
         latestTyRadians = obs.ty().getRadians();
@@ -186,13 +174,16 @@ public class AimToObject extends Command {
           latestObservationBlockedByTower = true;
         } else {
           hasValidObservation = true;
+          lastValidObservationTimestampSec = TimeUtil.getLogTimeSeconds();
           latestObjectFieldTarget = limitAutoIntakeTargetToAllianceSide(projectedObjectField);
         }
       }
     }
     ChassisSpeeds rawDesiredSpeeds = hasValidObservation
         ? buildObjectTrackingSpeeds(robotPose, latestObjectFieldTarget)
-        : buildSearchSpeeds(robotPose);
+        : shouldBlindIntakeCommit(robotPose)
+            ? buildBlindIntakeCommitSpeeds(robotPose)
+            : buildSearchSpeeds(robotPose);
     ChassisSpeeds desiredSpeeds = limitCommandAcceleration(rawDesiredSpeeds);
 
     drive.setChassisSpeeds(desiredSpeeds);
@@ -210,12 +201,17 @@ public class AimToObject extends Command {
     Logger.recordOutput("Drive/AimToObject/LimitedCommandVx", desiredSpeeds.vxMetersPerSecond);
     Logger.recordOutput("Drive/AimToObject/LimitedCommandVy", desiredSpeeds.vyMetersPerSecond);
     Logger.recordOutput("Drive/AimToObject/LimitedCommandOmega", desiredSpeeds.omegaRadiansPerSecond);
+    Logger.recordOutput("Drive/AimToObject/SlowingDueToWall", slowingDueToWall);
+    Logger.recordOutput("Drive/AimToObject/StoppedDueToTowerNoGo", stoppedDueToTowerNoGo);
+    Logger.recordOutput("Drive/AimToObject/StoppedDueToTrenchWallNoGo", stoppedDueToTrenchWallNoGo);
+    Logger.recordOutput("Drive/AimToObject/BlindIntakeCommitActive", blindIntakeCommitActive);
+    Logger.recordOutput("Drive/AimToObject/MotionLimitReason", motionLimitReason);
   }
 
   private void configureAccelerationLimiters(ChassisSpeeds seedSpeeds) {
-    xVelocityLimiter = new SlewRateLimiter(maxAccelMetersPerSecSq.get());
-    yVelocityLimiter = new SlewRateLimiter(maxAccelMetersPerSecSq.get());
-    angularVelocityLimiter = new SlewRateLimiter(maxAngularAccelRadPerSecSq.get());
+    xVelocityLimiter = new SlewRateLimiter(MAX_ACCEL_METERS_PER_SEC_SQ);
+    yVelocityLimiter = new SlewRateLimiter(MAX_ACCEL_METERS_PER_SEC_SQ);
+    angularVelocityLimiter = new SlewRateLimiter(MAX_ANGULAR_ACCEL_RAD_PER_SEC_SQ);
     xVelocityLimiter.reset(seedSpeeds.vxMetersPerSecond);
     yVelocityLimiter.reset(seedSpeeds.vyMetersPerSecond);
     angularVelocityLimiter.reset(seedSpeeds.omegaRadiansPerSecond);
@@ -223,12 +219,6 @@ public class AimToObject extends Command {
   }
 
   private ChassisSpeeds limitCommandAcceleration(ChassisSpeeds desiredSpeeds) {
-    LoggableTunedNumber.ifChanged(
-        hashCode(),
-        () -> configureAccelerationLimiters(lastLimitedSpeeds),
-        maxAccelMetersPerSecSq,
-        maxAngularAccelRadPerSecSq);
-
     lastLimitedSpeeds = new ChassisSpeeds(
         xVelocityLimiter.calculate(desiredSpeeds.vxMetersPerSecond),
         yVelocityLimiter.calculate(desiredSpeeds.vyMetersPerSecond),
@@ -237,40 +227,28 @@ public class AimToObject extends Command {
   }
 
   private ChassisSpeeds buildObjectTrackingSpeeds(Pose2d robotPose, Translation2d objectField) {
-    double angularCommand = 0.0;
+    double angularCommand = buildAngularCommandFromLatestObservation();
     double forwardCommand = 0.0;
-    double dTx = latestTxRadians - prevTxRadians;
-
-    if (Math.abs(latestTxRadians) > txTolerance.get()) {
-      angularCommand = -(kPTx.get() * latestTxRadians + kDTx.get() * dTx);
-      angularCommand = MathUtil.clamp(angularCommand, -maxRotation.get(), maxRotation.get());
-    }
 
     double distanceError = latestDistanceMeters - desiredDistanceMeters;
-    if (desiredDistanceMeters <= 1e-6 || Math.abs(distanceError) > distanceTolerance.get()) {
+    if (desiredDistanceMeters <= 1e-6 || Math.abs(distanceError) > DISTANCE_TOLERANCE_METERS) {
       forwardCommand = kPDistance.get() * distanceError;
-      forwardCommand = MathUtil.clamp(forwardCommand, -maxSpeed.get(), maxSpeed.get());
+      forwardCommand = MathUtil.clamp(forwardCommand, -MAX_SPEED_METERS_PER_SEC, MAX_SPEED_METERS_PER_SEC);
     }
 
     Translation2d protectedIntakePoint = getProtectedIntakePoint(robotPose);
-    Translation2d robotToObject = objectField.minus(protectedIntakePoint);
+    Translation2d captureIntakePoint = getCaptureIntakePoint(robotPose, objectField);
+    Translation2d robotToObject = getCaptureErrorVector(robotPose, objectField);
     Translation2d driveVelocity = Translation2d.kZero;
     if (robotToObject.getNorm() > 1e-6 && Math.abs(forwardCommand) > 1e-6) {
       driveVelocity = robotToObject.div(robotToObject.getNorm()).times(forwardCommand);
-      driveVelocity = GeomUtil.limitVelocityTowardFieldEdge(
-          driveVelocity,
-          protectedIntakePoint,
-          objectField,
-          wallSlowDistanceMeters.get(),
-          wallMaxApproachSpeedMetersPerSec.get());
-      driveVelocity = limitAutoIntakeVelocityToAllianceSide(driveVelocity, protectedIntakePoint);
-      driveVelocity = limitVelocityToAvoidTowerNoGoZone(driveVelocity, robotPose, angularCommand);
-      driveVelocity = limitVelocityToAvoidTrenchWallNoGoZone(driveVelocity, robotPose, angularCommand);
+      driveVelocity = applyMotionLimits(driveVelocity, protectedIntakePoint, objectField, robotPose, angularCommand);
     }
 
     prevTxRadians = latestTxRadians;
     Logger.recordOutput("Drive/AimToObject/ObjectFieldPose", new Pose2d(objectField, robotPose.getRotation()));
     Logger.recordOutput("Drive/AimToObject/ProtectedIntakePoint", new Pose2d(protectedIntakePoint, robotPose.getRotation()));
+    Logger.recordOutput("Drive/AimToObject/CaptureIntakePoint", new Pose2d(captureIntakePoint, robotPose.getRotation()));
     Logger.recordOutput("Drive/AimToObject/forwardCommand", forwardCommand);
     Logger.recordOutput("Drive/AimToObject/angularCommand", angularCommand);
     return ChassisSpeeds.fromFieldRelativeSpeeds(
@@ -278,6 +256,51 @@ public class AimToObject extends Command {
         driveVelocity.getY(),
         angularCommand,
         robotPose.getRotation());
+  }
+
+  private ChassisSpeeds buildBlindIntakeCommitSpeeds(Pose2d robotPose) {
+    blindIntakeCommitActive = true;
+
+    double angularCommand = buildAngularCommandFromLatestObservation();
+    Translation2d protectedIntakePoint = getProtectedIntakePoint(robotPose);
+    Translation2d captureIntakePoint = getCaptureIntakePoint(robotPose, latestObjectFieldTarget);
+    double distanceToLastTarget = getCaptureErrorVector(robotPose, latestObjectFieldTarget).getNorm();
+    double forwardSpeed = MathUtil.clamp(
+        kPDistance.get() * distanceToLastTarget,
+        BLIND_INTAKE_COMMIT_MIN_FORWARD_SPEED_METERS_PER_SEC,
+        BLIND_INTAKE_COMMIT_MAX_FORWARD_SPEED_METERS_PER_SEC);
+
+    Translation2d driveVelocity = new Translation2d(forwardSpeed, robotPose.getRotation());
+    driveVelocity = applyMotionLimits(driveVelocity, protectedIntakePoint, latestObjectFieldTarget, robotPose, angularCommand);
+
+    Logger.recordOutput("Drive/AimToObject/BlindIntakeCommitDistance", distanceToLastTarget);
+    Logger.recordOutput(
+        "Drive/AimToObject/BlindIntakeCommitAgeSec",
+        TimeUtil.getLogTimeSeconds() - lastValidObservationTimestampSec);
+    Logger.recordOutput("Drive/AimToObject/forwardCommand", forwardSpeed);
+    Logger.recordOutput("Drive/AimToObject/angularCommand", angularCommand);
+    Logger.recordOutput(
+        "Drive/AimToObject/ProtectedIntakePoint",
+        new Pose2d(protectedIntakePoint, robotPose.getRotation()));
+    Logger.recordOutput(
+        "Drive/AimToObject/CaptureIntakePoint",
+        new Pose2d(captureIntakePoint, robotPose.getRotation()));
+    return ChassisSpeeds.fromFieldRelativeSpeeds(
+        driveVelocity.getX(),
+        driveVelocity.getY(),
+        angularCommand,
+        robotPose.getRotation());
+  }
+
+  private double buildAngularCommandFromLatestObservation() {
+    double dTx = latestTxRadians - prevTxRadians;
+    if (Math.abs(latestTxRadians) <= TX_TOLERANCE_RAD) {
+      return 0.0;
+    }
+    return MathUtil.clamp(
+        -(kPTx.get() * latestTxRadians + kDTx.get() * dTx),
+        -MAX_ROTATION_RAD_PER_SEC,
+        MAX_ROTATION_RAD_PER_SEC);
   }
 
   private ChassisSpeeds buildSearchSpeeds(Pose2d robotPose) {
@@ -293,52 +316,36 @@ public class AimToObject extends Command {
     double distanceToSearchPose = toSearchPose.getNorm();
 
     Translation2d driveVelocity = Translation2d.kZero;
-    if (distanceToSearchPose > searchPoseToleranceMeters.get()) {
-      double speed = Math.min(searchMaxSpeedMetersPerSec.get(), searchDriveKp.get() * distanceToSearchPose);
+    if (distanceToSearchPose > SEARCH_POSE_TOLERANCE_METERS) {
+      double speed = Math.min(SEARCH_MAX_SPEED_METERS_PER_SEC, SEARCH_DRIVE_KP * distanceToSearchPose);
       driveVelocity = toSearchPose.div(distanceToSearchPose).times(speed);
-      driveVelocity = GeomUtil.limitVelocityTowardFieldEdge(
-          driveVelocity,
-          protectedIntakePoint,
-          searchPose.getTranslation(),
-          wallSlowDistanceMeters.get(),
-          wallMaxApproachSpeedMetersPerSec.get());
-      driveVelocity = limitAutoIntakeVelocityToAllianceSide(driveVelocity, protectedIntakePoint);
-      driveVelocity = limitVelocityToAvoidTowerNoGoZone(driveVelocity, robotPose, 0.0);
-      driveVelocity = limitVelocityToAvoidTrenchWallNoGoZone(driveVelocity, robotPose, 0.0);
+      driveVelocity = applyMotionLimits(driveVelocity, protectedIntakePoint, searchPose.getTranslation(), robotPose, 0.0);
     }
 
     Translation2d hubCenter = GeomUtil.apply(FieldConstants.Hub.innerCenterPoint, false).toTranslation2d();
     Translation2d fromHub = protectedIntakePoint.minus(hubCenter);
     double currentSearchRadiusMeters = fromHub.getNorm();
-    double searchRadiusErrorMeters = Math.abs(currentSearchRadiusMeters - searchCircleRadiusMeters.get());
+    double searchRadiusErrorMeters = Math.abs(currentSearchRadiusMeters - SEARCH_CIRCLE_RADIUS_METERS);
     boolean searchCircleDriverAssistEnabled =
         DriverStation.isTeleopEnabled()
             && fromHub.getNorm() > 1e-6
-            && searchRadiusErrorMeters <= searchCircleDriverAssistDistanceMeters.get();
+            && searchRadiusErrorMeters <= SEARCH_CIRCLE_DRIVER_ASSIST_DISTANCE_METERS;
     if (searchCircleDriverAssistEnabled) {
       Translation2d tangentialDriverVelocity = getSearchCircleTangentialDriverVelocity(fromHub);
       driveVelocity = driveVelocity.plus(tangentialDriverVelocity);
-      if (driveVelocity.getNorm() > searchMaxSpeedMetersPerSec.get()) {
-        driveVelocity = driveVelocity.div(driveVelocity.getNorm()).times(searchMaxSpeedMetersPerSec.get());
+      if (driveVelocity.getNorm() > SEARCH_MAX_SPEED_METERS_PER_SEC) {
+        driveVelocity = driveVelocity.div(driveVelocity.getNorm()).times(SEARCH_MAX_SPEED_METERS_PER_SEC);
       }
-      driveVelocity = GeomUtil.limitVelocityTowardFieldEdge(
-          driveVelocity,
-          protectedIntakePoint,
-          searchPose.getTranslation(),
-          wallSlowDistanceMeters.get(),
-          wallMaxApproachSpeedMetersPerSec.get());
-      driveVelocity = limitAutoIntakeVelocityToAllianceSide(driveVelocity, protectedIntakePoint);
-      driveVelocity = limitVelocityToAvoidTowerNoGoZone(driveVelocity, robotPose, 0.0);
-      driveVelocity = limitVelocityToAvoidTrenchWallNoGoZone(driveVelocity, robotPose, 0.0);
+      driveVelocity = applyMotionLimits(driveVelocity, protectedIntakePoint, searchPose.getTranslation(), robotPose, 0.0);
       Logger.recordOutput("Drive/AimToObject/SearchCircleDriverAssistVx", tangentialDriverVelocity.getX());
       Logger.recordOutput("Drive/AimToObject/SearchCircleDriverAssistVy", tangentialDriverVelocity.getY());
     }
 
     double headingErrorRad = searchPose.getRotation().minus(robotPose.getRotation()).getRadians();
     double angularCommand = MathUtil.clamp(
-        searchRotationKp.get() * headingErrorRad,
-        -maxRotation.get(),
-        maxRotation.get());
+        SEARCH_ROTATION_KP * headingErrorRad,
+        -MAX_ROTATION_RAD_PER_SEC,
+        MAX_ROTATION_RAD_PER_SEC);
 
     Logger.recordOutput("Drive/AimToObject/SearchCircleDriverAssistEnabled", searchCircleDriverAssistEnabled);
     Logger.recordOutput("Drive/AimToObject/SearchRadiusMeters", currentSearchRadiusMeters);
@@ -384,8 +391,8 @@ public class AimToObject extends Command {
     }
 
     Translation2d searchPoint =
-        hubCenter.plus(fromHub.div(fromHub.getNorm()).times(searchCircleRadiusMeters.get()));
-    searchPoint = clampToField(searchPoint, searchFieldEdgeMarginMeters.get());
+        hubCenter.plus(fromHub.div(fromHub.getNorm()).times(SEARCH_CIRCLE_RADIUS_METERS));
+    searchPoint = clampToField(searchPoint, SEARCH_FIELD_EDGE_MARGIN_METERS);
     searchPoint = pushSearchPointOutOfTowerNoGoZone(searchPoint);
     searchPoint = pushSearchPointOutOfTrenchWallNoGoZone(searchPoint);
     searchPoint = limitAutoIntakeTargetToAllianceSide(searchPoint);
@@ -403,10 +410,38 @@ public class AimToObject extends Command {
     return robotPosition.plus(new Translation2d(getProtectedIntakeReachMeters(), robotHeading));
   }
 
+  private Translation2d getCaptureIntakePoint(Pose2d robotPose, Translation2d objectField) {
+    Translation2d relativeObject = objectField
+        .minus(robotPose.getTranslation())
+        .rotateBy(robotPose.getRotation().unaryMinus());
+    Translation2d capturePointRobotRelative = new Translation2d(
+        MathUtil.clamp(relativeObject.getX(), getCaptureZoneMinX(), getCaptureZoneMaxX()),
+        MathUtil.clamp(relativeObject.getY(), -getCaptureZoneHalfWidth(), getCaptureZoneHalfWidth()));
+    return robotPose.getTranslation().plus(capturePointRobotRelative.rotateBy(robotPose.getRotation()));
+  }
+
+  private Translation2d getCaptureErrorVector(Pose2d robotPose, Translation2d objectField) {
+    return objectField.minus(getCaptureIntakePoint(robotPose, objectField));
+  }
+
   private double getProtectedIntakeReachMeters() {
-    return Math.max(0.0, robotCenterToFrontMeters.get())
-        + Math.max(0.0, intakeExtensionBeyondFrontMeters.get())
-        + Math.max(0.0, intakeSafetyMarginMeters.get());
+    return Math.max(0.0, GeometryConstants.simIntakeFrontEdgeFromRobotCenter)
+        + Math.max(0.0, GeometryConstants.simIntakeDepth)
+        + Math.max(0.0, INTAKE_SAFETY_MARGIN_METERS);
+  }
+
+  private double getCaptureZoneMinX() {
+    return GeometryConstants.simIntakeFrontEdgeFromRobotCenter - FieldConstants.FUEL_DIAMETER / 2.0;
+  }
+
+  private double getCaptureZoneMaxX() {
+    return GeometryConstants.simIntakeFrontEdgeFromRobotCenter
+        + GeometryConstants.simIntakeDepth
+        + FieldConstants.FUEL_DIAMETER / 2.0;
+  }
+
+  private double getCaptureZoneHalfWidth() {
+    return GeometryConstants.simIntakeWidth / 2.0 + FieldConstants.FUEL_DIAMETER / 2.0;
   }
 
   private boolean isInAllianceZone(Pose2d robotPose) {
@@ -419,9 +454,9 @@ public class AimToObject extends Command {
   private Rotation2d getSearchHeading(Translation2d searchPoint, Translation2d hubCenter) {
     Rotation2d outwardHeading = searchPoint.minus(hubCenter).getAngle();
     double biasSign = searchPoint.getY() >= FieldConstants.FIELD_HEIGHT / 2.0 ? -1.0 : 1.0;
-    Rotation2d biasedHeading = outwardHeading.rotateBy(Rotation2d.fromDegrees(biasSign * searchBiasDeg.get()));
-    double sweepPeriod = Math.max(searchSweepPeriodSec.get(), 0.1);
-    double sweepRadians = Units.degreesToRadians(searchSweepDeg.get())
+    Rotation2d biasedHeading = outwardHeading.rotateBy(Rotation2d.fromDegrees(biasSign * SEARCH_BIAS_DEG));
+    double sweepPeriod = Math.max(SEARCH_SWEEP_PERIOD_SEC, 0.1);
+    double sweepRadians = Units.degreesToRadians(SEARCH_SWEEP_DEG)
         * Math.sin((Timer.getFPGATimestamp() - searchStartTimestampSec) * 2.0 * Math.PI / sweepPeriod);
     return biasedHeading.rotateBy(Rotation2d.fromRadians(sweepRadians));
   }
@@ -442,7 +477,7 @@ public class AimToObject extends Command {
     }
 
     double centerLineX = FieldConstants.LinesVertical.center;
-    double margin = Math.max(0.0, autoCenterLineMarginMeters.get());
+    double margin = Math.max(0.0, AUTO_CENTER_LINE_MARGIN_METERS);
     if (Robot.isRed) {
       return new Translation2d(Math.max(point.getX(), centerLineX + margin), point.getY());
     }
@@ -457,7 +492,7 @@ public class AimToObject extends Command {
     }
 
     double centerLineX = FieldConstants.LinesVertical.center;
-    double margin = Math.max(0.0, autoCenterLineMarginMeters.get());
+    double margin = Math.max(0.0, AUTO_CENTER_LINE_MARGIN_METERS);
     double dtSec = 0.02;
     double limitedX = desiredFieldVelocity.getX();
 
@@ -479,7 +514,7 @@ public class AimToObject extends Command {
   }
 
   private Translation2d pushSearchPointOutOfTowerNoGoZone(Translation2d point) {
-    double margin = Math.max(0.0, towerNoGoMarginMeters.get());
+    double margin = Math.max(0.0, TOWER_NO_GO_MARGIN_METERS);
 
     double blueMinY = Math.min(FieldConstants.Tower.leftUpright.getY(), FieldConstants.Tower.rightUpright.getY()) - margin;
     double blueMaxY = Math.max(FieldConstants.Tower.leftUpright.getY(), FieldConstants.Tower.rightUpright.getY()) + margin;
@@ -501,7 +536,7 @@ public class AimToObject extends Command {
   }
 
   private Translation2d pushSearchPointOutOfTrenchWallNoGoZone(Translation2d point) {
-    double margin = Math.max(0.0, trenchWallNoGoMarginMeters.get());
+    double margin = Math.max(0.0, TRENCH_WALL_NO_GO_MARGIN_METERS);
 
     double blueOpeningX = FieldConstants.RightTrench.openingTopLeft.getX();
     double blueMinX = blueOpeningX - FieldConstants.RightTrench.depth - margin;
@@ -543,7 +578,7 @@ public class AimToObject extends Command {
   }
 
   private boolean isInsideTowerNoGoZone(Translation2d point) {
-    double margin = Math.max(0.0, towerNoGoMarginMeters.get());
+    double margin = Math.max(0.0, TOWER_NO_GO_MARGIN_METERS);
 
     double blueMinY = Math.min(FieldConstants.Tower.leftUpright.getY(), FieldConstants.Tower.rightUpright.getY()) - margin;
     double blueMaxY = Math.max(FieldConstants.Tower.leftUpright.getY(), FieldConstants.Tower.rightUpright.getY()) + margin;
@@ -567,7 +602,7 @@ public class AimToObject extends Command {
   }
 
   private boolean isInsideTrenchWallNoGoZone(Translation2d point) {
-    double margin = Math.max(0.0, trenchWallNoGoMarginMeters.get());
+    double margin = Math.max(0.0, TRENCH_WALL_NO_GO_MARGIN_METERS);
 
     double blueOpeningX = FieldConstants.RightTrench.openingTopLeft.getX();
     double blueMinX = blueOpeningX - FieldConstants.RightTrench.depth - margin;
@@ -648,6 +683,67 @@ public class AimToObject extends Command {
     }
 
     return desiredFieldVelocity;
+  }
+
+  private void resetMotionLimitDiagnostics() {
+    slowingDueToWall = false;
+    stoppedDueToTowerNoGo = false;
+    stoppedDueToTrenchWallNoGo = false;
+    motionLimitReason = "None";
+  }
+
+  private boolean shouldBlindIntakeCommit(Pose2d robotPose) {
+    if (desiredDistanceMeters > 1e-6) {
+      return false;
+    }
+
+    double observationAgeSec = TimeUtil.getLogTimeSeconds() - lastValidObservationTimestampSec;
+    if (observationAgeSec > BLIND_INTAKE_COMMIT_SEC) {
+      return false;
+    }
+
+    return getCaptureErrorVector(robotPose, latestObjectFieldTarget)
+        .getNorm() <= BLIND_INTAKE_COMMIT_MAX_TARGET_DISTANCE_METERS;
+  }
+
+  private Translation2d applyMotionLimits(
+      Translation2d desiredFieldVelocity,
+      Translation2d protectedIntakePoint,
+      Translation2d targetPosition,
+      Pose2d robotPose,
+      double desiredAngularVelocityRadPerSec) {
+    Translation2d limitedVelocity = GeomUtil.limitVelocityTowardFieldEdge(
+        desiredFieldVelocity,
+        protectedIntakePoint,
+        targetPosition,
+        wallSlowDistanceMeters.get(),
+        wallMaxApproachSpeedMetersPerSec.get());
+    if (velocityChanged(desiredFieldVelocity, limitedVelocity)) {
+      slowingDueToWall = true;
+      motionLimitReason = "Wall";
+    }
+
+    limitedVelocity = limitAutoIntakeVelocityToAllianceSide(limitedVelocity, protectedIntakePoint);
+
+    Translation2d towerLimitedVelocity =
+        limitVelocityToAvoidTowerNoGoZone(limitedVelocity, robotPose, desiredAngularVelocityRadPerSec);
+    if (velocityChanged(limitedVelocity, towerLimitedVelocity)) {
+      stoppedDueToTowerNoGo = true;
+      motionLimitReason = "Tower";
+    }
+    limitedVelocity = towerLimitedVelocity;
+
+    Translation2d trenchLimitedVelocity =
+        limitVelocityToAvoidTrenchWallNoGoZone(limitedVelocity, robotPose, desiredAngularVelocityRadPerSec);
+    if (velocityChanged(limitedVelocity, trenchLimitedVelocity)) {
+      stoppedDueToTrenchWallNoGo = true;
+      motionLimitReason = "Trench";
+    }
+    return trenchLimitedVelocity;
+  }
+
+  private boolean velocityChanged(Translation2d first, Translation2d second) {
+    return first.minus(second).getNorm() > VELOCITY_COMPARE_EPSILON;
   }
 
   @Override

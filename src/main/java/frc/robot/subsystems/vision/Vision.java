@@ -199,34 +199,6 @@ public class Vision extends SubsystemChecker {
 			}
 		}
 		allTxTyObservations.values().stream().forEach((obs) -> RobotContainer.drivetrainS.addTxTyObservation(obs));
-		if (Constants.currentMode == Mode.SIM) {
-			// Pose2d simedAIPose = new Pose2d(2,2,Rotation2d.fromDegrees(0));
-			// grab opposting robot sim poses
-			//Pose2d simedAIPose = CompetitionFieldSimulation.getClosestRobotPose(currentOdomPose.getTranslation());
-			Pose2d simedAICoralPose = RobotContainer.fieldSimulation
-					.getClosestGamePiecePose2d(List.of(Rebuilt2026FieldObjects.FuelOnFieldSimulated.class));
-			/*if (simedAIPose != null) {
-				TxTyObservation simedAIObservation = new TxTyObservation(AITargets.FUEL.name(), 0, new double[4],
-						new double[4],
-						simedAIPose.getTranslation()
-								.getDistance(RobotContainer.drivetrainS.getPose().getTranslation()),
-						TimeUtil.getLogTimeSeconds(), Optional.of(new Pose3d(simedAIPose)));
-				allTxTyObservations.put(AITargets.FUEL.name(), simedAIObservation);
-				RobotContainer.drivetrainS
-						.addTxTyObservation(simedAIObservation);
-			}*/
-			if (simedAICoralPose != null) {
-				TxTyObservation simedAICoralObservation = new TxTyObservation(AITargets.FUEL.name(), 0, new double[4], new double[4],
-						simedAICoralPose.getTranslation()
-								.getDistance(RobotContainer.drivetrainS.getPose().getTranslation()),
-						TimeUtil.getLogTimeSeconds(), Optional.of(new Pose3d(simedAICoralPose)));
-				allTxTyObservations.put(AITargets.FUEL.name(), simedAICoralObservation);
-
-				RobotContainer.drivetrainS
-						.addTxTyObservation(simedAICoralObservation);
-			}
-
-		}
 		lastOdomPose = currentOdomPose;
 		// Lastly, update our Pathfinding dynamic obstacles. If we're out of date, clear
 		// them.
@@ -756,42 +728,47 @@ public class Vision extends SubsystemChecker {
 			}
 
 			Pose2d robotPose = RobotContainer.drivetrainS.getPose();
-			Transform2d robotToCamera = GeomUtil
-					.poseToTransform(VisionConstants.cameras[cam.ordinal()].getPose().get().toPose2d());
-			Pose2d cameraPose = robotPose.plus(robotToCamera);
+			Pose3d cameraPose = new Pose3d(robotPose)
+					.transformBy(GeomUtil.poseToTransform(VisionConstants.cameras[cam.ordinal()].getPose().get()));
 			VisionIO.ObjDetectTxyObservation bestObservation = null;
 			Pose2d bestFuelPose = null;
 			int visibleFuelCount = 0;
 			for (var gamePiece : RobotContainer.fieldSimulation.getGamePiecesByType("Fuel")) {
-				if (!gamePiece.isGrounded()) {
+				if (!gamePiece.isVisibleToSimObjectDetection()) {
+					continue;
+				}
+				Pose3d simulatedFuelPose = gamePiece.getPose3d();
+				Translation3d toTargetCamera = simulatedFuelPose.getTranslation()
+						.minus(cameraPose.getTranslation())
+						.rotateBy(cameraPose.getRotation().unaryMinus());
+				if (toTargetCamera.getX() <= 0.0) {
 					continue;
 				}
 
-				Pose2d simulatedFuelPose = gamePiece.getPose3d().toPose2d();
-				Translation2d toTargetField = simulatedFuelPose.getTranslation().minus(cameraPose.getTranslation());
-				double distance = toTargetField.getNorm();
+				double distance = toTargetCamera.getNorm();
 				if (distance > simObjectMaxVisibleDistanceMeters) {
 					continue;
 				}
 
-				double bearingField = Math.atan2(toTargetField.getY(), toTargetField.getX());
-				double yawCCW = bearingField - cameraPose.getRotation().getRadians();
-				yawCCW = Math.atan2(Math.sin(yawCCW), Math.cos(yawCCW));
+				double yawCCW = Math.atan2(toTargetCamera.getY(), toTargetCamera.getX());
 				if (Math.abs(yawCCW) > simObjectHalfVisibleConeRad) {
-					//continue;
+					continue;
 				}
 
+				double pitchDownRad = Math.atan2(
+						-toTargetCamera.getZ(),
+						Math.hypot(toTargetCamera.getX(), toTargetCamera.getY()));
 				visibleFuelCount++;
 				VisionIO.ObjDetectTxyObservation candidateObservation = new VisionIO.ObjDetectTxyObservation(
 						VisionConstants.AITargets.FUEL.ordinal(),
 						1.0,
 						new Rotation2d(-yawCCW),
-						new Rotation2d(0.0),
+						new Rotation2d(pitchDownRad),
 						distance,
 						TimeUtil.getLogTimeSeconds());
 				if (bestObservation == null || candidateObservation.distanceMeters() < bestObservation.distanceMeters()) {
 					bestObservation = candidateObservation;
-					bestFuelPose = simulatedFuelPose;
+					bestFuelPose = simulatedFuelPose.toPose2d();
 				}
 			}
 

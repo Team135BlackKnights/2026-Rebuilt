@@ -3,6 +3,7 @@ package frc.robot.utils.CompetitionFieldUtils.Simulation;
 import edu.wpi.first.math.Pair;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Transform3d;
 import edu.wpi.first.math.geometry.Translation2d;
@@ -167,8 +168,7 @@ public abstract class CompetitionFieldSimulation {
 				// if we're a fuel on field, if we touch the front side of the robot, we become
 				// a fuel on manipulator
 				if (gamePiece instanceof Rebuilt2026FieldObjects.FuelOnFieldSimulated) {
-					if (mainRobot.getPose3d().plus(new Transform3d(Units.inchesToMeters(15),0, 0, new Rotation3d())).getTranslation()
-							.getDistance(gamePiece.getPose3d().getTranslation()) < GeometryConstants.intakeDistance) {
+					if (isInsideMainRobotIntakeZone(gamePiece)) {
 						intakeFuel(gamePiece);
 					}
 				}
@@ -215,7 +215,7 @@ public abstract class CompetitionFieldSimulation {
 	public synchronized List<GamePieceInSimulation> getGamePiecesByType(String type) {
 		final List<GamePieceInSimulation> gamePiecesPoses = new ArrayList<>();
 		for (GamePieceInSimulation gamePiece : gamePieces)
-			if (Objects.equals(gamePiece.getType(), type))
+			if (gamePiece.getType().equals(type))
 				gamePiecesPoses.add(gamePiece);
 		return gamePiecesPoses;
 	}
@@ -271,6 +271,24 @@ public abstract class CompetitionFieldSimulation {
 		this.physicsWorld.addBody(chassisSimulation);
 		robotSimulations.add(chassisSimulation);
 		this.competitionField.addObject(chassisSimulation);
+	}
+
+	private boolean isInsideMainRobotIntakeZone(GamePieceInSimulation gamePiece) {
+		Pose2d robotPose = mainRobot.getPose3d().toPose2d();
+		Translation2d gamePieceRobotRelative = gamePiece.getPose3d().getTranslation().toTranslation2d()
+				.minus(robotPose.getTranslation())
+				.rotateBy(robotPose.getRotation().unaryMinus());
+
+		double fuelRadiusMeters = FieldConstants.FUEL_DIAMETER / 2.0;
+		double minX = GeometryConstants.simIntakeFrontEdgeFromRobotCenter - fuelRadiusMeters;
+		double maxX = GeometryConstants.simIntakeFrontEdgeFromRobotCenter
+				+ GeometryConstants.simIntakeDepth
+				+ fuelRadiusMeters;
+		double maxAbsY = GeometryConstants.simIntakeWidth / 2.0 + fuelRadiusMeters;
+
+		return gamePieceRobotRelative.getX() >= minX
+				&& gamePieceRobotRelative.getX() <= maxX
+				&& Math.abs(gamePieceRobotRelative.getY()) <= maxAbsY;
 	}
 
 	// YEARLYUPDATE: change these to match the year's gamepiece

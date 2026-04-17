@@ -55,11 +55,11 @@ public class ShotCalculator {
   private static final CalibrationPoint[] HUB_CALIBRATION_POINTS = {
       new CalibrationPoint(1.215, 3000.0, Units.degreesToRadians(16.50), 1.040),
       new CalibrationPoint(1.536, 3000.0, Units.degreesToRadians(18.00), 0.930),
-      new CalibrationPoint(1.791, 3000.0, Units.degreesToRadians(19.00), 1.040),
-      new CalibrationPoint(1.964, 3000.0, Units.degreesToRadians(20.00), 1.100),
+      new CalibrationPoint(1.791, 3050.0, Units.degreesToRadians(19.00), 1.040),
+      new CalibrationPoint(1.964, 3100.0, Units.degreesToRadians(20.00), 1.100),
       new CalibrationPoint(2.235, 3200.0, Units.degreesToRadians(24.00), 1.000),
       new CalibrationPoint(2.515, 3450.0, Units.degreesToRadians(26.00), 1.000),
-      new CalibrationPoint(2.800, 3600.0, 0.48, 1.160),
+      new CalibrationPoint(2.800, 3600.0, 0.47, 1.160),
       new CalibrationPoint(3.007, 3700.0, 0.50, 1.180),
       new CalibrationPoint(3.294, 3800.0, 0.53, 1.200),
       new CalibrationPoint(3.490, 3925.0, 0.56, 1.210),
@@ -78,13 +78,13 @@ public class ShotCalculator {
           "ShotCalculator/MotionCompDeadbandSpeedMps", 0.1, TuningConstants.isTuningShooter);
   private static final LoggableTunedNumber motionCompensationFullSpeedMetersPerSec =
       new LoggableTunedNumber(
-          "ShotCalculator/MotionCompFullSpeedMps", 1.0, TuningConstants.isTuningShooter);
+          "ShotCalculator/MotionCompFullSpeedMps", 2.5, TuningConstants.isTuningShooter);
   private static final LoggableTunedNumber motionCompensationRangeGain =
       new LoggableTunedNumber(
-          "ShotCalculator/MotionCompRangeGain", 1.35, TuningConstants.isTuningShooter);
+          "ShotCalculator/MotionCompRangeGain", 1.0, TuningConstants.isTuningShooter);
   private static final LoggableTunedNumber motionCompensationLateralGain =
       new LoggableTunedNumber(
-          "ShotCalculator/MotionCompLateralGain", 0, TuningConstants.isTuningShooter);
+          "ShotCalculator/MotionCompLateralGain", 1.8, TuningConstants.isTuningShooter);
 
   private static final TurretBallisticsConfig LEFT_TURRET_CONFIG =
       new TurretBallisticsConfig(
@@ -808,7 +808,7 @@ public class ShotCalculator {
 
       lookaheadDist =
           ballisticState.correctedTargetPoint().getDistance(turretCenterPose.getTranslation()) + distanceOffset;
-      rawLeadTimeOfFlightSec = profile.getTimeOfFlight(lookaheadDist);
+      rawLeadTimeOfFlightSec = ballisticState.timeOfFlightSec();
       leadTimeOfFlight = filterState.previewLeadTimeOfFlight(rawLeadTimeOfFlightSec);
       leadTimeOfFlightSec = leadTimeOfFlight.filteredLeadTimeOfFlightSec();
       shotCommand = getStaticShotCommandForDistance(profile, lookaheadDist, robotToTurret);
@@ -949,7 +949,7 @@ public class ShotCalculator {
     }
 
     Translation2d totalHorizontalVelocity =
-        appliedTranslationVelocity.plus(new Translation2d(horizontalLaunchSpeedMps, shotHeadingField));
+        rawTranslationVelocity.plus(new Translation2d(horizontalLaunchSpeedMps, shotHeadingField));
     Translation2d launchToTarget = targetGeometry.center().minus(launchPosition);
     double targetDistance = launchToTarget.getNorm();
     BallisticCandidate bestCandidate = null;
