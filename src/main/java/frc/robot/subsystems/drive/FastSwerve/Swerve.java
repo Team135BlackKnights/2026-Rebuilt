@@ -594,6 +594,8 @@ public class Swerve extends SubsystemChecker implements DrivetrainS {
 		}
 		if (Constants.currentMatchState == FRCMatchState.AUTO){
 			currentModuleLimits = DriveConstants.moduleLimitsAuto;
+		}else{
+			currentModuleLimits = DriveConstants.moduleLimitsAuto;
 		}
 		// Run modules
 		if (!modulesOrienting && currentDriveMode != DriveMode.MODULE_CHARACTERIZATION) {
