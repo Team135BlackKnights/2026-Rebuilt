@@ -22,6 +22,7 @@ public interface AzimuthIO {
         public boolean referenceEncoderConnected = true;
         public boolean magSwitchDetected = false;
         public boolean zeroed = false;
+        public String zeroingState = "UNINITIALIZED";
         public String name = "Azimuth";
         public double supplyCurrentAmps;
         public double torqueCurrentAmps;

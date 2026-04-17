@@ -86,7 +86,7 @@ public class Turret extends SubsystemChecker {
 
   private final Transform2d robotToTurret;
 
-  private double distanceOffset = -.375;
+  private double distanceOffset = 0;
   private final AzimuthIOInputsAutoLogged azimuthInputs = new AzimuthIOInputsAutoLogged();
   private final FlywheelIOInputsAutoLogged flywheelInputs = new FlywheelIOInputsAutoLogged();
   private final HoodIOInputsAutoLogged hoodInputs = new HoodIOInputsAutoLogged();
@@ -183,8 +183,8 @@ public class Turret extends SubsystemChecker {
       flywheel_kA = new LoggableTunedNumber(name + "/Flywheel/kA", 0.0, TuningConstants.isTuningShooter);
       flywheel_ramp = new LoggableTunedNumber(name + "/Flywheel/Ramp", 0.25, TuningConstants.isTuningShooter);
 
-      hood_kP = new LoggableTunedNumber(name + "/Hood/kP", 60, TuningConstants.isTuningShooter); // 15
-      hood_kD = new LoggableTunedNumber(name + "/Hood/kD", 0.4, TuningConstants.isTuningShooter); // 1.5
+      hood_kP = new LoggableTunedNumber(name + "/Hood/kP", 50, TuningConstants.isTuningShooter); // 15
+      hood_kD = new LoggableTunedNumber(name + "/Hood/kD", 0.35, TuningConstants.isTuningShooter); // 1.5
       hood_kS = new LoggableTunedNumber(name + "/Hood/kS", 0.0, TuningConstants.isTuningShooter);
       hood_kV = new LoggableTunedNumber(name + "/Hood/kV", 0.0, TuningConstants.isTuningShooter);
       offsetRPM = new LoggableTunedNumber(name + "/Flywheel/offset", 0, TuningConstants.isTuningShooter);
@@ -212,8 +212,8 @@ public class Turret extends SubsystemChecker {
       offsetRPM = new LoggableTunedNumber(name + "/Flywheel/Offset", 0, TuningConstants.isTuningShooter);
       offsetHoodAngle = new LoggableTunedNumber(name + "/Hood/DONOTTOUCH", 1.5, TuningConstants.isTuningShooter);
 
-      hood_kP = new LoggableTunedNumber(name + "/Hood/kP", 60, TuningConstants.isTuningShooter); // 15
-      hood_kD = new LoggableTunedNumber(name + "/Hood/kD", .4, TuningConstants.isTuningShooter); // 1.5
+      hood_kP = new LoggableTunedNumber(name + "/Hood/kP", 50, TuningConstants.isTuningShooter); // 15
+      hood_kD = new LoggableTunedNumber(name + "/Hood/kD", .35, TuningConstants.isTuningShooter); // 1.5
       hood_kS = new LoggableTunedNumber(name + "/Hood/kS", 0.0, TuningConstants.isTuningShooter);
       hood_kV = new LoggableTunedNumber(name + "/Hood/kV", 0.0, TuningConstants.isTuningShooter);
 
@@ -724,11 +724,19 @@ public class Turret extends SubsystemChecker {
     Logger.recordOutput(name + "/ShotTuning/LoggedShots", loggedShots.toArray(new String[0]));
     Logger.recordOutput(name + "/ShotTuning/ShotCount", loggedShots.size());
     Logger.recordOutput(name + "/ShotTuning/ManualTOFSec", tuning_TOF.get());
-    Logger.recordOutput(name + "/ShotTuning/PredictedLeadTOFSec", shotTelemetry.empiricalLeadTimeOfFlightSec());
+    Logger.recordOutput(name + "/ShotTuning/ManualDistanceOffsetMeters", distanceOffset);
+    Logger.recordOutput(name + "/ShotTuning/SelectedModel", shotTelemetry.selectedModel());
+    Logger.recordOutput(name + "/ShotTuning/UsedProfileLeadFallback", shotTelemetry.usedProfileLeadFallback());
+    Logger.recordOutput(name + "/ShotTuning/PredictedLeadTOFRawSec", shotTelemetry.rawLeadTimeOfFlightSec());
+    Logger.recordOutput(name + "/ShotTuning/PredictedLeadTOFFilteredSec", shotTelemetry.filteredLeadTimeOfFlightSec());
     Logger.recordOutput(name + "/ShotTuning/PredictedBallisticTOFSec", shotTelemetry.ballisticTimeOfFlightSec());
+    Logger.recordOutput(name + "/ShotTuning/LeadTOFSpikeRejected", shotTelemetry.leadTimeOfFlightSpikeRejected());
+    Logger.recordOutput(
+        name + "/ShotTuning/LeadTOFDeltaSec",
+        shotTelemetry.ballisticTimeOfFlightSec() - shotTelemetry.filteredLeadTimeOfFlightSec());
     Logger.recordOutput(
         name + "/ShotTuning/LeadTOFErrorSec",
-        shotTelemetry.empiricalLeadTimeOfFlightSec() - tuning_TOF.get());
+        shotTelemetry.filteredLeadTimeOfFlightSec() - tuning_TOF.get());
     Logger.recordOutput(
         name + "/ShotTuning/BallisticTOFErrorSec",
         shotTelemetry.ballisticTimeOfFlightSec() - tuning_TOF.get());
@@ -736,37 +744,37 @@ public class Turret extends SubsystemChecker {
     Logger.recordOutput(name + "/ShotTuning/PredictedLaunchSpeedMps", shotTelemetry.launchSpeedMps());
     Logger.recordOutput(name + "/ShotTuning/PredictedRangeErrorM", shotTelemetry.rangeErrorMeters());
     Logger.recordOutput(name + "/ShotTuning/PredictedLateralErrorM", shotTelemetry.lateralErrorMeters());
+    Logger.recordOutput(
+        name + "/ShotTuning/AppliedTranslationCompensationSpeedMps",
+        shotTelemetry.appliedTranslationCompensationSpeedMps());
+    Logger.recordOutput(
+        name + "/ShotTuning/AppliedMotionCompensationScale",
+        shotTelemetry.appliedMotionCompensationScale());
     // Live distance for tuning reference
     Pose2d currentTurretPose = RobotContainer.drivetrainS.getPose().transformBy(robotToTurret);
     Logger.recordOutput(name + "/ShotTuning/DistToTargetM",
         target.getDistance(currentTurretPose.getTranslation()));
     Logger.recordOutput(name + "/Goal", goal.toString());
     Logger.recordOutput(name + "/ControlGoal", controlGoal.toString());
-    Logger.recordOutput("SuperStructure/" + name + "/Goal", goal.toString());
-    Logger.recordOutput("SuperStructure/" + name + "/TargetName", activePreset.toString());
-    Logger.recordOutput("SuperStructure/" + name + "/TargetPos", new Pose2d(target, new Rotation2d()));
-    Logger.recordOutput(name + "/Preset", activePreset.toString());
-
-    Logger.recordOutput(name + "/Targets/Target2d", target);
-
     Logger.recordOutput(name + "/Setpoints/TurretRads", desiredTurretRads);
     Logger.recordOutput(name + "/Setpoints/HoodRads", desiredHoodRads + Units.degreesToRadians(offsetHoodAngle.get()));
     Logger.recordOutput(name + "/Setpoints/FlywheelRadsPerSec",
         desiredFlywheelRadsPerSec + Units.rotationsPerMinuteToRadiansPerSecond(offsetRPM.get()));
 
     Logger.recordOutput(name + "/Errors/TurretRads", turretAngleErrorRads());
-    Logger.recordOutput(name + "/Azimuth/ReferenceEncoderConnected", azimuthInputs.referenceEncoderConnected);
-    Logger.recordOutput(name + "/Azimuth/Zeroed", azimuthInputs.zeroed);
-    Logger.recordOutput(name + "/Azimuth/WantsZeroing", azimuthIO.wantsZeroing());
-    Logger.recordOutput(name + "/BackupRobotAimingEnabled", backupRobotAimingEnabled);
-    Logger.recordOutput(name + "/FlywheelOutputSuppressed", flywheelOutputSuppressed);
-    Logger.recordOutput(name + "/BackupRobotHeadingErrorRads",
-        backupRobotAimingEnabled ? backupRobotHeadingErrorRads() : 0.0);
-    Logger.recordOutput(name + "/FixedShotDistanceOverrideMeters", fixedShotDistanceOverrideMeters);
+    Logger.recordOutput(
+        name + "/Azimuth/Healthy",
+        azimuthInputs.motorConnected && azimuthInputs.referenceEncoderConnected);
+    Logger.recordOutput(
+        name + "/Azimuth/ReadyToAim",
+        azimuthInputs.motorConnected
+            && azimuthInputs.referenceEncoderConnected
+            && azimuthInputs.zeroed
+            && !azimuthIO.wantsZeroing());
+    Logger.recordOutput(name + "/Azimuth/ZeroingState", azimuthInputs.zeroingState);
     Logger.recordOutput(name + "/AtAimAngle", atAimAngle());
     Logger.recordOutput(name + "/AtShootSetpoints", atShootSetpoints());
     Logger.recordOutput(name + "/KickupGoal", kickupGoal.toString());
-    Logger.recordOutput("SuperStructure/" + name + "/KickupGoal", kickupGoal.toString());
     previousControlGoal = controlGoal;
   }
 

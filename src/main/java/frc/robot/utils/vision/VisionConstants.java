@@ -94,12 +94,12 @@ public class VisionConstants {
 											Math.toRadians(0.0),
 											Math.toRadians(25),
 											Math.toRadians(0)))) //we don't know, but it faces forward so we assume no yaw/pitch
-					.id("SPCA2630 PC Camera:usb_05c8_0a00_003_004")
-					.location("0x02210000 / 3")  
+										.id("Arducam OV9782 USB Camera:usb_0c45_6366_UC852")
+					.location("0x03130000 / 3")
 					.width(1280)//1600
 					.height(800)//1304
 					.exposure(16)
-					.saturation(0)
+					.saturation(50)
 					.hue(0)
 					.whiteBalance(4500)
 					.autoWhiteBalance(0)
@@ -116,12 +116,12 @@ public class VisionConstants {
 										Math.toRadians(0.0),
 										Math.toRadians(-25),
 										Math.toRadians(160))))
-					.id("Arducam OV9782 USB Camera:usb_0c45_6366_UC852")
-					.location("0x03130000 / 3")
+										.id("SPCA2630 PC Camera:usb_05c8_0a00_002_003")
+					.location("0x02210000 / 3")
 										.width(1600)
 					.height(1304)
 					.exposure(35)
-					.saturation(50)
+					.saturation(0)
 					.hue(0)
 					.whiteBalance(4000)
 					.autoWhiteBalance(0)
@@ -138,8 +138,8 @@ public class VisionConstants {
 											Math.toRadians(0.0),
 											Math.toRadians(-25),
 											Math.toRadians(-160))))
-															.id("SPCA2630 PC Camera:usb_05c8_0a00_002_003")
-										.location("0x03220000 / 4")
+											.id("SPCA2630 PC Camera:usb_05c8_0a00_000_004")
+										.location("0x00220000 / 4")
 					.width(1600)
 					.height(1304)
 					.exposure(16)

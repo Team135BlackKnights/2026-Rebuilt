@@ -3,8 +3,6 @@ package frc.robot.subsystems.Turret.azimuth;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.littletonrobotics.junction.Logger;
-
 import com.andymark.jni.AM_CAN_Mag_Switch;
 import com.andymark.jni.AM_CAN_Mag_Switch.AM_MagSwitchData;
 import com.ctre.phoenix6.BaseStatusSignal;
@@ -224,8 +222,6 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
      
         inputs.bigEncoderRads = bigRawRads;
 
-        final double bigSolveRads = normalizeAbsoluteRadians(bigRawRads);
-
         inputs.appliedVoltage = appliedVoltage.getValueAsDouble();
         inputs.supplyCurrentAmps = supplyCurrent.getValueAsDouble();
         inputs.torqueCurrentAmps = torqueCurrent.getValueAsDouble();
@@ -248,14 +244,10 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
                 && !haveLock
                 && shouldUseMagRangeReference;
         final double homingCommandVolts = homingVolts.get() * homingDirection;
-        double encoderEstimateRad = Double.NaN;
-        double solvedRad = Double.NaN;
-        double seededRotorRots = Double.NaN;
         if (shouldUseMagRangeReference) {
-            encoderEstimateRad = MathUtil.clamp(
+            final double solvedRad = MathUtil.clamp(
                     primaryEncoderAngleToTurretRads(bigAbsRots.getValueAsDouble()), minAngle, maxAngle);
-            solvedRad = encoderEstimateRad;
-            seededRotorRots = turretToRotorRotations(solvedRad);
+            final double seededRotorRots = turretToRotorRotations(solvedRad);
             talon.setPosition(seededRotorRots);
             lastTurretAngleRads = solvedRad;
             haveLock = true;
@@ -267,52 +259,27 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
             lastTurretAngleRads = rotorRotationsToTurretRads(currentRotorRots);
         }
 
-        Logger.recordOutput(name + "/Turret/IsRightTurret", rightTurret);
-        Logger.recordOutput(name + "/Turret/TurretSign", turretSign);
-
-        Logger.recordOutput(name + "/Turret/EncoderBigRadsRaw", bigRawRads);
-        Logger.recordOutput(name + "/Turret/EncoderBigRadsNormalized", bigSolveRads);
-        Logger.recordOutput(name + "/Turret/TurretVelRadsPerSec", turretVelRadsPerSec);
-        Logger.recordOutput(name + "/Turret/ZeroingRequested", wantsZeroing);
-        Logger.recordOutput(name + "/Turret/ZeroingReady", zeroingReady);
-        Logger.recordOutput(name + "/Turret/MagSwitchRequiredForZero", true);
-        Logger.recordOutput(name + "/Turret/PreMatchDisabledActsLikeMag", false);
-        Logger.recordOutput(name + "/Turret/MagSwitchRecentlySeen", magSwitchRecentlySeen);
-        Logger.recordOutput(name + "/Turret/EffectiveMagSwitchDetected", effectiveMagSwitchDetected);
-        Logger.recordOutput(name + "/Turret/LastMagSwitchContactSec", lastMagSwitchContactSec);
-        Logger.recordOutput(name + "/Turret/RezeroRequestResult", lastRezeroRequestResult);
-        Logger.recordOutput(name + "/Turret/HomingToMag", shouldHomeToMag);
-        Logger.recordOutput(name + "/Turret/HomingDirection", homingDirection);
-        Logger.recordOutput(name + "/Turret/HomingCommandVolts", shouldHomeToMag ? homingCommandVolts : 0.0);
-        Logger.recordOutput(name + "/Turret/EncoderEstimateRad", encoderEstimateRad);
-        Logger.recordOutput(name + "/Turret/SolveAngle", solvedRad);
-        Logger.recordOutput(name + "/Turret/SeededRotorRots", seededRotorRots);
-        Logger.recordOutput(name + "/Turret/SolveStatus",
+        inputs.turretPositionRads = lastTurretAngleRads;
+        inputs.turretVelocityRadsPerSec = turretVelRadsPerSec;
+        inputs.zeroed = haveLock;
+        inputs.zeroingState =
                 shouldSolveFromEncoder
                         ? "MAG_ENCODER_SOLVE"
                         : (shouldUseMagRangeReference
                                 ? "MAG_ENCODER_TRACK"
                                 : (shouldHomeToMag
-                                ? "HOMING_TO_MAG"
-                                : (haveLock
-                                        ? "MOTOR_ONLY"
-                                        : (!wantsZeroing
-                                                ? "ZEROING_DISABLED"
-                                                : (!inputs.motorConnected
-                                                        ? "WAITING_FOR_MOTOR"
-                                                        : (!inputs.referenceEncoderConnected
-                                                                ? "WAITING_FOR_ENCODER"
-                                                                : (DriverStation.isDisabled()
-                                                                        ? "WAITING_FOR_ENABLE"
-                                                                        : "WAITING_FOR_MAG_SWITCH"))))))));
-        Logger.recordOutput(name + "/Turret/MotorOnlyTurretRad",
-                haveLock
-                        ? rotorRotationsToTurretRads(shouldSolveFromEncoder ? seededRotorRots : currentRotorRots)
-                        : Double.NaN);
-
-        inputs.turretPositionRads = lastTurretAngleRads;
-        inputs.turretVelocityRadsPerSec = turretVelRadsPerSec;
-        inputs.zeroed = haveLock;
+                                        ? "HOMING_TO_MAG"
+                                        : (haveLock
+                                                ? "MOTOR_ONLY"
+                                                : (!wantsZeroing
+                                                        ? "ZEROING_DISABLED"
+                                                        : (!inputs.motorConnected
+                                                                ? "WAITING_FOR_MOTOR"
+                                                                : (!inputs.referenceEncoderConnected
+                                                                        ? "WAITING_FOR_ENCODER"
+                                                                        : (DriverStation.isDisabled()
+                                                                                ? "WAITING_FOR_ENABLE"
+                                                                                : "WAITING_FOR_MAG_SWITCH")))))));
         if (shouldHomeToMag) {
             talon.setControl(voltageRequest.withOutput(homingCommandVolts));
         } else if (!allowMovement) {
@@ -327,7 +294,6 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
     @Override
     public void setDesiredPosition(double turretRads) {
         if (!haveLock) {
-            Logger.recordOutput(name + "/Turret/DesStatus", "NO_LOCK");
             return;
         }
 
@@ -338,10 +304,6 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         double desiredTurret = MathUtil.clamp(wrappedCmd, minAngle, maxAngle);
 
         double desiredRotorRots = turretToRotorRotations(desiredTurret);
-
-        Logger.recordOutput(name + "/Turret/DesMotorSpot", desiredRotorRots);
-        Logger.recordOutput(name + "/Turret/DesiredTurretRads", desiredTurret);
-        Logger.recordOutput(name + "/Turret/DesStatus", "OK");
         if (allowMovement)
             talon.setControl(motionMagicRequest.withPosition(desiredRotorRots));
     }
@@ -411,13 +373,11 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
     @Override
     public void disable() {
         allowMovement = false;
-        Logger.recordOutput(name+"/Turret/AllowedToMove", allowMovement);
     }
 
     @Override
     public void enable() {
         allowMovement = true;
-        Logger.recordOutput(name+"/Turret/AllowedToMove", allowMovement);
     }
 
     @Override

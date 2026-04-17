@@ -1,6 +1,8 @@
 package frc.robot.subsystems.Turret;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,6 +37,8 @@ public class ShotCalculator {
   private static final double HUB_TARGET_MATCH_EPSILON_METERS = 1e-3;
   private static final int HYBRID_HEADING_SOLVE_ITERATIONS = 5;
   private static final int PROFILE_LEAD_ITERATIONS = 3;
+  private static final int LEAD_TOF_FILTER_WINDOW_SIZE = 5;
+  private static final double LEAD_TOF_FILTER_MAX_STEP_SEC = 0.20;
   private static final double MAX_FLYWHEEL_SPEED_RAD_PER_SEC =
       Units.rotationsPerMinuteToRadiansPerSecond(AdvancedMechanismConstants.Turret.flywheelMaxRPM);
   private static final Translation2d INVALID_TRANSLATION =
@@ -77,10 +81,10 @@ public class ShotCalculator {
           "ShotCalculator/MotionCompFullSpeedMps", 1.0, TuningConstants.isTuningShooter);
   private static final LoggableTunedNumber motionCompensationRangeGain =
       new LoggableTunedNumber(
-          "ShotCalculator/MotionCompRangeGain", 0.85, TuningConstants.isTuningShooter);
+          "ShotCalculator/MotionCompRangeGain", 1.35, TuningConstants.isTuningShooter);
   private static final LoggableTunedNumber motionCompensationLateralGain =
       new LoggableTunedNumber(
-          "ShotCalculator/MotionCompLateralGain", 2.4, TuningConstants.isTuningShooter);
+          "ShotCalculator/MotionCompLateralGain", 0, TuningConstants.isTuningShooter);
 
   private static final TurretBallisticsConfig LEFT_TURRET_CONFIG =
       new TurretBallisticsConfig(
@@ -138,12 +142,17 @@ public class ShotCalculator {
       String turretName,
       String profileName,
       String selectedModel,
-      double empiricalLeadTimeOfFlightSec,
+      double rawLeadTimeOfFlightSec,
+      double filteredLeadTimeOfFlightSec,
+      boolean leadTimeOfFlightSpikeRejected,
       double ballisticTimeOfFlightSec,
       double launchPitchRad,
       double launchSpeedMps,
       double rangeErrorMeters,
-      double lateralErrorMeters) {
+      double lateralErrorMeters,
+      double appliedTranslationCompensationSpeedMps,
+      double appliedMotionCompensationScale,
+      boolean usedProfileLeadFallback) {
     private static ShotTelemetry empty(String turretName) {
       return new ShotTelemetry(
           turretName,
@@ -151,10 +160,15 @@ public class ShotCalculator {
           "",
           Double.NaN,
           Double.NaN,
+          false,
           Double.NaN,
           Double.NaN,
           Double.NaN,
-          Double.NaN);
+          Double.NaN,
+          Double.NaN,
+          Double.NaN,
+          Double.NaN,
+          false);
     }
   }
 
@@ -177,9 +191,9 @@ public class ShotCalculator {
       double launchPitchRad,
       double launchSpeedMps,
       double timeOfFlightSec,
-      Translation2d rawChassisVelocityAtMuzzle,
+      Translation2d rawTranslationVelocity,
       double motionCompensationScale,
-      Translation2d chassisVelocityAtMuzzle,
+      Translation2d appliedTranslationVelocity,
       Translation2d predictedCrossingPoint,
       double rangeErrorMeters,
       double lateralErrorMeters,
@@ -220,10 +234,19 @@ public class ShotCalculator {
       Rotation2d turretAngle,
       double hoodAngle,
       double flywheelSpeed,
-      double leadTimeOfFlightSec,
+      double rawLeadTimeOfFlightSec,
+      double filteredLeadTimeOfFlightSec,
+      boolean leadTimeOfFlightSpikeRejected,
       Pose2d lookaheadPose,
       double lookaheadDist,
+      double appliedTranslationCompensationSpeedMps,
+      double appliedMotionCompensationScale,
       BallisticState ballisticState) {}
+
+  private record LeadTimeOfFlightFilterResult(
+      double rawLeadTimeOfFlightSec,
+      double filteredLeadTimeOfFlightSec,
+      boolean spikeRejected) {}
 
   private static class TurretBallisticsConfig {
     private final String name;
@@ -491,8 +514,56 @@ public class ShotCalculator {
   private static class TurretFilterState {
     private final LinearFilter turretAngleFilter = LinearFilter.movingAverage((int) (0.1 / 0.02));
     private final LinearFilter hoodAngleFilter = LinearFilter.movingAverage((int) (0.1 / 0.02));
+    private final ArrayDeque<Double> recentLeadTimeOfFlightSamples = new ArrayDeque<>();
     private Rotation2d lastTurretAngle = null;
     private double lastHoodAngle = Double.NaN;
+    private double lastFilteredLeadTimeOfFlightSec = Double.NaN;
+
+    private LeadTimeOfFlightFilterResult previewLeadTimeOfFlight(double rawLeadTimeOfFlightSec) {
+      if (!Double.isFinite(rawLeadTimeOfFlightSec)) {
+        return new LeadTimeOfFlightFilterResult(
+            rawLeadTimeOfFlightSec,
+            lastFilteredLeadTimeOfFlightSec,
+            false);
+      }
+
+      List<Double> candidateSamples = new ArrayList<>(recentLeadTimeOfFlightSamples);
+      candidateSamples.add(rawLeadTimeOfFlightSec);
+      while (candidateSamples.size() > LEAD_TOF_FILTER_WINDOW_SIZE) {
+        candidateSamples.remove(0);
+      }
+
+      double filteredLeadTimeOfFlightSec = median(candidateSamples);
+      boolean spikeRejected = false;
+      if (Double.isFinite(lastFilteredLeadTimeOfFlightSec)) {
+        double clampedLeadTimeOfFlightSec =
+            MathUtil.clamp(
+                filteredLeadTimeOfFlightSec,
+                lastFilteredLeadTimeOfFlightSec - LEAD_TOF_FILTER_MAX_STEP_SEC,
+                lastFilteredLeadTimeOfFlightSec + LEAD_TOF_FILTER_MAX_STEP_SEC);
+        spikeRejected = Math.abs(clampedLeadTimeOfFlightSec - filteredLeadTimeOfFlightSec) > 1e-9;
+        filteredLeadTimeOfFlightSec = clampedLeadTimeOfFlightSec;
+      }
+
+      return new LeadTimeOfFlightFilterResult(
+          rawLeadTimeOfFlightSec,
+          filteredLeadTimeOfFlightSec,
+          spikeRejected);
+    }
+
+    private LeadTimeOfFlightFilterResult commitLeadTimeOfFlight(double rawLeadTimeOfFlightSec) {
+      LeadTimeOfFlightFilterResult result = previewLeadTimeOfFlight(rawLeadTimeOfFlightSec);
+      if (Double.isFinite(rawLeadTimeOfFlightSec)) {
+        recentLeadTimeOfFlightSamples.addLast(rawLeadTimeOfFlightSec);
+        while (recentLeadTimeOfFlightSamples.size() > LEAD_TOF_FILTER_WINDOW_SIZE) {
+          recentLeadTimeOfFlightSamples.removeFirst();
+        }
+      }
+      if (Double.isFinite(result.filteredLeadTimeOfFlightSec())) {
+        lastFilteredLeadTimeOfFlightSec = result.filteredLeadTimeOfFlightSec();
+      }
+      return result;
+    }
   }
 
   private final Map<String, TurretFilterState> turretFilterStates = new HashMap<>();
@@ -525,8 +596,6 @@ public class ShotCalculator {
     ChassisSpeeds fieldChassisSpeeds = RobotContainer.drivetrainS.getFieldChassisSpeeds();
     TargetPlaneGeometry targetGeometry = resolveTargetPlaneGeometry(target);
     TurretBallisticsConfig turretConfig = resolveTurretConfig(robotToTurret);
-    Translation2d fieldLinearVelocity =
-        new Translation2d(fieldChassisSpeeds.vxMetersPerSecond, fieldChassisSpeeds.vyMetersPerSecond);
     ShotSolution selectedSolution;
     if (targetGeometry != null) {
       selectedSolution =
@@ -580,50 +649,7 @@ public class ShotCalculator {
     filterState.lastTurretAngle = turretAngle;
     filterState.lastHoodAngle = hoodAngle;
 
-    logTurretSolution(turretConfig, profile, selectedSolution, targetGeometry);
-
-    Logger.recordOutput(
-        "SuperStructure/ShotCalculator/" + profile.name + "/SelectedModel",
-        selectedSolution.model().toString());
-    Logger.recordOutput(
-        "SuperStructure/ShotCalculator/" + profile.name + "/BallSpeedMpsPerRPMFit",
-        FITTED_BALL_SPEED_MPS_PER_RPM);
-    Logger.recordOutput(
-        "SuperStructure/ShotCalculator/" + profile.name + "/BallSpeedMpsPerRPMUsed",
-        ballisticBallSpeedMetersPerSecPerRPM.get());
-    Logger.recordOutput(
-        "SuperStructure/ShotCalculator/" + profile.name + "/LookaheadPose",
-        selectedSolution.lookaheadPose());
-    Logger.recordOutput(
-        "SuperStructure/ShotCalculator/" + profile.name + "/LookaheadDist",
-        selectedSolution.lookaheadDist());
-    Logger.recordOutput(
-        "SuperStructure/ShotCalculator/" + profile.name + "/LeadTimeOfFlightSec",
-        selectedSolution.leadTimeOfFlightSec());
-    Logger.recordOutput(
-        "SuperStructure/ShotCalculator/" + profile.name + "/BallisticTimeOfFlightSec",
-        selectedSolution.ballisticState().timeOfFlightSec());
-    Logger.recordOutput(
-        "SuperStructure/ShotCalculator/" + profile.name + "/FieldLinearSpeedMps",
-        fieldLinearVelocity.getNorm());
-    Logger.recordOutput(
-        "SuperStructure/ShotCalculator/" + profile.name + "/MotionCompDeadbandSpeedMps",
-        motionCompensationDeadbandSpeedMetersPerSec.get());
-    Logger.recordOutput(
-        "SuperStructure/ShotCalculator/" + profile.name + "/MotionCompFullSpeedMps",
-        motionCompensationFullSpeedMetersPerSec.get());
-    Logger.recordOutput(
-        "SuperStructure/ShotCalculator/" + profile.name + "/MotionCompRangeGain",
-        motionCompensationRangeGain.get());
-    Logger.recordOutput(
-        "SuperStructure/ShotCalculator/" + profile.name + "/MotionCompLateralGain",
-        motionCompensationLateralGain.get());
-    Logger.recordOutput(
-        "SuperStructure/ShotCalculator/" + profile.name + "/UsesTargetPlaneGeometry",
-        targetGeometry != null);
-    Logger.recordOutput(
-        "SuperStructure/ShotCalculator/" + profile.name + "/UsingProfileLeadFallback",
-        targetGeometry != null && selectedSolution.model() == ShotModel.PROFILE_LEAD);
+    logTurretSolution(turretConfig, profile, selectedSolution, targetGeometry != null);
 
     return new ShootingParameters(turretAngle, turretVel, hoodAngle, hoodVel, flywheelSpeed);
   }
@@ -647,16 +673,21 @@ public class ShotCalculator {
       Pose2d robotPose,
       Rotation2d robotHeading,
       ChassisSpeeds fieldChassisSpeeds) {
+    TurretBallisticsConfig turretConfig = resolveTurretConfig(robotToTurret);
+    TurretFilterState filterState =
+        turretFilterStates.computeIfAbsent(turretConfig.name, key -> new TurretFilterState());
     Pose2d turretCenterPose = robotPose.transformBy(robotToTurret);
     double turretToTargetDistance = target.getDistance(turretCenterPose.getTranslation()) + distanceOffset;
     Rotation2d nominalShotHeadingField = target.minus(turretCenterPose.getTranslation()).getAngle();
-    Translation2d rawTurretCenterVelocity =
-        computeFieldVelocityAtRobotOffset(robotToTurret.getTranslation(), robotHeading, fieldChassisSpeeds);
+    Translation2d rawTurretCenterVelocity = getFieldLinearVelocity(fieldChassisSpeeds);
     double turretCenterMotionCompScale = computeMotionCompensationScale(rawTurretCenterVelocity);
     Translation2d turretCenterVelocity =
         applyMotionCompensationGains(
             rawTurretCenterVelocity.times(turretCenterMotionCompScale), nominalShotHeadingField);
-    double leadTimeOfFlightSec = profile.getTimeOfFlight(turretToTargetDistance);
+    double rawLeadTimeOfFlightSec = profile.getTimeOfFlight(turretToTargetDistance);
+    LeadTimeOfFlightFilterResult leadTimeOfFlight =
+        filterState.previewLeadTimeOfFlight(rawLeadTimeOfFlightSec);
+    double leadTimeOfFlightSec = leadTimeOfFlight.filteredLeadTimeOfFlightSec();
     double lookaheadDist = turretToTargetDistance;
     Pose2d lookaheadPose = turretCenterPose;
     StaticShotCommand shotCommand = getStaticShotCommandForDistance(profile, turretToTargetDistance, robotToTurret);
@@ -667,8 +698,12 @@ public class ShotCalculator {
               turretCenterPose.getRotation());
       lookaheadDist = target.getDistance(lookaheadPose.getTranslation()) + distanceOffset;
       shotCommand = getStaticShotCommandForDistance(profile, lookaheadDist, robotToTurret);
-      leadTimeOfFlightSec = profile.getTimeOfFlight(lookaheadDist);
+      rawLeadTimeOfFlightSec = profile.getTimeOfFlight(lookaheadDist);
+      leadTimeOfFlight = filterState.previewLeadTimeOfFlight(rawLeadTimeOfFlightSec);
+      leadTimeOfFlightSec = leadTimeOfFlight.filteredLeadTimeOfFlightSec();
     }
+    leadTimeOfFlight = filterState.commitLeadTimeOfFlight(rawLeadTimeOfFlightSec);
+    leadTimeOfFlightSec = leadTimeOfFlight.filteredLeadTimeOfFlightSec();
     lookaheadPose =
         new Pose2d(
             turretCenterPose.getTranslation().plus(turretCenterVelocity.times(leadTimeOfFlightSec)),
@@ -686,9 +721,13 @@ public class ShotCalculator {
         turretAngle,
         hoodAngle,
         flywheelSpeed,
-        leadTimeOfFlightSec,
+        leadTimeOfFlight.rawLeadTimeOfFlightSec(),
+        leadTimeOfFlight.filteredLeadTimeOfFlightSec(),
+        leadTimeOfFlight.spikeRejected(),
         lookaheadPose,
         lookaheadDist,
+        turretCenterVelocity.getNorm(),
+        turretCenterMotionCompScale,
         BallisticState.invalid());
   }
 
@@ -702,6 +741,8 @@ public class ShotCalculator {
       Rotation2d robotHeading,
       ChassisSpeeds fieldChassisSpeeds,
       TargetPlaneGeometry targetGeometry) {
+    TurretFilterState filterState =
+        turretFilterStates.computeIfAbsent(turretConfig.name, key -> new TurretFilterState());
     Pose2d turretCenterPose = robotPose.transformBy(robotToTurret);
     double staticDistance = target.getDistance(turretCenterPose.getTranslation()) + distanceOffset;
 
@@ -714,8 +755,12 @@ public class ShotCalculator {
           shotCommand.hoodAngleRad(),
           shotCommand.flywheelSpeedRadPerSec(),
           Double.NaN,
+          Double.NaN,
+          false,
           new Pose2d(),
           staticDistance,
+          Double.NaN,
+          Double.NaN,
           BallisticState.invalid());
     }
 
@@ -723,7 +768,10 @@ public class ShotCalculator {
         robotPose.getTranslation().plus(turretConfig.launchBaseOffsetRobot().rotateBy(robotHeading));
     Rotation2d shotHeadingField = targetGeometry.center().minus(launchBasePosition).getAngle();
     double lookaheadDist = staticDistance;
-    double leadTimeOfFlightSec = profile.getTimeOfFlight(lookaheadDist);
+    double rawLeadTimeOfFlightSec = profile.getTimeOfFlight(lookaheadDist);
+    LeadTimeOfFlightFilterResult leadTimeOfFlight =
+        filterState.previewLeadTimeOfFlight(rawLeadTimeOfFlightSec);
+    double leadTimeOfFlightSec = leadTimeOfFlight.filteredLeadTimeOfFlightSec();
     StaticShotCommand shotCommand = getStaticShotCommandForDistance(profile, lookaheadDist, robotToTurret);
     double hoodAngle = shotCommand.hoodAngleRad();
     double flywheelSpeed = shotCommand.flywheelSpeedRadPerSec();
@@ -748,15 +796,21 @@ public class ShotCalculator {
             new Rotation2d(),
             hoodAngle,
             flywheelSpeed,
-            Double.NaN,
+            leadTimeOfFlight.rawLeadTimeOfFlightSec(),
+            leadTimeOfFlight.filteredLeadTimeOfFlightSec(),
+            leadTimeOfFlight.spikeRejected(),
             new Pose2d(),
             staticDistance,
+            ballisticState.appliedTranslationVelocity().getNorm(),
+            ballisticState.motionCompensationScale(),
             ballisticState);
       }
 
       lookaheadDist =
           ballisticState.correctedTargetPoint().getDistance(turretCenterPose.getTranslation()) + distanceOffset;
-      leadTimeOfFlightSec = profile.getTimeOfFlight(lookaheadDist);
+      rawLeadTimeOfFlightSec = profile.getTimeOfFlight(lookaheadDist);
+      leadTimeOfFlight = filterState.previewLeadTimeOfFlight(rawLeadTimeOfFlightSec);
+      leadTimeOfFlightSec = leadTimeOfFlight.filteredLeadTimeOfFlightSec();
       shotCommand = getStaticShotCommandForDistance(profile, lookaheadDist, robotToTurret);
       hoodAngle = shotCommand.hoodAngleRad();
       flywheelSpeed = shotCommand.flywheelSpeedRadPerSec();
@@ -768,6 +822,9 @@ public class ShotCalculator {
       }
       shotHeadingField = updatedHeading;
     }
+
+    leadTimeOfFlight = filterState.commitLeadTimeOfFlight(rawLeadTimeOfFlightSec);
+    leadTimeOfFlightSec = leadTimeOfFlight.filteredLeadTimeOfFlightSec();
 
     ballisticState =
         computeBallisticState(
@@ -787,9 +844,13 @@ public class ShotCalculator {
           new Rotation2d(),
           hoodAngle,
           flywheelSpeed,
-          Double.NaN,
+          leadTimeOfFlight.rawLeadTimeOfFlightSec(),
+          leadTimeOfFlight.filteredLeadTimeOfFlightSec(),
+          leadTimeOfFlight.spikeRejected(),
           new Pose2d(),
           staticDistance,
+          ballisticState.appliedTranslationVelocity().getNorm(),
+          ballisticState.motionCompensationScale(),
           ballisticState);
     }
 
@@ -801,9 +862,13 @@ public class ShotCalculator {
         turretAngle,
         hoodAngle,
         flywheelSpeed,
-        leadTimeOfFlightSec,
+        leadTimeOfFlight.rawLeadTimeOfFlightSec(),
+        leadTimeOfFlight.filteredLeadTimeOfFlightSec(),
+        leadTimeOfFlight.spikeRejected(),
         lookaheadPose,
         lookaheadDist,
+        ballisticState.appliedTranslationVelocity().getNorm(),
+        ballisticState.motionCompensationScale(),
         ballisticState);
   }
 
@@ -852,15 +917,14 @@ public class ShotCalculator {
 
     double horizontalLaunchSpeedMps = launchSpeedMps * Math.cos(launchPitchRad);
     double verticalLaunchSpeedMps = launchSpeedMps * Math.sin(launchPitchRad);
-    Translation2d rawChassisVelocityAtMuzzle =
-        computeFieldVelocityAtRobotOffset(muzzleOffsetRobot, robotHeading, fieldChassisSpeeds);
-    double motionCompensationScale = computeMotionCompensationScale(rawChassisVelocityAtMuzzle);
-    Translation2d chassisVelocityAtMuzzle =
+    Translation2d rawTranslationVelocity = getFieldLinearVelocity(fieldChassisSpeeds);
+    double motionCompensationScale = computeMotionCompensationScale(rawTranslationVelocity);
+    Translation2d appliedTranslationVelocity =
         applyMotionCompensationGains(
-            rawChassisVelocityAtMuzzle.times(motionCompensationScale), shotHeadingField);
+            rawTranslationVelocity.times(motionCompensationScale), shotHeadingField);
     Translation2d correctedTargetPoint =
         Double.isFinite(leadTimeOfFlightSec)
-            ? targetGeometry.center().minus(chassisVelocityAtMuzzle.times(Math.max(0.0, leadTimeOfFlightSec)))
+            ? targetGeometry.center().minus(appliedTranslationVelocity.times(Math.max(0.0, leadTimeOfFlightSec)))
             : INVALID_TRANSLATION;
 
     double[] crossingTimesSec =
@@ -875,9 +939,9 @@ public class ShotCalculator {
           launchPitchRad,
           launchSpeedMps,
           Double.NaN,
-          rawChassisVelocityAtMuzzle,
+          rawTranslationVelocity,
           motionCompensationScale,
-          chassisVelocityAtMuzzle,
+          appliedTranslationVelocity,
           INVALID_TRANSLATION,
           Double.NaN,
           Double.NaN,
@@ -885,7 +949,7 @@ public class ShotCalculator {
     }
 
     Translation2d totalHorizontalVelocity =
-        chassisVelocityAtMuzzle.plus(new Translation2d(horizontalLaunchSpeedMps, shotHeadingField));
+        appliedTranslationVelocity.plus(new Translation2d(horizontalLaunchSpeedMps, shotHeadingField));
     Translation2d launchToTarget = targetGeometry.center().minus(launchPosition);
     double targetDistance = launchToTarget.getNorm();
     BallisticCandidate bestCandidate = null;
@@ -934,9 +998,9 @@ public class ShotCalculator {
           launchPitchRad,
           launchSpeedMps,
           Double.NaN,
-          rawChassisVelocityAtMuzzle,
+          rawTranslationVelocity,
           motionCompensationScale,
-          chassisVelocityAtMuzzle,
+          appliedTranslationVelocity,
           INVALID_TRANSLATION,
           Double.NaN,
           Double.NaN,
@@ -951,9 +1015,9 @@ public class ShotCalculator {
         launchPitchRad,
         launchSpeedMps,
         bestCandidate.timeOfFlightSec(),
-        rawChassisVelocityAtMuzzle,
+        rawTranslationVelocity,
         motionCompensationScale,
-        chassisVelocityAtMuzzle,
+        appliedTranslationVelocity,
         bestCandidate.predictedCrossingPoint(),
         bestCandidate.rangeErrorMeters(),
         bestCandidate.lateralErrorMeters(),
@@ -964,55 +1028,68 @@ public class ShotCalculator {
       TurretBallisticsConfig turretConfig,
       ShotProfile profile,
       ShotSolution solution,
-      TargetPlaneGeometry targetGeometry) {
+      boolean usedTargetPlaneGeometry) {
     String prefix = "SuperStructure/ShotCalculator/" + turretConfig.name + "/" + profile.name + "/Selected";
     BallisticState ballisticState = solution.ballisticState();
+    boolean usedProfileLeadFallback = usedTargetPlaneGeometry && solution.model() == ShotModel.PROFILE_LEAD;
+    double launchPitchRad =
+        Double.isFinite(ballisticState.launchPitchRad())
+            ? ballisticState.launchPitchRad()
+            : turretConfig.launchPitchRad(solution.hoodAngle());
+    double launchSpeedMps =
+        Double.isFinite(ballisticState.launchSpeedMps())
+            ? ballisticState.launchSpeedMps()
+            : Units.radiansPerSecondToRotationsPerMinute(solution.flywheelSpeed())
+                * ballisticBallSpeedMetersPerSecPerRPM.get();
     latestShotTelemetryByTurret.put(
         turretConfig.name,
         new ShotTelemetry(
             turretConfig.name,
             profile.name,
             solution.model().toString(),
-            solution.leadTimeOfFlightSec(),
+            solution.rawLeadTimeOfFlightSec(),
+            solution.filteredLeadTimeOfFlightSec(),
+            solution.leadTimeOfFlightSpikeRejected(),
             ballisticState.timeOfFlightSec(),
-            ballisticState.launchPitchRad(),
-            ballisticState.launchSpeedMps(),
+            launchPitchRad,
+            launchSpeedMps,
             ballisticState.rangeErrorMeters(),
-            ballisticState.lateralErrorMeters()));
+            ballisticState.lateralErrorMeters(),
+            solution.appliedTranslationCompensationSpeedMps(),
+            solution.appliedMotionCompensationScale(),
+            usedProfileLeadFallback));
 
     Logger.recordOutput(prefix + "/Model", solution.model().toString());
     Logger.recordOutput(prefix + "/Valid", solution.valid());
-    Logger.recordOutput(prefix + "/EmpiricalLeadTimeOfFlightSec", solution.leadTimeOfFlightSec());
+    Logger.recordOutput(prefix + "/RawLeadTimeOfFlightSec", solution.rawLeadTimeOfFlightSec());
+    Logger.recordOutput(prefix + "/FilteredLeadTimeOfFlightSec", solution.filteredLeadTimeOfFlightSec());
+    Logger.recordOutput(prefix + "/LeadTimeOfFlightSpikeRejected", solution.leadTimeOfFlightSpikeRejected());
     Logger.recordOutput(prefix + "/BallisticTimeOfFlightSec", ballisticState.timeOfFlightSec());
     Logger.recordOutput(
         prefix + "/TimeOfFlightDeltaSec",
-        ballisticState.timeOfFlightSec() - solution.leadTimeOfFlightSec());
-    Logger.recordOutput(prefix + "/LaunchPitchDeg", Math.toDegrees(ballisticState.launchPitchRad()));
-    Logger.recordOutput(prefix + "/LaunchSpeedMps", ballisticState.launchSpeedMps());
+        ballisticState.timeOfFlightSec() - solution.filteredLeadTimeOfFlightSec());
+    Logger.recordOutput(prefix + "/LaunchPitchDeg", Math.toDegrees(launchPitchRad));
+    Logger.recordOutput(prefix + "/LaunchSpeedMps", launchSpeedMps);
     Logger.recordOutput(prefix + "/RangeErrorM", ballisticState.rangeErrorMeters());
     Logger.recordOutput(prefix + "/LateralErrorM", ballisticState.lateralErrorMeters());
     Logger.recordOutput(
-        prefix + "/CorrectedTargetPose",
-        targetGeometry == null
-            ? INVALID_POSE
-            : new Pose3d(
-                ballisticState.correctedTargetPoint().getX(),
-                ballisticState.correctedTargetPoint().getY(),
-                targetGeometry.heightMeters(),
-                new Rotation3d()));
+        prefix + "/AppliedTranslationCompensationSpeedMps",
+        solution.appliedTranslationCompensationSpeedMps());
+    Logger.recordOutput(prefix + "/AppliedMotionCompensationScale", solution.appliedMotionCompensationScale());
+    Logger.recordOutput(prefix + "/UsedProfileLeadFallback", usedProfileLeadFallback);
   }
 
   private static TargetPlaneGeometry resolveTargetPlaneGeometry(Translation2d target) {
     Translation2d hubCenter =
         GeomUtil.apply(
             new Translation2d(
-                FieldConstants.Hub.topCenterPoint.getX(), FieldConstants.Hub.topCenterPoint.getY()));
+                FieldConstants.Hub.innerCenterPoint.getX(), FieldConstants.Hub.innerCenterPoint.getY()));
     if (target.getDistance(hubCenter) > HUB_TARGET_MATCH_EPSILON_METERS) {
       return null;
     }
 
     return new TargetPlaneGeometry(
-        "Hub72Plane",
+        "HubInnerPlane",
         hubCenter,
         AdvancedMechanismConstants.Turret.hubScoringPlaneHeightMeters,
         AdvancedMechanismConstants.Turret.hubScoringPlaneLateralToleranceMeters);
@@ -1028,17 +1105,8 @@ public class ShotCalculator {
     return a.getTranslation().getDistance(b.getTranslation());
   }
 
-  private static Translation2d computeFieldVelocityAtRobotOffset(
-      Translation2d robotOffset,
-      Rotation2d robotHeading,
-      ChassisSpeeds fieldChassisSpeeds) {
-    Translation2d linearVelocity =
-        new Translation2d(fieldChassisSpeeds.vxMetersPerSecond, fieldChassisSpeeds.vyMetersPerSecond);
-    Translation2d fieldOffset = robotOffset.rotateBy(robotHeading);
-    Translation2d rotationalVelocity =
-        fieldOffset.rotateBy(Rotation2d.fromDegrees(90.0))
-            .times(fieldChassisSpeeds.omegaRadiansPerSecond);
-    return linearVelocity.plus(rotationalVelocity);
+  private static Translation2d getFieldLinearVelocity(ChassisSpeeds fieldChassisSpeeds) {
+    return new Translation2d(fieldChassisSpeeds.vxMetersPerSecond, fieldChassisSpeeds.vyMetersPerSecond);
   }
 
   private static double computeMotionCompensationScale(Translation2d compensationVelocity) {
@@ -1136,5 +1204,19 @@ public class ShotCalculator {
       return 0.001682;
     }
     return sumRpmTimesSpeed / sumRpmSquared;
+  }
+
+  private static double median(List<Double> values) {
+    if (values.isEmpty()) {
+      return Double.NaN;
+    }
+
+    List<Double> sortedValues = new ArrayList<>(values);
+    Collections.sort(sortedValues);
+    int centerIndex = sortedValues.size() / 2;
+    if ((sortedValues.size() & 1) == 1) {
+      return sortedValues.get(centerIndex);
+    }
+    return 0.5 * (sortedValues.get(centerIndex - 1) + sortedValues.get(centerIndex));
   }
 }
