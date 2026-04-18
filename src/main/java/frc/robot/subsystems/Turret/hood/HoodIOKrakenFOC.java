@@ -3,6 +3,8 @@ package frc.robot.subsystems.Turret.hood;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.littletonrobotics.junction.Logger;
+
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusSignal;
@@ -160,12 +162,17 @@ public class HoodIOKrakenFOC implements HoodIO {
             : ((hoodDeg - START_ANGLE_DEG_RIGHT) / getDegPerInchRight());
     }
 
-    private static double extensionInToScrewRev(double extensionIn) {
+    private double extensionInToScrewRev(double extensionIn) {
+        if (!isLeft){
+            Logger.recordOutput("RightTurret/Hood/ExtenionIN", extensionIn);
+            Logger.recordOutput("RightTurret/Hood/ScrewRev", extensionIn * REV_PER_INCH);
+        }
         return extensionIn * REV_PER_INCH;
     }
 
     private double hoodRadToSensorRot(double hoodRad) {
         double hoodDeg = clampHoodDeg(Math.toDegrees(hoodRad), minAngleRads, maxAngleRads);
+        if (!isLeft)Logger.recordOutput("RightTurret/Hood/hoodDeg", Math.toDegrees(hoodRad));
         return extensionInToScrewRev(hoodDegToExtensionIn(hoodDeg));
     }
 
