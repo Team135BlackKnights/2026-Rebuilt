@@ -37,8 +37,8 @@ public class ShotCalculator {
   private static final double HUB_TARGET_MATCH_EPSILON_METERS = 1e-3;
   private static final int HYBRID_HEADING_SOLVE_ITERATIONS = 5;
   private static final int PROFILE_LEAD_ITERATIONS = 3;
-  private static final int LEAD_TOF_FILTER_WINDOW_SIZE = 5;
-  private static final double LEAD_TOF_FILTER_MAX_STEP_SEC = 0.20;
+  private static final int LEAD_TOF_FILTER_WINDOW_SIZE = 2;
+  private static final double LEAD_TOF_FILTER_MAX_STEP_SEC = 0.30;
   private static final double MAX_FLYWHEEL_SPEED_RAD_PER_SEC =
       Units.rotationsPerMinuteToRadiansPerSecond(AdvancedMechanismConstants.Turret.flywheelMaxRPM);
   private static final Translation2d INVALID_TRANSLATION =
@@ -53,17 +53,17 @@ public class ShotCalculator {
       double timeOfFlightSeconds) {}
 
   private static final CalibrationPoint[] HUB_CALIBRATION_POINTS = {
-      new CalibrationPoint(1.215, 3000.0, Units.degreesToRadians(16.50), 1.040),
-      new CalibrationPoint(1.536, 3000.0, Units.degreesToRadians(18.00), 0.930),
-      new CalibrationPoint(1.791, 3050.0, Units.degreesToRadians(19.00), 1.040),
-      new CalibrationPoint(1.964, 3100.0, Units.degreesToRadians(20.00), 1.100),
-      new CalibrationPoint(2.235, 3200.0, Units.degreesToRadians(24.00), 1.000),
-      new CalibrationPoint(2.515, 3450.0, Units.degreesToRadians(26.00), 1.000),
-      new CalibrationPoint(2.800, 3600.0, 0.47, 1.160),
-      new CalibrationPoint(3.007, 3700.0, 0.50, 1.180),
-      new CalibrationPoint(3.294, 3800.0, 0.53, 1.200),
-      new CalibrationPoint(3.490, 3925.0, 0.56, 1.210),
-      new CalibrationPoint(3.747, 4100.0, 0.58, 1.220)
+      new CalibrationPoint(1.215, 3100.0, Units.degreesToRadians(16.50), 1.040),
+      new CalibrationPoint(1.536, 3100.0, Units.degreesToRadians(18.00), 0.930),
+      new CalibrationPoint(1.791, 3150.0, Units.degreesToRadians(19.00), 1.040),
+      new CalibrationPoint(1.964, 3200.0, Units.degreesToRadians(20.00), 1.100),
+      new CalibrationPoint(2.235, 3300.0, Units.degreesToRadians(24.00), 1.000),
+      new CalibrationPoint(2.515, 3550.0, Units.degreesToRadians(26.00), 1.000),
+      new CalibrationPoint(2.800, 3700.0, 0.47, 1.160),
+      new CalibrationPoint(3.007, 3800.0, 0.50, 1.180),
+      new CalibrationPoint(3.294, 3900.0, 0.53, 1.200),
+      new CalibrationPoint(3.490, 4025.0, 0.56, 1.210),
+      new CalibrationPoint(3.747, 4250.0, 0.58, 1.220)
   };
 
   private static final LoggableTunedNumber ballisticBallSpeedMetersPerSecPerRPM =

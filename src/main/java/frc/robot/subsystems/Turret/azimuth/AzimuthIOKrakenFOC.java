@@ -115,7 +115,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         this.primaryEncoderRatio = -turretToIdlerRatio;
         this.homingVolts = new LoggableTunedNumber(
                 name + "/Turret/HomingVolts",
-                1,
+                2,
                 TuningConstants.isTuningShooter);
 
         talon = new TalonFX(ID, bus);
