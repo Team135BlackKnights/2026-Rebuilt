@@ -119,7 +119,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         talon = new TalonFX(ID, bus);
         canCoderBig = new CANcoder(canCoderBigID, bus);
         magSwitch = new AM_CAN_Mag_Switch(magID);
-        magSwitch.setReportPeriod(5);
+        magSwitch.setReportPeriod(2);
 
         /* ---- CANcoder configs ---- */
         /*
