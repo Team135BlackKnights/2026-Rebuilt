@@ -188,7 +188,8 @@ public class HoodIOKrakenFOC implements HoodIO {
         double sensorRps = vel.getValueAsDouble();
 
         double volts = ff.calculate(sensorRps) + controller.calculate(sensorRot);
-        runVolts(volts);
+
+        if (!isLeft)runVolts(volts);
 
         inputs.positionRads = sensorRotToHoodRad(sensorRot);
         inputs.velocityRadsPerSec = Units.rotationsToRadians(sensorRps);
@@ -205,7 +206,8 @@ public class HoodIOKrakenFOC implements HoodIO {
         if (zeroingActive) return;
 
         double clamped = MathUtil.clamp(positionRads, minAngleRads, maxAngleRads);
-        controller.setSetpoint(hoodRadToSensorRot(clamped));
+        if (!(isLeft)) 
+            controller.setSetpoint(hoodRadToSensorRot(clamped));
     }
 
     @Override
