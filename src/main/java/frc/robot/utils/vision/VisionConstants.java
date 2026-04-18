@@ -46,7 +46,7 @@ public class VisionConstants {
 
 	public static final boolean debug = true;
 
-	public static final double ambiguityThreshold = 0.6;
+	public static final double ambiguityThreshold = 0.7;
 	public static final double objDetectConfidenceThreshold = .6;
 	public static final double maxZError = 0.75;
 	public static final double maxObjZError = 0.25;
@@ -120,7 +120,7 @@ public class VisionConstants {
 					.location("0x02210000 / 3")
 										.width(1600)
 					.height(1304)
-					.exposure(15)
+					.exposure(20)
 					.saturation(0)
 					.hue(0)
 					.whiteBalance(4000)
@@ -142,7 +142,7 @@ public class VisionConstants {
 										.location("0x00220000 / 4")
 					.width(1600)
 					.height(1304)
-					.exposure(12)
+					.exposure(15)
 					.saturation(0)
 					.hue(0)
 					.whiteBalance(4000)
