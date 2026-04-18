@@ -92,6 +92,7 @@ public class HoodIOKrakenFOC implements HoodIO {
     public HoodIOKrakenFOC(
             CANBus bus,
             int motorID,
+            boolean isLeft,
             String name,
             int currentLimitAmps,
             double minAngleRads,
@@ -105,7 +106,7 @@ public class HoodIOKrakenFOC implements HoodIO {
         talon = new TalonFXS(motorID, bus);
 
         cfg.Commutation.MotorArrangement = MotorArrangementValue.Brushed_DC;
-        cfg.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
+        cfg.MotorOutput.Inverted = isLeft ? InvertedValue.Clockwise_Positive : InvertedValue.CounterClockwise_Positive;
         cfg.Commutation.BrushedMotorWiring = BrushedMotorWiringValue.Leads_A_and_B;
 
         cfg.ExternalTemp.TempSensorRequired = TempSensorRequiredValue.Not_Required;

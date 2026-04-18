@@ -651,6 +651,7 @@ public class RobotContainer {
 				HoodIO hoodIOLeftTurret = new HoodIOKrakenFOC(
 						Robot.rioCanBus,
 						AdvancedMechanismConstants.Turret.leftHoodID,
+						true,
 						AdvancedMechanismConstants.Turret.leftName,
 						AdvancedMechanismConstants.Turret.currentLimitHood,
 						AdvancedMechanismConstants.Turret.leftMinHoodAngle,
@@ -702,6 +703,7 @@ public class RobotContainer {
 				HoodIO hoodIORightTurret = new HoodIOKrakenFOC(
 						Robot.rioCanBus,
 						AdvancedMechanismConstants.Turret.rightHoodID,
+						false,
 						AdvancedMechanismConstants.Turret.rightName,
 						AdvancedMechanismConstants.Turret.currentLimitHood,
 						AdvancedMechanismConstants.Turret.rightMinHoodAngle,
