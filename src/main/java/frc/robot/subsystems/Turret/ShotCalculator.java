@@ -568,6 +568,8 @@ public class ShotCalculator {
 
   private final Map<String, TurretFilterState> turretFilterStates = new HashMap<>();
   private final Map<String, ShotTelemetry> latestShotTelemetryByTurret = new HashMap<>();
+  private final Map<String, Integer> turretSolutionLogCycles = new HashMap<>();
+  private static final int SOLUTION_LOG_DECIMATION = 5;
 
   public ShootingParameters getParameters(Translation2d target, Transform2d robotToTurret) {
     return getParameters(target, robotToTurret, HUB_PROFILE, 0.0);
@@ -663,6 +665,7 @@ public class ShotCalculator {
   public void clearShootingParameters() {
     turretFilterStates.clear();
     latestShotTelemetryByTurret.clear();
+    turretSolutionLogCycles.clear();
   }
 
   private ShotSolution createProfileLeadSolution(
@@ -1059,6 +1062,10 @@ public class ShotCalculator {
             solution.appliedMotionCompensationScale(),
             usedProfileLeadFallback));
 
+    if (!shouldLogTurretSolution(turretConfig.name)) {
+      return;
+    }
+
     Logger.recordOutput(prefix + "/Model", solution.model().toString());
     Logger.recordOutput(prefix + "/Valid", solution.valid());
     Logger.recordOutput(prefix + "/RawLeadTimeOfFlightSec", solution.rawLeadTimeOfFlightSec());
@@ -1077,6 +1084,12 @@ public class ShotCalculator {
         solution.appliedTranslationCompensationSpeedMps());
     Logger.recordOutput(prefix + "/AppliedMotionCompensationScale", solution.appliedMotionCompensationScale());
     Logger.recordOutput(prefix + "/UsedProfileLeadFallback", usedProfileLeadFallback);
+  }
+
+  private boolean shouldLogTurretSolution(String turretName) {
+    int cycle = turretSolutionLogCycles.getOrDefault(turretName, 0);
+    turretSolutionLogCycles.put(turretName, (cycle + 1) % SOLUTION_LOG_DECIMATION);
+    return cycle == 0;
   }
 
   private static TargetPlaneGeometry resolveTargetPlaneGeometry(Translation2d target) {
