@@ -115,7 +115,7 @@ public class HoodIOKrakenFOC implements HoodIO {
 
         cfg.ExternalFeedback.ExternalFeedbackSensorSource = ExternalFeedbackSensorSourceValue.Quadrature;
         cfg.ExternalFeedback.QuadratureEdgesPerRotation = QUAD_EDGES_PER_OUTPUT_REV;
-        cfg.ExternalFeedback.SensorPhase = SensorPhaseValue.Aligned;
+        cfg.ExternalFeedback.SensorPhase = isLeft ? SensorPhaseValue.Aligned : SensorPhaseValue.Opposed;
 
         cfg.SoftwareLimitSwitch.ForwardSoftLimitEnable = false;
         cfg.SoftwareLimitSwitch.ForwardSoftLimitThreshold = hoodRadToSensorRot(maxAngleRads);
