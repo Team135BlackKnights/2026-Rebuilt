@@ -3,8 +3,6 @@ package frc.robot.subsystems.Turret.hood;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.littletonrobotics.junction.Logger;
-
 import com.ctre.phoenix6.BaseStatusSignal;
 import com.ctre.phoenix6.CANBus;
 import com.ctre.phoenix6.StatusSignal;
@@ -200,7 +198,6 @@ public class HoodIOKrakenFOC implements HoodIO {
         inputs.torqueCurrentAmps = torqueCurrent.getValueAsDouble();
         inputs.tempCelsius = tempCelsius.getValueAsDouble();
 
-        Logger.recordOutput("Hood/" + name + "/HoodDegEst", Math.toDegrees(inputs.positionRads));
     }
 
     @Override

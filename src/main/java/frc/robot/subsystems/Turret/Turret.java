@@ -150,6 +150,13 @@ public class Turret extends SubsystemChecker {
   private static final double SAFE_TRENCH_HOOD_RADS = Units.degreesToRadians(31.0);
   private static final double AUTO_REZERO_INTERVAL_SEC = 2.5;
   private static final double MANUAL_REZERO_INTERVAL_SEC = 1;
+  private static final int SHOT_TELEMETRY_LOG_DECIMATION = 5;
+
+  private int shotTelemetryLogCycle = 0;
+  private Goal lastLoggedGoal = null;
+  private Goal lastLoggedControlGoal = null;
+  private Kickup.Goal lastLoggedKickupGoal = null;
+  private String lastLoggedZeroingState = "";
 
   public Turret(
       AzimuthIO azimuthIO,
@@ -164,6 +171,7 @@ public class Turret extends SubsystemChecker {
     this.kickup = kickup;
     this.robotToTurret = robotToTurret;
     this.name = name;
+    this.setName(name);
     if ("LeftTurret".equals(name)) {
       azimuth_kP = new LoggableTunedNumber(name + "/Azimuth/kP", 6.0, TuningConstants.isTuningShooter); // 75
       azimuth_kI = new LoggableTunedNumber(name + "/Azimuth/kI", 0.0, TuningConstants.isTuningShooter);
@@ -235,7 +243,6 @@ public class Turret extends SubsystemChecker {
 
     // Apply initial PIDs once
     applyAllPIDs();
-
     // Initialize targets
     target = getPresetTarget2d(PresetTarget.HUB_TOP_CENTER);
 
@@ -590,7 +597,9 @@ public class Turret extends SubsystemChecker {
      * }
      */
 
-    shotCalculator.clearShootingParameters();
+    if (goal != lastGoal) {
+      shotCalculator.clearShootingParameters();
+    }
 
     Goal controlGoal = getShooterControlGoal();
 
@@ -702,7 +711,6 @@ public class Turret extends SubsystemChecker {
     kickup.setGoal(kickupGoal);
     kickup.periodic();
     if (goal != lastGoal) {
-      shotCalculator.clearShootingParameters();
       lastGoal = goal;
     }
     applyHoodSafetyControl(controlGoal);
@@ -720,42 +728,49 @@ public class Turret extends SubsystemChecker {
       tuning_logFlag.set(false);
     }
     lastLogFlag = logNow;
-    ShotCalculator.ShotTelemetry shotTelemetry = shotCalculator.getLatestShotTelemetry(robotToTurret);
-    Logger.recordOutput(name + "/ShotTuning/LoggedShots", loggedShots.toArray(new String[0]));
-    Logger.recordOutput(name + "/ShotTuning/ShotCount", loggedShots.size());
-    Logger.recordOutput(name + "/ShotTuning/ManualTOFSec", tuning_TOF.get());
-    Logger.recordOutput(name + "/ShotTuning/ManualDistanceOffsetMeters", distanceOffset);
-    Logger.recordOutput(name + "/ShotTuning/SelectedModel", shotTelemetry.selectedModel());
-    Logger.recordOutput(name + "/ShotTuning/UsedProfileLeadFallback", shotTelemetry.usedProfileLeadFallback());
-    Logger.recordOutput(name + "/ShotTuning/PredictedLeadTOFRawSec", shotTelemetry.rawLeadTimeOfFlightSec());
-    Logger.recordOutput(name + "/ShotTuning/PredictedLeadTOFFilteredSec", shotTelemetry.filteredLeadTimeOfFlightSec());
-    Logger.recordOutput(name + "/ShotTuning/PredictedBallisticTOFSec", shotTelemetry.ballisticTimeOfFlightSec());
-    Logger.recordOutput(name + "/ShotTuning/LeadTOFSpikeRejected", shotTelemetry.leadTimeOfFlightSpikeRejected());
-    Logger.recordOutput(
-        name + "/ShotTuning/LeadTOFDeltaSec",
-        shotTelemetry.ballisticTimeOfFlightSec() - shotTelemetry.filteredLeadTimeOfFlightSec());
-    Logger.recordOutput(
-        name + "/ShotTuning/LeadTOFErrorSec",
-        shotTelemetry.filteredLeadTimeOfFlightSec() - tuning_TOF.get());
-    Logger.recordOutput(
-        name + "/ShotTuning/BallisticTOFErrorSec",
-        shotTelemetry.ballisticTimeOfFlightSec() - tuning_TOF.get());
-    Logger.recordOutput(name + "/ShotTuning/PredictedLaunchPitchDeg", Math.toDegrees(shotTelemetry.launchPitchRad()));
-    Logger.recordOutput(name + "/ShotTuning/PredictedLaunchSpeedMps", shotTelemetry.launchSpeedMps());
-    Logger.recordOutput(name + "/ShotTuning/PredictedRangeErrorM", shotTelemetry.rangeErrorMeters());
-    Logger.recordOutput(name + "/ShotTuning/PredictedLateralErrorM", shotTelemetry.lateralErrorMeters());
-    Logger.recordOutput(
-        name + "/ShotTuning/AppliedTranslationCompensationSpeedMps",
-        shotTelemetry.appliedTranslationCompensationSpeedMps());
-    Logger.recordOutput(
-        name + "/ShotTuning/AppliedMotionCompensationScale",
-        shotTelemetry.appliedMotionCompensationScale());
-    // Live distance for tuning reference
-    Pose2d currentTurretPose = RobotContainer.drivetrainS.getPose().transformBy(robotToTurret);
-    Logger.recordOutput(name + "/ShotTuning/DistToTargetM",
-        target.getDistance(currentTurretPose.getTranslation()));
-    Logger.recordOutput(name + "/Goal", goal.toString());
-    Logger.recordOutput(name + "/ControlGoal", controlGoal.toString());
+    if (shouldLogShotTelemetry(controlGoal)) {
+      ShotCalculator.ShotTelemetry shotTelemetry = shotCalculator.getLatestShotTelemetry(robotToTurret);
+      Logger.recordOutput(name + "/ShotTuning/LoggedShots", loggedShots.toArray(new String[0]));
+      Logger.recordOutput(name + "/ShotTuning/ShotCount", loggedShots.size());
+      Logger.recordOutput(name + "/ShotTuning/ManualTOFSec", tuning_TOF.get());
+      Logger.recordOutput(name + "/ShotTuning/ManualDistanceOffsetMeters", distanceOffset);
+      Logger.recordOutput(name + "/ShotTuning/SelectedModel", shotTelemetry.selectedModel());
+      Logger.recordOutput(name + "/ShotTuning/UsedProfileLeadFallback", shotTelemetry.usedProfileLeadFallback());
+      Logger.recordOutput(name + "/ShotTuning/PredictedLeadTOFRawSec", shotTelemetry.rawLeadTimeOfFlightSec());
+      Logger.recordOutput(name + "/ShotTuning/PredictedLeadTOFFilteredSec", shotTelemetry.filteredLeadTimeOfFlightSec());
+      Logger.recordOutput(name + "/ShotTuning/PredictedBallisticTOFSec", shotTelemetry.ballisticTimeOfFlightSec());
+      Logger.recordOutput(name + "/ShotTuning/LeadTOFSpikeRejected", shotTelemetry.leadTimeOfFlightSpikeRejected());
+      Logger.recordOutput(
+          name + "/ShotTuning/LeadTOFDeltaSec",
+          shotTelemetry.ballisticTimeOfFlightSec() - shotTelemetry.filteredLeadTimeOfFlightSec());
+      Logger.recordOutput(
+          name + "/ShotTuning/LeadTOFErrorSec",
+          shotTelemetry.filteredLeadTimeOfFlightSec() - tuning_TOF.get());
+      Logger.recordOutput(
+          name + "/ShotTuning/BallisticTOFErrorSec",
+          shotTelemetry.ballisticTimeOfFlightSec() - tuning_TOF.get());
+      Logger.recordOutput(name + "/ShotTuning/PredictedLaunchPitchDeg", Math.toDegrees(shotTelemetry.launchPitchRad()));
+      Logger.recordOutput(name + "/ShotTuning/PredictedLaunchSpeedMps", shotTelemetry.launchSpeedMps());
+      Logger.recordOutput(name + "/ShotTuning/PredictedRangeErrorM", shotTelemetry.rangeErrorMeters());
+      Logger.recordOutput(name + "/ShotTuning/PredictedLateralErrorM", shotTelemetry.lateralErrorMeters());
+      Logger.recordOutput(
+          name + "/ShotTuning/AppliedTranslationCompensationSpeedMps",
+          shotTelemetry.appliedTranslationCompensationSpeedMps());
+      Logger.recordOutput(
+          name + "/ShotTuning/AppliedMotionCompensationScale",
+          shotTelemetry.appliedMotionCompensationScale());
+      Pose2d currentTurretPose = RobotContainer.drivetrainS.getPose().transformBy(robotToTurret);
+      Logger.recordOutput(name + "/ShotTuning/DistToTargetM",
+          target.getDistance(currentTurretPose.getTranslation()));
+    }
+    if (goal != lastLoggedGoal) {
+      Logger.recordOutput(name + "/Goal", goal.toString());
+      lastLoggedGoal = goal;
+    }
+    if (controlGoal != lastLoggedControlGoal) {
+      Logger.recordOutput(name + "/ControlGoal", controlGoal.toString());
+      lastLoggedControlGoal = controlGoal;
+    }
     Logger.recordOutput(name + "/Setpoints/TurretRads", desiredTurretRads);
     Logger.recordOutput(name + "/Setpoints/HoodRads", desiredHoodRads + Units.degreesToRadians(offsetHoodAngle.get()));
     Logger.recordOutput(name + "/Setpoints/FlywheelRadsPerSec",
@@ -771,10 +786,16 @@ public class Turret extends SubsystemChecker {
             && azimuthInputs.referenceEncoderConnected
             && azimuthInputs.zeroed
             && !azimuthIO.wantsZeroing());
-    Logger.recordOutput(name + "/Azimuth/ZeroingState", azimuthInputs.zeroingState);
+    if (!azimuthInputs.zeroingState.equals(lastLoggedZeroingState)) {
+      Logger.recordOutput(name + "/Azimuth/ZeroingState", azimuthInputs.zeroingState);
+      lastLoggedZeroingState = azimuthInputs.zeroingState;
+    }
     Logger.recordOutput(name + "/AtAimAngle", atAimAngle());
     Logger.recordOutput(name + "/AtShootSetpoints", atShootSetpoints());
-    Logger.recordOutput(name + "/KickupGoal", kickupGoal.toString());
+    if (kickupGoal != lastLoggedKickupGoal) {
+      Logger.recordOutput(name + "/KickupGoal", kickupGoal.toString());
+      lastLoggedKickupGoal = kickupGoal;
+    }
     previousControlGoal = controlGoal;
   }
 
@@ -852,6 +873,22 @@ public class Turret extends SubsystemChecker {
       case SHOOTING, SHOOTING_CUSTOM, SHOOTING_FROM_HUB -> true;
       default -> false;
     };
+  }
+
+  private boolean shouldLogShotTelemetry(Goal controlGoal) {
+    boolean shotTelemetryRelevant =
+        isShotTuningActive()
+            || isShootLikeGoal(controlGoal)
+            || controlGoal == Goal.AIMING
+            || controlGoal == Goal.VOMITING;
+    if (!shotTelemetryRelevant) {
+      shotTelemetryLogCycle = 0;
+      return false;
+    }
+
+    int cycle = shotTelemetryLogCycle;
+    shotTelemetryLogCycle = (shotTelemetryLogCycle + 1) % SHOT_TELEMETRY_LOG_DECIMATION;
+    return cycle == 0;
   }
 
   private boolean isHoodForcedDown(Goal controlGoal) {
