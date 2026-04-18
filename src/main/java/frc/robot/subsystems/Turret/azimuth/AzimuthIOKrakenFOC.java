@@ -209,9 +209,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
         inputs.referenceEncoderConnected = BaseStatusSignal.refreshAll(bigAbsRots).isOK();
         AM_MagSwitchData data = magSwitch.getData(MAG_SWITCH_READ_TIMEOUT_MS);
         final boolean magSwitchDetected = data.magnetDetected;
-        if (magSwitchDetected) {
-            lastMagSwitchContactSec = nowSec;
-        }
+        lastMagSwitchContactSec = data.timeStamp;
         final boolean magSwitchRecentlySeen = magSwitchDetected
                 || ((nowSec - lastMagSwitchContactSec) <= MAG_SWITCH_RECENT_CONTACT_SEC);
         final boolean effectiveMagSwitchDetected = (Constants.currentMatchState == FRCMatchState.DISABLED) || (magSwitchDetected && magSwitchRecentlySeen);
