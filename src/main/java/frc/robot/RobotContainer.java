@@ -1607,7 +1607,7 @@ public class RobotContainer {
 			resetShootCycle();
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}).andThen(Commands.run(() -> {
-			applyShootCycleGoals(Turret.Goal.SHOOTING_FROM_HUB, Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5));
+			applyShootCycleGoals(Turret.Goal.SHOOTING_TO_HOME, Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5));
 		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);

@@ -77,6 +77,9 @@ public class Turret extends SubsystemChecker {
 
   private final LoggableTunedNumber shot_HUB_TOP_CENTER_RPM;
   private final LoggableTunedNumber shot_HUB_TOP_CENTER_HOOD_DEG;
+  private final LoggableTunedNumber shot_HOME_GO_BR_DEGS;
+  private final LoggableTunedNumber shot_HOME_GO_BR_RPM;
+  
 
   private final AzimuthIO azimuthIO;
   private final FlywheelIO flywheelIO;
@@ -96,6 +99,7 @@ public class Turret extends SubsystemChecker {
     SHOOTING, // hub top center using HUB profile
     SHOOTING_CUSTOM,
     SHOOTING_FROM_HUB,
+    SHOOTING_TO_HOME,
     JACKHAMMER,
     VOMITING,
     IDLE,
@@ -240,6 +244,10 @@ public class Turret extends SubsystemChecker {
         TuningConstants.isTuningShooter);
     shot_HUB_TOP_CENTER_HOOD_DEG = new LoggableTunedNumber(name + "/Shot/HUB_TOP_CENTER_HOOD_DEG", 13,
         TuningConstants.isTuningShooter);
+    shot_HOME_GO_BR_RPM = new LoggableTunedNumber(name + "/Shot/shot_HOME_GO_BR_RPM", 4500,
+        TuningConstants.isTuningShooter);
+    shot_HOME_GO_BR_DEGS = new LoggableTunedNumber(name + "/Shot/shot_HOME_GO_BR_DEGS", 30,
+        TuningConstants.isTuningShooter);
 
     // Apply initial PIDs once
     applyAllPIDs();
@@ -278,7 +286,7 @@ public class Turret extends SubsystemChecker {
 
   public boolean isShotModeActive() {
     return switch (goal) {
-      case SHOOTING, SHOOTING_CUSTOM, SHOOTING_FROM_HUB -> true;
+      case SHOOTING, SHOOTING_CUSTOM, SHOOTING_FROM_HUB, SHOOTING_TO_HOME -> true;
       default -> false;
     };
   }
@@ -680,6 +688,16 @@ public class Turret extends SubsystemChecker {
         commandTurretPositionForMode(desiredTurretRads);
         commandFlywheelVelocity(desiredFlywheelRadsPerSec);
       }
+      case SHOOTING_TO_HOME -> {
+        target = getPresetTarget2d(PresetTarget.OVER_NEUTRAL_ZONE); // update for the robot pos, since target moves
+        var params = shotCalculator.getParameters(target, robotToTurret, profile, distanceOffset);
+        desiredTurretRads = params.turretAngle().getRadians();
+        desiredHoodRads = Units.degreesToRadians(shot_HOME_GO_BR_DEGS.get());
+        desiredFlywheelRadsPerSec = Units.rotationsPerMinuteToRadiansPerSecond(shot_HOME_GO_BR_RPM.get());
+        
+        commandTurretPositionForMode(desiredTurretRads);
+        commandFlywheelVelocity(desiredFlywheelRadsPerSec);
+      }
 
       case TUNING_FLYWHEEL -> {
         commandFlywheelVelocity(desiredFlywheelRadsPerSec);
@@ -841,7 +859,7 @@ public class Turret extends SubsystemChecker {
       if (previousControlGoal == Goal.JACKHAMMER) {
         double waitSec = switch (controlGoal) {
           case SHOOTING -> RobotContainer.shootMaxWaitSec.get();
-          case SHOOTING_CUSTOM, SHOOTING_FROM_HUB -> RobotContainer.shootMaxWaitSec.get();
+          case SHOOTING_CUSTOM, SHOOTING_FROM_HUB, SHOOTING_TO_HOME -> RobotContainer.shootMaxWaitSec.get();
           default -> 0.0;
         };
         kickupWaitStartSec -= waitSec;
@@ -855,7 +873,7 @@ public class Turret extends SubsystemChecker {
 
     double waitSec = switch (controlGoal) {
       case SHOOTING -> RobotContainer.shootMaxWaitSec.get();
-      case SHOOTING_CUSTOM, SHOOTING_FROM_HUB -> RobotContainer.shootMaxWaitSec.get();
+      case SHOOTING_CUSTOM, SHOOTING_FROM_HUB, SHOOTING_TO_HOME -> RobotContainer.shootMaxWaitSec.get();
       default -> 0.0;
     };
 
@@ -869,7 +887,7 @@ public class Turret extends SubsystemChecker {
 
   private boolean isShootLikeGoal(Goal goal) {
     return switch (goal) {
-      case SHOOTING, SHOOTING_CUSTOM, SHOOTING_FROM_HUB -> true;
+      case SHOOTING, SHOOTING_CUSTOM, SHOOTING_FROM_HUB, SHOOTING_TO_HOME -> true;
       default -> false;
     };
   }
