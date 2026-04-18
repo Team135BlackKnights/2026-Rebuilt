@@ -11,7 +11,6 @@ public interface FlywheelIO {
   @AutoLog
   public class FlywheelIOInputs {
     public boolean connected;
-    public String name;
     public double accelRadsPerSec2;
     public double velocityRadsPerSec;
     public double appliedVoltage;

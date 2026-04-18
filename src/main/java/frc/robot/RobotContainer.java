@@ -1593,12 +1593,12 @@ public class RobotContainer {
 				LEFT_TRENCH_FIXED_HUB_SHOT_DISTANCE_METERS,
 				"Manip Left Trench Fixed Hub Distance"));
 		manipUpPov.onTrue(Commands.runOnce(() -> {
-			rightTurret.offsetDistance(.125);
-			leftTurret.offsetDistance(.125);
+			rightTurret.offsetDistance(.25);
+			leftTurret.offsetDistance(.25);
 		}));
 		manipDownPov.onTrue(Commands.runOnce(() -> {
-			rightTurret.offsetDistance(-.125);
-			leftTurret.offsetDistance(-.125);
+			rightTurret.offsetDistance(-.25);
+			leftTurret.offsetDistance(-.25);
 		}));
 		manipYButton.whileTrue(Commands.runOnce(() -> {
 			shootTimer.restart();

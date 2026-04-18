@@ -66,8 +66,6 @@ public class ShotCalculator {
       new CalibrationPoint(3.747, 4100.0, 0.58, 1.220)
   };
 
-  private static final double FITTED_BALL_SPEED_MPS_PER_RPM = fitBaseBallSpeedMetersPerSecPerRPM();
-
   private static final LoggableTunedNumber ballisticBallSpeedMetersPerSecPerRPM =
       new LoggableTunedNumber(
           "ShotCalculator/BallSpeedMpsPerRPM",
@@ -665,7 +663,6 @@ public class ShotCalculator {
   public void clearShootingParameters() {
     turretFilterStates.clear();
     latestShotTelemetryByTurret.clear();
-    turretSolutionLogCycles.clear();
   }
 
   private ShotSolution createProfileLeadSolution(

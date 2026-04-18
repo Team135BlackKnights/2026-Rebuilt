@@ -86,7 +86,7 @@ public class Turret extends SubsystemChecker {
 
   private final Transform2d robotToTurret;
 
-  private double distanceOffset = .25;
+  private double distanceOffset = .125;
   private final AzimuthIOInputsAutoLogged azimuthInputs = new AzimuthIOInputsAutoLogged();
   private final FlywheelIOInputsAutoLogged flywheelInputs = new FlywheelIOInputsAutoLogged();
   private final HoodIOInputsAutoLogged hoodInputs = new HoodIOInputsAutoLogged();
@@ -597,9 +597,7 @@ public class Turret extends SubsystemChecker {
      * }
      */
 
-    if (goal != lastGoal) {
-      shotCalculator.clearShootingParameters();
-    }
+    shotCalculator.clearShootingParameters();
 
     Goal controlGoal = getShooterControlGoal();
 
@@ -786,9 +784,10 @@ public class Turret extends SubsystemChecker {
             && azimuthInputs.referenceEncoderConnected
             && azimuthInputs.zeroed
             && !azimuthIO.wantsZeroing());
-    if (!azimuthInputs.zeroingState.equals(lastLoggedZeroingState)) {
-      Logger.recordOutput(name + "/Azimuth/ZeroingState", azimuthInputs.zeroingState);
-      lastLoggedZeroingState = azimuthInputs.zeroingState;
+    String zeroingState = azimuthIO.getZeroingState();
+    if (!zeroingState.equals(lastLoggedZeroingState)) {
+      Logger.recordOutput(name + "/Azimuth/ZeroingState", zeroingState);
+      lastLoggedZeroingState = zeroingState;
     }
     Logger.recordOutput(name + "/AtAimAngle", atAimAngle());
     Logger.recordOutput(name + "/AtShootSetpoints", atShootSetpoints());

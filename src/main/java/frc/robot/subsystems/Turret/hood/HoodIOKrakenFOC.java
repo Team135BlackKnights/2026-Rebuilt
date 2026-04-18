@@ -179,7 +179,6 @@ public class HoodIOKrakenFOC implements HoodIO {
     @Override
     public void updateInputs(HoodIOInputs inputs) {
         processZeroing();
-        inputs.name = name;
 
         inputs.connected = BaseStatusSignal.refreshAll(
                 appliedVoltage, pos, vel, supplyCurrent, torqueCurrent, tempCelsius).isOK();
