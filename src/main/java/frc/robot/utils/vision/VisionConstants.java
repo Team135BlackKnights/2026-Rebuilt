@@ -98,8 +98,8 @@ public class VisionConstants {
 					.location("0x03130000 / 3")
 					.width(1280)//1600
 					.height(800)//1304
-					.exposure(16)
-					.saturation(50)
+					.exposure(35)
+					.saturation(100)
 					.hue(0)
 					.whiteBalance(4500)
 					.autoWhiteBalance(0)
@@ -120,7 +120,7 @@ public class VisionConstants {
 					.location("0x02210000 / 3")
 										.width(1600)
 					.height(1304)
-					.exposure(35)
+					.exposure(15)
 					.saturation(0)
 					.hue(0)
 					.whiteBalance(4000)
@@ -142,7 +142,7 @@ public class VisionConstants {
 										.location("0x00220000 / 4")
 					.width(1600)
 					.height(1304)
-					.exposure(16)
+					.exposure(12)
 					.saturation(0)
 					.hue(0)
 					.whiteBalance(4000)
