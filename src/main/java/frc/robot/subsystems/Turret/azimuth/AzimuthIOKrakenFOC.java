@@ -247,7 +247,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
                 && !haveLock
                 && shouldUseMagRangeReference;
         final double homingCommandVolts = homingVolts.get() * homingDirection;
-        if (shouldUseMagRangeReference && (timeOutHome.hasElapsed(.2) || !isTimingOutHome)) {
+        if (shouldUseMagRangeReference && (!isTimingOutHome)) {
             talon.stopMotor();
             isTimingOutHome = true;
             timeOutHome.reset();
