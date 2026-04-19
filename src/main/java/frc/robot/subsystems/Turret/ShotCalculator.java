@@ -59,11 +59,11 @@ public class ShotCalculator {
       new CalibrationPoint(1.964, 3200.0, Units.degreesToRadians(20.00), 1.100),
       new CalibrationPoint(2.235, 3300.0, Units.degreesToRadians(24.00), 1.000),
       new CalibrationPoint(2.515, 3550.0, Units.degreesToRadians(26.00), 1.000),
-      new CalibrationPoint(2.800, 3700.0, 0.47, 1.160),
-      new CalibrationPoint(3.007, 3800.0, 0.50, 1.180),
-      new CalibrationPoint(3.294, 3900.0, 0.53, 1.200),
-      new CalibrationPoint(3.490, 4025.0, 0.56, 1.210),
-      new CalibrationPoint(3.747, 4250.0, 0.58, 1.220)
+      new CalibrationPoint(2.800, 3700.0, 0.48, 1.160),
+      new CalibrationPoint(3.007, 3800.0, 0.51, 1.180),
+      new CalibrationPoint(3.294, 3900.0, 0.54, 1.200),
+      new CalibrationPoint(3.490, 4025.0, 0.57, 1.210),
+      new CalibrationPoint(3.747, 4250.0, 0.59, 1.220)
   };
 
   private static final LoggableTunedNumber ballisticBallSpeedMetersPerSecPerRPM =
