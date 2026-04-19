@@ -78,7 +78,8 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
     private final double primaryEncoderRatio;
     private final double homingDirection;
     private final LoggableTunedNumber homingVolts;
-
+    private Timer timeOutHome = new Timer();
+    private boolean isTimingOutHome = false;   
     private double lastTurretAngleRads = 0.0;
     private double lastMagSwitchContactSec = Double.NEGATIVE_INFINITY;
     private String lastRezeroRequestResult = "NONE";
@@ -246,20 +247,28 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
                 && !haveLock
                 && shouldUseMagRangeReference;
         final double homingCommandVolts = homingVolts.get() * homingDirection;
-        if (shouldUseMagRangeReference) {
+        if (shouldUseMagRangeReference && (timeOutHome.hasElapsed(.2) || !isTimingOutHome)) {
+            talon.stopMotor();
+            isTimingOutHome = true;
+            timeOutHome.reset();
+        }
+        else if (shouldUseMagRangeReference && isTimingOutHome && timeOutHome.hasElapsed(.2)) {
             final double solvedRad = MathUtil.clamp(
                     primaryEncoderAngleToTurretRads(bigAbsRots.getValueAsDouble()), minAngle, maxAngle);
             lastTurretAngleRads = solvedRad;
             if (!haveLock) {
+
                 final double seededRotorRots = turretToRotorRotations(solvedRad);
                 talon.setPosition(seededRotorRots);
             }
             haveLock = true;
             if (shouldSolveFromEncoder) {
+                //begin the timeout
                 zeroingRequested = false;
                 lastRezeroRequestResult = "SOLVED";
             }
-        } else if (haveLock) {
+        }
+         else if (haveLock) {
             lastTurretAngleRads = rotorRotationsToTurretRads(currentRotorRots);
         }
 
