@@ -83,6 +83,12 @@ public class ShotCalculator {
   private static final LoggableTunedNumber motionCompensationLateralGain =
       new LoggableTunedNumber(
           "ShotCalculator/MotionCompLateralGain", 1.8, TuningConstants.isTuningShooter);
+  private static final LoggableTunedNumber hubShotLaneOffsetMeters =
+      new LoggableTunedNumber(
+          "ShotCalculator/HubShotLaneOffsetMeters",
+          Units.inchesToMeters(8.0),
+          TuningConstants.isTuningShooter);
+  private static final double HUB_SHOT_LANE_EDGE_MARGIN_METERS = Units.inchesToMeters(4.0);
 
   private static final TurretBallisticsConfig LEFT_TURRET_CONFIG =
       new TurretBallisticsConfig(
@@ -594,13 +600,23 @@ public class ShotCalculator {
     Pose2d robotPose = RobotContainer.drivetrainS.getPose();
     Rotation2d robotHeading = robotPose.getRotation();
     ChassisSpeeds fieldChassisSpeeds = RobotContainer.drivetrainS.getFieldChassisSpeeds();
-    TargetPlaneGeometry targetGeometry = resolveTargetPlaneGeometry(target);
     TurretBallisticsConfig turretConfig = resolveTurretConfig(robotToTurret);
+    TargetPlaneGeometry targetGeometry = resolveTargetPlaneGeometry(target);
+    Translation2d aimTarget = target;
+    if (targetGeometry != null) {
+      aimTarget = computeHubShotLaneTarget(targetGeometry.center(), turretConfig, robotPose, robotHeading);
+      targetGeometry =
+          new TargetPlaneGeometry(
+              targetGeometry.name(),
+              aimTarget,
+              targetGeometry.heightMeters(),
+              targetGeometry.lateralToleranceMeters());
+    }
     ShotSolution selectedSolution;
     if (targetGeometry != null) {
       selectedSolution =
           createHybrid3dLeadSolution(
-              target,
+              aimTarget,
               robotToTurret,
               profile,
               distanceOffset,
@@ -612,7 +628,7 @@ public class ShotCalculator {
       if (!selectedSolution.valid()) {
         selectedSolution =
             createProfileLeadSolution(
-                target,
+                aimTarget,
                 robotToTurret,
                 profile,
                 distanceOffset,
@@ -623,7 +639,7 @@ public class ShotCalculator {
     } else {
       selectedSolution =
           createProfileLeadSolution(
-              target,
+              aimTarget,
               robotToTurret,
               profile,
               distanceOffset,
@@ -1089,6 +1105,55 @@ public class ShotCalculator {
     return cycle == 0;
   }
 
+  private static Translation2d computeHubShotLaneTarget(
+      Translation2d hubCenter,
+      TurretBallisticsConfig turretConfig,
+      Pose2d robotPose,
+      Rotation2d robotHeading) {
+    Translation2d leftLaunchBase = getLaunchBasePosition(LEFT_TURRET_CONFIG, robotPose, robotHeading);
+    Translation2d rightLaunchBase = getLaunchBasePosition(RIGHT_TURRET_CONFIG, robotPose, robotHeading);
+    Translation2d turretMidpoint = leftLaunchBase.plus(rightLaunchBase).times(0.5);
+
+    Translation2d approachVector = turretMidpoint.minus(hubCenter);
+    if (approachVector.getNorm() < 1e-6) {
+      approachVector = robotPose.getTranslation().minus(hubCenter);
+    }
+    if (approachVector.getNorm() < 1e-6) {
+      approachVector = new Translation2d(1.0, 0.0);
+    }
+
+    Translation2d turretLaunchBase = getLaunchBasePosition(turretConfig, robotPose, robotHeading);
+    Rotation2d lateralDirection = approachVector.getAngle().plus(Rotation2d.fromDegrees(90.0));
+    Translation2d lateralUnit = new Translation2d(1.0, lateralDirection);
+    double lateralProjection =
+        dot(turretLaunchBase.minus(turretMidpoint), lateralUnit);
+    double laneSign =
+        Math.abs(lateralProjection) > 1e-6
+            ? Math.signum(lateralProjection)
+            : Math.signum(turretConfig.turretCenterTransform.getY());
+    if (Math.abs(laneSign) < 1e-6) {
+      laneSign = 1.0;
+    }
+
+    double maxLaneOffsetMeters =
+        Math.max(
+            0.0,
+            Math.min(
+                (FieldConstants.Hub.width * 0.5) - HUB_SHOT_LANE_EDGE_MARGIN_METERS,
+                AdvancedMechanismConstants.Turret.hubScoringPlaneLateralToleranceMeters));
+    double laneOffsetMeters = MathUtil.clamp(hubShotLaneOffsetMeters.get(), 0.0, maxLaneOffsetMeters);
+    Translation2d laneTarget = hubCenter.plus(lateralUnit.times(laneSign * laneOffsetMeters));
+
+    Logger.recordOutput(
+        "SuperStructure/ShotCalculator/" + turretConfig.name + "/HubLaneTarget",
+        new Pose2d(laneTarget, lateralDirection));
+    Logger.recordOutput(
+        "SuperStructure/ShotCalculator/" + turretConfig.name + "/HubLaneOffsetM",
+        laneSign * laneOffsetMeters);
+
+    return laneTarget;
+  }
+
   private static TargetPlaneGeometry resolveTargetPlaneGeometry(Translation2d target) {
     Translation2d hubCenter =
         GeomUtil.apply(
@@ -1117,6 +1182,15 @@ public class ShotCalculator {
 
   private static Translation2d getFieldLinearVelocity(ChassisSpeeds fieldChassisSpeeds) {
     return new Translation2d(fieldChassisSpeeds.vxMetersPerSecond, fieldChassisSpeeds.vyMetersPerSecond);
+  }
+
+  private static Translation2d getLaunchBasePosition(
+      TurretBallisticsConfig turretConfig, Pose2d robotPose, Rotation2d robotHeading) {
+    return robotPose.getTranslation().plus(turretConfig.launchBaseOffsetRobot().rotateBy(robotHeading));
+  }
+
+  private static double dot(Translation2d a, Translation2d b) {
+    return (a.getX() * b.getX()) + (a.getY() * b.getY());
   }
 
   private static double computeMotionCompensationScale(Translation2d compensationVelocity) {

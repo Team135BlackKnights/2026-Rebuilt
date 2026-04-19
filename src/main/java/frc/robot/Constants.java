@@ -29,7 +29,7 @@ public final class Constants {
 	}
 
 	// FRCMatchState of the robot
-	public static final boolean isCompetition = true;
+	public static final boolean isCompetition = false ;
 	public static FRCMatchState currentMatchState = FRCMatchState.DISABLED;
 	public static final boolean logBatteryPercent = true;
 	public static final boolean logFieldReferencePoses = false;
