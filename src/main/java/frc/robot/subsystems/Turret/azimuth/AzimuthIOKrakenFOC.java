@@ -267,6 +267,7 @@ public class AzimuthIOKrakenFOC implements AzimuthIO {
                 zeroingRequested = false;
                 lastRezeroRequestResult = "SOLVED";
             }
+            isTimingOutHome = false;
         }
          else if (haveLock) {
             lastTurretAngleRads = rotorRotationsToTurretRads(currentRotorRots);
