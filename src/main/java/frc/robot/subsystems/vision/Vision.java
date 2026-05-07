@@ -52,13 +52,22 @@ import frc.robot.utils.vision.LimelightHelpers;
 import frc.robot.utils.vision.VisionConstants;
 import frc.robot.utils.vision.VisionConstants.AITargets;
 
+/**
+ * Robot-side vision coordinator.
+ *
+ * <p>This subsystem deliberately supports two kinds of vision producers:
+ * PhotonVision-style IO classes that hand us already-parsed target/pose records,
+ * and the custom Southmoon coprocessor protocol that publishes compact NT4
+ * double arrays. The rest of the robot should talk to this class instead of
+ * knowing which camera backend produced a measurement.
+ */
 public class Vision extends SubsystemChecker {
 	private final Supplier<VisionConstants.AprilTagLayoutType> aprilTagLayoutSupplier;
 	private final VisionIO[] io;
 	private final VisionIOInputsAutoLogged[] inputs;
 	private final LoggedNetworkBoolean recordingRequest = new LoggedNetworkBoolean("/SmartDashboard/Enable Recording",
 			false);
-	// Camera type tracking
+	// Cached once so periodic can dispatch each camera to the correct parser.
 	private final CameraType[] cameraTypes;
 
 	private boolean staleReading = false;
@@ -67,6 +76,9 @@ public class Vision extends SubsystemChecker {
 	private final double disconnectedTimeout = 0.5;
 	private final Timer[] disconnectedTimers;
 	private final Alert[] disconnectedAlerts;
+	// Object detections can arrive from multiple frames/cameras. These tolerances
+	// define when detections are considered the same physical target and how the
+	// "preferred" target is chosen for commands.
 	private static final double preferredObjectLatestFrameBucketSec = 0.02;
 	private static final double preferredObjectMaxTxDeltaRad = Units.degreesToRadians(8.0);
 	private static final double preferredObjectMaxTyDeltaRad = Units.degreesToRadians(6.0);
@@ -80,12 +92,14 @@ public class Vision extends SubsystemChecker {
 		Southmoon
 	}
 
+	/** single object target plus confidence in that choice. */
 	public record PreferredObjDetectObservation(
 			VisionIO.ObjDetectTxyObservation observation,
 			int clusterCount,
 			double clusterScore) {
 	}
 
+	/** nearby object detections before one is selected. */
 	private record ObjDetectCluster(
 			VisionIO.ObjDetectTxyObservation representativeObservation,
 			int clusterCount,
@@ -107,7 +121,8 @@ public class Vision extends SubsystemChecker {
 			disconnectedTimers[i] = new Timer();
 			disconnectedTimers[i].start();
 
-			// Detect camera type
+			// Southmoon cameras need custom NT parsing since it IS custom; every other VisionIO is treated
+			// as PhotonVision-style parsed inputs (since you better not use anything else).
 			cameraTypes[i] = io[i] instanceof VisionIOSouthmoon ? CameraType.Southmoon : CameraType.PHOTONVISION;
 		}
 
@@ -118,16 +133,22 @@ public class Vision extends SubsystemChecker {
 	protected void subsystemPeriodic() {
 		long timestampNs = System.nanoTime();
 
-		// Update all cameras
+		// Pull the latest IO data into AdvantageKit's loggable input objects. This is
+		// the only place camera implementations should touch hardware/NT directly.
 		for (int i = 0; i < io.length; i++) {
 
 			io[i].updateInputs(inputs[i]);
 			Logger.processInputs("Vision/Camera" + inputs[i].name, inputs[i]);
 			Logger.recordOutput("Vision/" + inputs[i].name + "/ObjTxyCount", inputs[i].objDetectTxyObservations.length);
-			// turn this on for debugging camera positions
+			// Expected field pose of the camera based on current drivetrain pose and
+			// robot-to-camera transform. Use this in AdvantageScope when debugging
+			// camera mounting measurements. VERY IMPORTANT TO DISABLE WHEN AT COMP, THIS IS EXPENSIVE!
+			if (!Constants.isCompetition){
 			Logger.recordOutput("Vision/" + inputs[i].name + "/CamPose",
 					new Pose3d(RobotContainer.drivetrainS.getPose())
 							.plus(GeomUtil.poseToTransform(VisionConstants.cameras[i].getPose().get())));
+			}
+
 		if (inputs[i].objDetectTxyObservations.length > 0) {
 			Logger.recordOutput("Vision/" + inputs[i].name + "/LatestObjTxy",
 					inputs[i].objDetectTxyObservations[inputs[i].objDetectTxyObservations.length - 1]);
@@ -138,7 +159,8 @@ public class Vision extends SubsystemChecker {
 			Logger.recordOutput("Vision/ShootingYawTrustReductionActive", RobotContainer.shouldReduceGyroYawTrust());
 			Logger.recordOutput("Vision/ShootingGyroYawTrustScale", VisionConstants.shootingGyroYawTrustScale.get());
 
-			// Update recording state for Southmoon cameras
+		// Southmoon handles recording on the coprocessor. Record automatically when
+		// matches start/allow manual dashboard recording for practice.
 		boolean shouldRecord = DriverStation.isFMSAttached() || recordingRequest.get();
 		for (int i = 0; i < io.length; i++) {
 			if (cameraTypes[i] == CameraType.Southmoon) {
@@ -155,13 +177,15 @@ public class Vision extends SubsystemChecker {
 		List<Pose3d> allRobotPosesRejected = new LinkedList<>();
 
 		Pose2d currentOdomPose = RobotContainer.drivetrainS.getPose();
+		// When an odometry component barely changes, repeated accepted/rejected
+		// poses may be the same physical measurement. Stop getting new poses so we don't drift away from the right spot
 		staleReading = (Math.abs(currentOdomPose.getX() - lastOdomPose.getX()) < VisionConstants.maxStaleReadingXMeters
 				|| Math.abs(currentOdomPose.getY() - lastOdomPose.getY()) < VisionConstants.maxStaleReadingYMeters
 				|| Math.abs(currentOdomPose.getRotation().getDegrees()
 						- lastOdomPose.getRotation().getDegrees()) < VisionConstants.maxStaleReadingRotation);
 		Logger.recordOutput("Vision/Stale", staleReading);
 
-		// Update disconnected alerts
+		// Treat "NT connected but no frames" as a different fault than "not connected"
 		boolean anyNTDisconnected = false;
 		for (int i = 0; i < io.length; i++) {
 			boolean hasData = inputs[i].timestamps_april.length > 0
@@ -186,7 +210,9 @@ public class Vision extends SubsystemChecker {
 			anyNTDisconnected = anyNTDisconnected || !inputs[i].connected;
 		}
 
-		// Process camera data based on type
+		// Convert each camera's raw inputs into drivetrain measurements. AprilTag
+		// pose estimates update the pose estimator; tx/ty observations are passed
+		// through for aiming, object targeting, and obstacle generation.
 		Map<String, TxTyObservation> allTxTyObservations = new HashMap<>();
 
 		for (int cameraIndex = 0; cameraIndex < io.length; cameraIndex++) {
@@ -200,8 +226,9 @@ public class Vision extends SubsystemChecker {
 		}
 		allTxTyObservations.values().stream().forEach((obs) -> RobotContainer.drivetrainS.addTxTyObservation(obs));
 		lastOdomPose = currentOdomPose;
-		// Lastly, update our Pathfinding dynamic obstacles. If we're out of date, clear
-		// them.
+		// Convert detected opponent/AI robot poses into axis-aligned obstacle boxes
+		// for pathfinding. Only observations with a full field pose can become
+		// dynamic obstacles; raw tx/ty-only detections are not enough.
 		List<Pair<Translation2d, Translation2d>> dynamicObstacles = new ArrayList<>();
 		for (TxTyObservation obs : allTxTyObservations.values()) {
 			if ((obs.observationName().startsWith("BLUE_") || obs.observationName().startsWith("RED_")) // only AI bots
@@ -255,6 +282,11 @@ public class Vision extends SubsystemChecker {
 				(System.nanoTime() - timestampNs) / 1.0e6);
 	}
 
+	/**
+	 * Handles cameras whose VisionIO implementation has already converted camera
+	 * results into PhotonVision-style {@link PoseObservation}s.
+	 * @deprecated
+	 */
 	private void processPhotonVisionCamera(int cameraIndex, List<Pose3d> allTagPoses,
 			List<Pose3d> allRobotPoses, List<Pose3d> allRobotPosesAccepted,
 			List<Pose3d> allRobotPosesRejected) {
@@ -265,7 +297,8 @@ public class Vision extends SubsystemChecker {
 		List<Pose3d> robotPosesRejected = new LinkedList<>();
 		double averageTrust = 0.0;
 
-		// Add tag poses
+		// Convert tag IDs into known field poses for logging and calculate the
+		// average per-tag trust multiplier used below.
 		for (int tagId : inputs[cameraIndex].tagIds) {
 			var tagPose = aprilTagLayoutSupplier.get().getLayout().getTagPose(tagId);
 			if (tagPose.isPresent()) {
@@ -277,7 +310,8 @@ public class Vision extends SubsystemChecker {
 			averageTrust /= inputs[cameraIndex].tagIds.length;
 		}
 
-		// Loop over pose observations
+		// Reject physically impossible or low-quality pose estimates before they can
+		// move the drivetrain pose estimator.
 		for (var observation : inputs[cameraIndex].poseObservations) {
 			boolean rejectPose = shouldRejectPose(observation, averageTrust);
 
@@ -290,7 +324,9 @@ public class Vision extends SubsystemChecker {
 			} else {
 				robotPosesAccepted.add(observation.pose());
 
-				// Calculate standard deviations
+				// Measurement standard deviations tell the pose estimator how much to
+				// trust this vision sample. Farther tags are noisier; multiple tags are
+				// more stable; tag trust raises/lowers the final weight.
 				double stdDevFactor = Math.pow(observation.averageTagDistance(), 1.0)
 						/ observation.tagCount();
 				double linearStdDev = VisionConstants.linearStdDevBaseline * stdDevFactor;
@@ -298,7 +334,8 @@ public class Vision extends SubsystemChecker {
 				linearStdDev *= averageTrust;
 				angularStdDev *= averageTrust;
 
-				// Send vision observation
+				// Timestamp must be the camera-frame timestamp, not "now", so latency
+				// compensation in the drivetrain pose estimator can work.
 				addVisionMeasurement(observation.pose().toPose2d(), observation.timestamp(),
 						VecBuilder.fill(linearStdDev, linearStdDev, angularStdDev));
 
@@ -325,6 +362,13 @@ public class Vision extends SubsystemChecker {
 		allRobotPosesRejected.addAll(robotPosesRejected);
 	}
 
+	/**
+	 * Parses the Southmoon custom NT4 protocol.
+	 *
+	 * <p>Southmoon publishes compact arrays instead of full Java objects because it
+	 * is a separate coprocessor process. Keeping the packet format documented here
+	 * matters: the Python publisher and this parser must change together.
+	 */
 	private Map<String, TxTyObservation> processSouthmoonCamera(
 			int cameraIndex,
 			List<Pose3d> allTagPoses,
@@ -333,6 +377,11 @@ public class Vision extends SubsystemChecker {
 			List<Pose3d> allRobotPosesRejected, Map<String, TxTyObservation> allTxTyObservations) {
 
 		// === APRILTAG POSE DETECTION ===
+		// Packet layout for inputs.frames_april:
+		// values[0] = 0 blank, 1 one camera pose, 2 two ambiguous camera poses.
+		// Type 1: [1, error0, x, y, z, qw, qx, qy, qz, tag chunks...]
+		// Type 2: [2, error0, pose0(7), error1, pose1(7), tag chunks...]
+		// Each tag chunk is 10 numbers: tag id, 4 corner tx/ty pairs, distance.
 		for (int frameIndex = 0; frameIndex < inputs[cameraIndex].timestamps_april.length; frameIndex++) {
 			double timestamp = inputs[cameraIndex].timestamps_april[frameIndex];
 			double[] values = inputs[cameraIndex].frames_april[frameIndex];
@@ -343,10 +392,11 @@ public class Vision extends SubsystemChecker {
 			Pose2d robotPose = null;
 			boolean useVisionRotation = false;
 
-			switch ((int) values[0]) {
-				case 1 -> {
-					// One pose (multi-tag)
-					cameraPose = new Pose3d(
+				switch ((int) values[0]) {
+					case 1 -> {
+						// Multi-tag solvePnP result. Since multiple tags constrain heading,
+						// this measurement is allowed to correct robot rotation.
+						cameraPose = new Pose3d(
 							values[2], values[3], values[4],
 							new Rotation3d(new edu.wpi.first.math.geometry.Quaternion(values[5], values[6], values[7],
 									values[8])));
@@ -355,10 +405,12 @@ public class Vision extends SubsystemChecker {
 									.poseToTransform(VisionConstants.cameras[cameraIndex].getPose().get().toPose2d())
 									.inverse());
 					useVisionRotation = true;
-				}
-				case 2 -> {
-					// Two poses (single tag, ambiguous)
-					double error0 = values[1];
+					}
+					case 2 -> {
+						// Single-tag solvePnP can return two plausible poses. Use the lower
+						// reprojection-error solution only when at least one candidate is
+						// below the ambiguity threshold, and do not trust its rotation.
+						double error0 = values[1];
 					double error1 = values[9];
 					Pose3d cameraPose0 = new Pose3d(
 							values[2], values[3], values[4],
@@ -397,8 +449,8 @@ public class Vision extends SubsystemChecker {
 						 * robotPose = robotPose1;
 						 * }
 						 */
-						// take the lower one
-						if (error0 < error1) {
+							// Take the lower-error candidate after passing the threshold gate.
+							if (error0 < error1) {
 							cameraPose = cameraPose0;
 							robotPose = robotPose0;
 						} else {
@@ -412,7 +464,8 @@ public class Vision extends SubsystemChecker {
 			if (cameraPose == null || robotPose == null)
 				continue;
 
-			// Reject off-field
+			// Off-field check is left as a debugging hook. Uncomment the continue if
+			// the coprocessor starts producing field poses outside the legal field.
 			if (robotPose.getX() < 0
 					|| robotPose.getX() > aprilTagLayoutSupplier.get().getLayout().getFieldLength()
 					|| robotPose.getY() < 0
@@ -420,7 +473,9 @@ public class Vision extends SubsystemChecker {
 				// continue;
 			}
 
-			// Collect tag poses
+			// Collect the known field poses for every tag included in this frame.
+			// Tag 42 is a demo/special marker and is intentionally not trusted for
+			// drivetrain odometry.
 			List<Pose3d> tagPoses = new ArrayList<>();
 			boolean containsDemo = false;
 			for (int i = (values[0] == 1 ? 9 : 17); i < values.length; i += 10) {
@@ -442,7 +497,9 @@ public class Vision extends SubsystemChecker {
 			}
 			double avgDistance = totalDist / tagPoses.size();
 
-			// Standard deviations
+			// Southmoon uncertainty model: farther targets get less weight, and each
+			// additional tag improves confidence quickly. Single-tag ambiguous solves
+			// set thetaStdDev to infinity so only x/y are fused.
 			double xyStdDev = VisionConstants.linearStdDevBaseline
 					* Math.pow(avgDistance, 1.2) / Math.pow(tagPoses.size(), 2.0);
 			double thetaStdDev = useVisionRotation
@@ -450,7 +507,7 @@ public class Vision extends SubsystemChecker {
 							* Math.pow(avgDistance, 1.2) / Math.pow(tagPoses.size(), 2.0)
 					: Double.POSITIVE_INFINITY;
 
-			// Add measurement
+			// Demo tags are logged for visualization but skipped for pose correction.
 			allRobotPoses.add(new Pose3d(robotPose));
 			if (!containsDemo)
 				addVisionMeasurement(robotPose, timestamp, VecBuilder.fill(xyStdDev, xyStdDev, thetaStdDev));
@@ -466,6 +523,9 @@ public class Vision extends SubsystemChecker {
 			Logger.recordOutput("Vision/" + inputs[cameraIndex].name + "/TagPoses", tagPoses.toArray(Pose3d[]::new));
 		}
 		// === APRILTAG TX/TY DETECTION ===
+		// Corner tx/ty data is useful even when the full pose estimate is rejected.
+		// The drivetrain keeps only one observation per tag name; across cameras the
+		// closest observation wins because it usually has less pixel/angular noise.
 		Map<String, TxTyObservation> txTyObservations = new HashMap<>();
 		for (int frameIndex = 0; frameIndex < inputs[cameraIndex].timestamps_april.length; frameIndex++) {
 			var timestamp = inputs[cameraIndex].timestamps_april[frameIndex];
@@ -492,7 +552,7 @@ public class Vision extends SubsystemChecker {
 			}
 		}
 
-		// Save tx ty observation data
+		// Save tx ty observation data.
 		for (var observation : txTyObservations.values()) {
 			if (!allTxTyObservations.containsKey(observation.observationName())
 					|| observation.distance() < allTxTyObservations.get(observation.observationName()).distance()) {
@@ -500,6 +560,9 @@ public class Vision extends SubsystemChecker {
 			}
 		}
 		// === OBJECT DETECTION ===
+		// Legacy object packet path. The newer objdetect_txy path is parsed in
+		// VisionIOSouthmoon and used by getPreferredObjDetectObservation(); this
+		// block remains for object pipelines that still publish full pose packets, and handles the ones that don't.
 
 		for (int frameIndex = 0; frameIndex < inputs[cameraIndex].timestamps_obj.length; frameIndex++) {
 			double timestamp = inputs[cameraIndex].timestamps_obj[frameIndex];
@@ -507,6 +570,8 @@ public class Vision extends SubsystemChecker {
 			for (int i = 0; i < frame.length; i += 27) {
 				int classId = (int) frame[i];
 				if (classId == -1) {
+					// Sentinel used by the legacy publisher when no class box was found
+					// but a pose packet still follows.
 					double[] tx = new double[4];
 					double[] ty = new double[4];
 					Pose3d pose = new Pose3d(
@@ -551,6 +616,10 @@ public class Vision extends SubsystemChecker {
 				Pose3d objectPoseSecond = rawSecondPose;
 				Pose2d drivetrainPose = RobotContainer.drivetrainS.getPose();
 				if (VisionConstants.bumperDetection) {
+					// Optional correction for detections trained on robot bumpers: shift
+					// the pose from the detected bumper face toward an approximate robot
+					// center before giving it to pathfinding.
+					// THIS IS NOT PRECISE! IT SHOULD ONLY BE USED FOR "ATTACK" OR "AVOID"
 					Translation2d separationFirst = rawFirstPose.toPose2d().getTranslation()
 							.minus(drivetrainPose.getTranslation());
 					double bumperHalfExtent = Units.inchesToMeters(36);
@@ -577,7 +646,9 @@ public class Vision extends SubsystemChecker {
 						.getDistance(drivetrainPose.getTranslation());
 				double distanceMagTwo = objectPoseSecond.toPose2d().getTranslation()
 						.getDistance(drivetrainPose.getTranslation());
-				// use the closer one if either is below 1m, otherwise, use lower error
+				// Resolve the two possible object poses. Some object classes (basically just game pieces) have custom
+				// handling; otherwise choose the lower-error pose unless a very close
+				// solution needs special treatment.
 				Pose3d objectPose = null;
 				double distanceMag;
 				if (classId == 0) {
@@ -617,7 +688,11 @@ public class Vision extends SubsystemChecker {
 	}
 
 	/**
-	 * Check if a pose observation should be rejected
+	 * Gate a PhotonVision-style pose before it reaches the drivetrain estimator.
+	 *
+	 * <p>The goal is to reject measurements that are likely wrong, not just
+	 * noisy. Noisy-but-possible measurements should usually be kept with larger
+	 * standard deviations instead, since the Kalman filter is VERY good in that s.
 	 */
 	private boolean shouldRejectPose(PoseObservation observation, double averageTrust) {
 		return observation.tagCount() == 0
@@ -633,7 +708,11 @@ public class Vision extends SubsystemChecker {
 	}
 
 	/**
-	 * Update tag trust values based on acceptance/rejection
+	 * Update per-tag trust multipliers based on accepted/rejected observations.
+	 *
+	 * <p>Despite the "trust" name, these values are multiplied into measurement
+	 * standard deviations: 1.0 is most trusted, larger values make that tag affect
+	 * odometry less.
 	 */
 	private void updateTagTrust(int[] tagIds, boolean rejected) {
 		for (int tag : tagIds) {
@@ -721,8 +800,21 @@ public class Vision extends SubsystemChecker {
 		return inputs[cam.ordinal()].objDetectTxyObservations;
 	}
 
+	/**
+	 * Returns one stable object target from the latest Southmoon tx/ty detections.
+	 *
+	 * <p>Object models may report several overlapping boxes for the same physical
+	 * game piece. This method filters by class/confidence, keeps only the latest
+	 * frame bucket, clusters nearby detections, and returns a weighted average for
+	 * the best cluster.
+	 *
+	 * @param cam camera to read
+	 * @param desiredClassId class ID to require, or -1 for any class
+	 */
 	public Optional<PreferredObjDetectObservation> getPreferredObjDetectObservation(CameraID cam, int desiredClassId) {
 		if (Constants.currentMode == Mode.SIM) {
+			// Simulation creates synthetic tx/ty observations from the known field
+			// object poses so commands can be tested without the Mac vision process.
 			if (desiredClassId >= 0 && desiredClassId != VisionConstants.AITargets.FUEL.ordinal()) {
 				return Optional.empty();
 			}
@@ -797,6 +889,7 @@ public class Vision extends SubsystemChecker {
 		ArrayList<VisionIO.ObjDetectTxyObservation> candidateObservations = new ArrayList<>();
 		double newestTimestamp = Double.NEGATIVE_INFINITY;
 		for (VisionIO.ObjDetectTxyObservation observation : rawObservations) {
+			// First pass: drop wrong classes and low-confidence boxes.
 			boolean classOk = desiredClassId < 0 || observation.classId() == desiredClassId;
 			boolean confidenceOk = observation.confidence() >= VisionConstants.objDetectConfidenceThreshold;
 			if (!classOk || !confidenceOk) {
@@ -811,6 +904,9 @@ public class Vision extends SubsystemChecker {
 
 		ArrayList<VisionIO.ObjDetectTxyObservation> latestFrameObservations = new ArrayList<>();
 		for (VisionIO.ObjDetectTxyObservation observation : candidateObservations) {
+			// NT queue draining can return a few recent frames at once. Only cluster
+			// observations from the newest frame bucket so old boxes do not pull the
+			// target estimate backward.
 			if (newestTimestamp - observation.timestamp() <= preferredObjectLatestFrameBucketSec) {
 				latestFrameObservations.add(observation);
 			}
@@ -830,11 +926,11 @@ public class Vision extends SubsystemChecker {
 			ArrayList<VisionIO.ObjDetectTxyObservation> clusterMembers = new ArrayList<>();
 			openSet.add(i);
 			visited[i] = true;
-			while (!openSet.isEmpty()) {
-				int currentIndex = openSet.removeFirst();
-				VisionIO.ObjDetectTxyObservation currentObservation = latestFrameObservations.get(currentIndex);
-				clusterMembers.add(currentObservation);
-				for (int j = 0; j < latestFrameObservations.size(); j++) {
+				while (!openSet.isEmpty()) {
+					int currentIndex = openSet.removeFirst();
+					VisionIO.ObjDetectTxyObservation currentObservation = latestFrameObservations.get(currentIndex);
+					clusterMembers.add(currentObservation);
+					for (int j = 0; j < latestFrameObservations.size(); j++) {
 					if (visited[j]) {
 						continue;
 					}
@@ -889,6 +985,8 @@ public class Vision extends SubsystemChecker {
 		int classId = members.get(0).classId();
 
 		for (VisionIO.ObjDetectTxyObservation member : members) {
+			// Close, confident detections should pull the representative target more
+			// than distant or weak detections.
 			double weight = getPreferredObjectWeight(member);
 			score += weight;
 			weightedConfidence += weight * member.confidence();
@@ -910,6 +1008,8 @@ public class Vision extends SubsystemChecker {
 	}
 
 	private int comparePreferredObjectClusters(ObjDetectCluster first, ObjDetectCluster second) {
+		// Higher score wins; ties prefer more detections, then closer targets, then
+		// targets nearer the center of the image.
 		int scoreComparison = Double.compare(first.clusterScore(), second.clusterScore());
 		if (scoreComparison != 0) {
 			return scoreComparison;

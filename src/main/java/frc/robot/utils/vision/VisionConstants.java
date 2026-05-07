@@ -23,14 +23,27 @@ import frc.robot.Constants;
 import frc.robot.Constants.Mode;
 import frc.robot.Constants.TuningConstants;
 
+/**
+ * Robot-side constants for vision tuning and Southmoon camera configuration.
+ *
+ * <p>Anything published by the Southmoon VisionIO implementation comes from
+ * here, so changes to camera IDs, exposure, resolution, tag size, HSV
+ * thresholds, or target class IDs affect the Mac vision process on the next
+ * robot restart/deploy.
+ */
 public class VisionConstants {
 	public static final FieldType fieldType = FieldType.ANDYMARK;
 
 	public enum AITargets {
-		//Make SURE these are in ORDER of the actual classID.
+		// Keep this enum in the exact same order as the object model class IDs.
+		// Adding a model class requires updating this enum and any robot code that
+		// asks for a specific classId.
 		FUEL
 
 	}
+	// HSV thresholds used by the simple color object pipeline. These are sent to
+	// Southmoon over NT4; the trained .mlmodel object detector has its own model
+	// weights and confidence threshold.
 	public static final long[] objLowerHSV = {0,0,100};
 	public static final long[] objUpperHSV = {180,45,210};
 	// Command specific constants // Aim To Pose
@@ -39,13 +52,20 @@ public class VisionConstants {
 	public static final ApproachDirection driveToAITargetApproachDirection = ApproachDirection.FRONT;
 
 	public static class FieldConstants {
+		// Do not trust tags too close to field borders, and allow individual tags to
+		// be down-weighted if they repeatedly produce rejected pose estimates.
 		public static final double kFieldBorderMargin = 0.5;
 		public static final double kFieldTagMinTrust = .8;
-		public static double[] aprilTagOffsets = { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 }; //0 -1, trust.
+		// Standard deviation multiplier per tag ID, indexed by tagId - 1. 1.0 is
+		// normal trust; larger values make measurements involving that tag weaker.
+		public static double[] aprilTagOffsets = { 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 };
 	}
 
 	public static final boolean debug = true;
 
+	// Pose rejection/tuning constants. These are deliberately conservative gates:
+	// reject impossible measurements here, then use std devs to express uncertainty
+	// for measurements that are merely noisy.
 	public static final double ambiguityThreshold = 0.7;
 	public static final double objDetectConfidenceThreshold = .6;
 	public static final double maxZError = 0.75;
@@ -56,8 +76,13 @@ public class VisionConstants {
 	public static final LoggableTunedNumber shootingGyroYawTrustScale = new LoggableTunedNumber(
 			"Vision/ShootingGyroYawTrustScale", 0.7, TuningConstants.isTuningVision);
 
+	// Temporary live offsets for tuning measured camera poses from the dashboard.
+	// After tuning, bake the final values into the camera pose below.
 	public static final LoggableTunedNumber offsetPoseX = new LoggableTunedNumber("Cams/X",.0,true); //was .05
 	public static final LoggableTunedNumber offsetPoseY = new LoggableTunedNumber("Cams/Y",.0,true); //was .035
+	// Limelight remains a separate object/intake pipeline. Southmoon cameras do
+	// AprilTags and custom object detections; this name must match the Limelight
+	// NetworkTables device name.
 	public static final double limeLightAngleOffsetDegrees = -40.0;
 	public static final double limelightLensHeightoffFloorInches = 22.5;
 	public static final String limelightName = "limelight-swerve";
@@ -75,6 +100,8 @@ public class VisionConstants {
 	public static final LoggableTunedNumber limelightCloseEnoughToConsiderMissingTimeout = new LoggableTunedNumber(
 			"Vision/IntakeCloseEnoughToConsiderMissingTimeout", 1, TuningConstants.isTuningVision);
 
+	// Used by Vision.staleReading to avoid repeatedly learning tag trust from the
+	// same parked pose.
 	public static final double maxStaleReadingXMeters = Units.inchesToMeters(4);
 	public static final double maxStaleReadingYMeters = Units.inchesToMeters(4);
 	public static final double maxStaleReadingRotation = Units.degreesToRadians(2);
@@ -83,6 +110,10 @@ public class VisionConstants {
 	 * ["0x01210000 / 3", "0x01230000 / 4", "0x02211000 / 5", "0x02213000 / 6"]	
 'SPCA2630 PC Camera:usb_05c8_0a00_002_003', 'SPCA2630 PC Camera:usb_05c8_0a00_000_001'
 	 */
+	// Camera order must match the VisionIO construction order and CameraID enum
+	// expectations. Poses are robot-to-camera transforms in WPILib coordinates:
+	// +X forward, +Y left, +Z up, meters/radians. Intrinsics are not stored here;
+	// Southmoon loads camera_matrix and distortion_coefficients from calibration.json.
 	public static final CameraConfig[] cameras = new CameraConfig[] {
 			CameraConfig.builder()
 					.pose(
@@ -157,6 +188,8 @@ public class VisionConstants {
 	@AllArgsConstructor
 	@Getter
 	public static class CameraConfig {
+		// id/location identify the physical USB camera on the Mac. The remaining
+		// fields are capture settings published to Southmoon over NT4.
 		private Supplier<Pose3d> pose;
 		private String id;
 		private String location;
@@ -173,6 +206,7 @@ public class VisionConstants {
 	}
 	//Transforms for alternative functions (like aiming)
 
+// Physical AprilTag/ArUco marker side length used by solvePnP on the coprocessor.
 public static final double aprilTagWidth = Units.inchesToMeters(6.50);
 public static final boolean bumperDetection = false;
 @RequiredArgsConstructor
@@ -202,6 +236,9 @@ public static final boolean bumperDetection = false;
         synchronized (this) {
           if (layout == null) {
             try {
+              // Sim uses the source-tree deploy folder; the real robot reads from
+              // the roboRIO deploy directory. getLayoutString() sends this same
+              // JSON to Southmoon so both sides use the same tag coordinates.
               Path p =
                   Constants.currentMode == Mode.SIM
                       ? Path.of(
