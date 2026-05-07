@@ -10,7 +10,6 @@ public interface HoodIO {
     @AutoLog
     public class HoodIOInputs {
         public boolean connected;
-        public String name;
         public double positionRads;
         public double velocityRadsPerSec;
         public double appliedVoltage;

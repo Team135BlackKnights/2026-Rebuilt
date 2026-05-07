@@ -651,6 +651,7 @@ public class RobotContainer {
 				HoodIO hoodIOLeftTurret = new HoodIOKrakenFOC(
 						Robot.rioCanBus,
 						AdvancedMechanismConstants.Turret.leftHoodID,
+						true,
 						AdvancedMechanismConstants.Turret.leftName,
 						AdvancedMechanismConstants.Turret.currentLimitHood,
 						AdvancedMechanismConstants.Turret.leftMinHoodAngle,
@@ -702,6 +703,7 @@ public class RobotContainer {
 				HoodIO hoodIORightTurret = new HoodIOKrakenFOC(
 						Robot.rioCanBus,
 						AdvancedMechanismConstants.Turret.rightHoodID,
+						false,
 						AdvancedMechanismConstants.Turret.rightName,
 						AdvancedMechanismConstants.Turret.currentLimitHood,
 						AdvancedMechanismConstants.Turret.rightMinHoodAngle,
@@ -1593,19 +1595,19 @@ public class RobotContainer {
 				LEFT_TRENCH_FIXED_HUB_SHOT_DISTANCE_METERS,
 				"Manip Left Trench Fixed Hub Distance"));
 		manipUpPov.onTrue(Commands.runOnce(() -> {
-			rightTurret.offsetDistance(.125);
-			leftTurret.offsetDistance(.125);
+			rightTurret.offsetDistance(.25);
+			leftTurret.offsetDistance(.25);
 		}));
 		manipDownPov.onTrue(Commands.runOnce(() -> {
-			rightTurret.offsetDistance(-.125);
-			leftTurret.offsetDistance(-.125);
+			rightTurret.offsetDistance(-.25);
+			leftTurret.offsetDistance(-.25);
 		}));
 		manipYButton.whileTrue(Commands.runOnce(() -> {
 			shootTimer.restart();
 			resetShootCycle();
 			kickup.setGoal(Kickup.Goal.IDLING);
 		}).andThen(Commands.run(() -> {
-			applyShootCycleGoals(Turret.Goal.SHOOTING_FROM_HUB, Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5));
+			applyShootCycleGoals(Turret.Goal.SHOOTING_TO_HOME, Goal.INTAKE_GROUND_SHOOT, shootTimer.hasElapsed(0.5));
 		}, leftTurret, rightTurret, kickup, intake).finallyDo(() -> {
 			leftTurret.setGoal(Turret.Goal.AIMING);
 			rightTurret.setGoal(Turret.Goal.AIMING);

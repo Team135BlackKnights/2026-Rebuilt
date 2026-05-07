@@ -37,8 +37,8 @@ public class ShotCalculator {
   private static final double HUB_TARGET_MATCH_EPSILON_METERS = 1e-3;
   private static final int HYBRID_HEADING_SOLVE_ITERATIONS = 5;
   private static final int PROFILE_LEAD_ITERATIONS = 3;
-  private static final int LEAD_TOF_FILTER_WINDOW_SIZE = 5;
-  private static final double LEAD_TOF_FILTER_MAX_STEP_SEC = 0.20;
+  private static final int LEAD_TOF_FILTER_WINDOW_SIZE = 2;
+  private static final double LEAD_TOF_FILTER_MAX_STEP_SEC = 0.30;
   private static final double MAX_FLYWHEEL_SPEED_RAD_PER_SEC =
       Units.rotationsPerMinuteToRadiansPerSecond(AdvancedMechanismConstants.Turret.flywheelMaxRPM);
   private static final Translation2d INVALID_TRANSLATION =
@@ -53,20 +53,18 @@ public class ShotCalculator {
       double timeOfFlightSeconds) {}
 
   private static final CalibrationPoint[] HUB_CALIBRATION_POINTS = {
-      new CalibrationPoint(1.215, 3000.0, Units.degreesToRadians(16.50), 1.040),
-      new CalibrationPoint(1.536, 3000.0, Units.degreesToRadians(18.00), 0.930),
-      new CalibrationPoint(1.791, 3050.0, Units.degreesToRadians(19.00), 1.040),
-      new CalibrationPoint(1.964, 3100.0, Units.degreesToRadians(20.00), 1.100),
-      new CalibrationPoint(2.235, 3200.0, Units.degreesToRadians(24.00), 1.000),
-      new CalibrationPoint(2.515, 3450.0, Units.degreesToRadians(26.00), 1.000),
-      new CalibrationPoint(2.800, 3600.0, 0.47, 1.160),
-      new CalibrationPoint(3.007, 3700.0, 0.50, 1.180),
-      new CalibrationPoint(3.294, 3800.0, 0.53, 1.200),
-      new CalibrationPoint(3.490, 3925.0, 0.56, 1.210),
-      new CalibrationPoint(3.747, 4100.0, 0.58, 1.220)
+      new CalibrationPoint(1.215, 3100.0, Units.degreesToRadians(16.50), 1.040),
+      new CalibrationPoint(1.536, 3100.0, Units.degreesToRadians(18.00), 0.930),
+      new CalibrationPoint(1.791, 3150.0, Units.degreesToRadians(19.00), 1.040),
+      new CalibrationPoint(1.964, 3200.0, Units.degreesToRadians(20.00), 1.100),
+      new CalibrationPoint(2.235, 3300.0, Units.degreesToRadians(24.00), 1.000),
+      new CalibrationPoint(2.515, 3550.0, Units.degreesToRadians(26.00), 1.000),
+      new CalibrationPoint(2.800, 3700.0, 0.48, 1.160),
+      new CalibrationPoint(3.007, 3800.0, 0.51, 1.180),
+      new CalibrationPoint(3.294, 3900.0, 0.54, 1.200),
+      new CalibrationPoint(3.490, 4025.0, 0.57, 1.210),
+      new CalibrationPoint(3.747, 4250.0, 0.59, 1.220)
   };
-
-  private static final double FITTED_BALL_SPEED_MPS_PER_RPM = fitBaseBallSpeedMetersPerSecPerRPM();
 
   private static final LoggableTunedNumber ballisticBallSpeedMetersPerSecPerRPM =
       new LoggableTunedNumber(
@@ -85,6 +83,12 @@ public class ShotCalculator {
   private static final LoggableTunedNumber motionCompensationLateralGain =
       new LoggableTunedNumber(
           "ShotCalculator/MotionCompLateralGain", 1.8, TuningConstants.isTuningShooter);
+  private static final LoggableTunedNumber hubShotLaneOffsetMeters =
+      new LoggableTunedNumber(
+          "ShotCalculator/HubShotLaneOffsetMeters",
+          Units.inchesToMeters(8.0),
+          TuningConstants.isTuningShooter);
+  private static final double HUB_SHOT_LANE_EDGE_MARGIN_METERS = Units.inchesToMeters(4.0);
 
   private static final TurretBallisticsConfig LEFT_TURRET_CONFIG =
       new TurretBallisticsConfig(
@@ -568,6 +572,8 @@ public class ShotCalculator {
 
   private final Map<String, TurretFilterState> turretFilterStates = new HashMap<>();
   private final Map<String, ShotTelemetry> latestShotTelemetryByTurret = new HashMap<>();
+  private final Map<String, Integer> turretSolutionLogCycles = new HashMap<>();
+  private static final int SOLUTION_LOG_DECIMATION = 5;
 
   public ShootingParameters getParameters(Translation2d target, Transform2d robotToTurret) {
     return getParameters(target, robotToTurret, HUB_PROFILE, 0.0);
@@ -594,13 +600,23 @@ public class ShotCalculator {
     Pose2d robotPose = RobotContainer.drivetrainS.getPose();
     Rotation2d robotHeading = robotPose.getRotation();
     ChassisSpeeds fieldChassisSpeeds = RobotContainer.drivetrainS.getFieldChassisSpeeds();
-    TargetPlaneGeometry targetGeometry = resolveTargetPlaneGeometry(target);
     TurretBallisticsConfig turretConfig = resolveTurretConfig(robotToTurret);
+    TargetPlaneGeometry targetGeometry = resolveTargetPlaneGeometry(target);
+    Translation2d aimTarget = target;
+    if (targetGeometry != null) {
+      aimTarget = computeHubShotLaneTarget(targetGeometry.center(), turretConfig, robotPose, robotHeading);
+      targetGeometry =
+          new TargetPlaneGeometry(
+              targetGeometry.name(),
+              aimTarget,
+              targetGeometry.heightMeters(),
+              targetGeometry.lateralToleranceMeters());
+    }
     ShotSolution selectedSolution;
     if (targetGeometry != null) {
       selectedSolution =
           createHybrid3dLeadSolution(
-              target,
+              aimTarget,
               robotToTurret,
               profile,
               distanceOffset,
@@ -612,7 +628,7 @@ public class ShotCalculator {
       if (!selectedSolution.valid()) {
         selectedSolution =
             createProfileLeadSolution(
-                target,
+                aimTarget,
                 robotToTurret,
                 profile,
                 distanceOffset,
@@ -623,7 +639,7 @@ public class ShotCalculator {
     } else {
       selectedSolution =
           createProfileLeadSolution(
-              target,
+              aimTarget,
               robotToTurret,
               profile,
               distanceOffset,
@@ -1059,6 +1075,10 @@ public class ShotCalculator {
             solution.appliedMotionCompensationScale(),
             usedProfileLeadFallback));
 
+    if (!shouldLogTurretSolution(turretConfig.name)) {
+      return;
+    }
+
     Logger.recordOutput(prefix + "/Model", solution.model().toString());
     Logger.recordOutput(prefix + "/Valid", solution.valid());
     Logger.recordOutput(prefix + "/RawLeadTimeOfFlightSec", solution.rawLeadTimeOfFlightSec());
@@ -1077,6 +1097,61 @@ public class ShotCalculator {
         solution.appliedTranslationCompensationSpeedMps());
     Logger.recordOutput(prefix + "/AppliedMotionCompensationScale", solution.appliedMotionCompensationScale());
     Logger.recordOutput(prefix + "/UsedProfileLeadFallback", usedProfileLeadFallback);
+  }
+
+  private boolean shouldLogTurretSolution(String turretName) {
+    int cycle = turretSolutionLogCycles.getOrDefault(turretName, 0);
+    turretSolutionLogCycles.put(turretName, (cycle + 1) % SOLUTION_LOG_DECIMATION);
+    return cycle == 0;
+  }
+
+  private static Translation2d computeHubShotLaneTarget(
+      Translation2d hubCenter,
+      TurretBallisticsConfig turretConfig,
+      Pose2d robotPose,
+      Rotation2d robotHeading) {
+    Translation2d leftLaunchBase = getLaunchBasePosition(LEFT_TURRET_CONFIG, robotPose, robotHeading);
+    Translation2d rightLaunchBase = getLaunchBasePosition(RIGHT_TURRET_CONFIG, robotPose, robotHeading);
+    Translation2d turretMidpoint = leftLaunchBase.plus(rightLaunchBase).times(0.5);
+
+    Translation2d approachVector = turretMidpoint.minus(hubCenter);
+    if (approachVector.getNorm() < 1e-6) {
+      approachVector = robotPose.getTranslation().minus(hubCenter);
+    }
+    if (approachVector.getNorm() < 1e-6) {
+      approachVector = new Translation2d(1.0, 0.0);
+    }
+
+    Translation2d turretLaunchBase = getLaunchBasePosition(turretConfig, robotPose, robotHeading);
+    Rotation2d lateralDirection = approachVector.getAngle().plus(Rotation2d.fromDegrees(90.0));
+    Translation2d lateralUnit = new Translation2d(1.0, lateralDirection);
+    double lateralProjection =
+        dot(turretLaunchBase.minus(turretMidpoint), lateralUnit);
+    double laneSign =
+        Math.abs(lateralProjection) > 1e-6
+            ? Math.signum(lateralProjection)
+            : Math.signum(turretConfig.turretCenterTransform.getY());
+    if (Math.abs(laneSign) < 1e-6) {
+      laneSign = 1.0;
+    }
+
+    double maxLaneOffsetMeters =
+        Math.max(
+            0.0,
+            Math.min(
+                (FieldConstants.Hub.width * 0.5) - HUB_SHOT_LANE_EDGE_MARGIN_METERS,
+                AdvancedMechanismConstants.Turret.hubScoringPlaneLateralToleranceMeters));
+    double laneOffsetMeters = MathUtil.clamp(hubShotLaneOffsetMeters.get(), 0.0, maxLaneOffsetMeters);
+    Translation2d laneTarget = hubCenter.plus(lateralUnit.times(laneSign * laneOffsetMeters));
+
+    Logger.recordOutput(
+        "SuperStructure/ShotCalculator/" + turretConfig.name + "/HubLaneTarget",
+        new Pose2d(laneTarget, lateralDirection));
+    Logger.recordOutput(
+        "SuperStructure/ShotCalculator/" + turretConfig.name + "/HubLaneOffsetM",
+        laneSign * laneOffsetMeters);
+
+    return laneTarget;
   }
 
   private static TargetPlaneGeometry resolveTargetPlaneGeometry(Translation2d target) {
@@ -1107,6 +1182,15 @@ public class ShotCalculator {
 
   private static Translation2d getFieldLinearVelocity(ChassisSpeeds fieldChassisSpeeds) {
     return new Translation2d(fieldChassisSpeeds.vxMetersPerSecond, fieldChassisSpeeds.vyMetersPerSecond);
+  }
+
+  private static Translation2d getLaunchBasePosition(
+      TurretBallisticsConfig turretConfig, Pose2d robotPose, Rotation2d robotHeading) {
+    return robotPose.getTranslation().plus(turretConfig.launchBaseOffsetRobot().rotateBy(robotHeading));
+  }
+
+  private static double dot(Translation2d a, Translation2d b) {
+    return (a.getX() * b.getX()) + (a.getY() * b.getY());
   }
 
   private static double computeMotionCompensationScale(Translation2d compensationVelocity) {

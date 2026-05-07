@@ -94,6 +94,7 @@ public class HoodIOKrakenFOC implements HoodIO {
     public HoodIOKrakenFOC(
             CANBus bus,
             int motorID,
+            boolean isLeft,
             String name,
             int currentLimitAmps,
             double minAngleRads,
@@ -114,7 +115,7 @@ public class HoodIOKrakenFOC implements HoodIO {
 
         cfg.ExternalFeedback.ExternalFeedbackSensorSource = ExternalFeedbackSensorSourceValue.Quadrature;
         cfg.ExternalFeedback.QuadratureEdgesPerRotation = QUAD_EDGES_PER_OUTPUT_REV;
-        cfg.ExternalFeedback.SensorPhase = SensorPhaseValue.Aligned;
+        cfg.ExternalFeedback.SensorPhase = isLeft ? SensorPhaseValue.Aligned : SensorPhaseValue.Opposed;
 
         cfg.SoftwareLimitSwitch.ForwardSoftLimitEnable = false;
         cfg.SoftwareLimitSwitch.ForwardSoftLimitThreshold = hoodRadToSensorRot(maxAngleRads);
@@ -161,12 +162,17 @@ public class HoodIOKrakenFOC implements HoodIO {
             : ((hoodDeg - START_ANGLE_DEG_RIGHT) / getDegPerInchRight());
     }
 
-    private static double extensionInToScrewRev(double extensionIn) {
+    private double extensionInToScrewRev(double extensionIn) {
+        if (!isLeft){
+            Logger.recordOutput("RightTurret/Hood/ExtenionIN", extensionIn);
+            Logger.recordOutput("RightTurret/Hood/ScrewRev", extensionIn * REV_PER_INCH);
+        }
         return extensionIn * REV_PER_INCH;
     }
 
     private double hoodRadToSensorRot(double hoodRad) {
         double hoodDeg = clampHoodDeg(Math.toDegrees(hoodRad), minAngleRads, maxAngleRads);
+        if (!isLeft)Logger.recordOutput("RightTurret/Hood/hoodDeg", Math.toDegrees(hoodRad));
         return extensionInToScrewRev(hoodDegToExtensionIn(hoodDeg));
     }
 
@@ -181,7 +187,6 @@ public class HoodIOKrakenFOC implements HoodIO {
     @Override
     public void updateInputs(HoodIOInputs inputs) {
         processZeroing();
-        inputs.name = name;
 
         inputs.connected = BaseStatusSignal.refreshAll(
                 appliedVoltage, pos, vel, supplyCurrent, torqueCurrent, tempCelsius).isOK();
@@ -190,6 +195,7 @@ public class HoodIOKrakenFOC implements HoodIO {
         double sensorRps = vel.getValueAsDouble();
 
         double volts = ff.calculate(sensorRps) + controller.calculate(sensorRot);
+
         runVolts(volts);
 
         inputs.positionRads = sensorRotToHoodRad(sensorRot);
@@ -200,7 +206,6 @@ public class HoodIOKrakenFOC implements HoodIO {
         inputs.torqueCurrentAmps = torqueCurrent.getValueAsDouble();
         inputs.tempCelsius = tempCelsius.getValueAsDouble();
 
-        Logger.recordOutput("Hood/" + name + "/HoodDegEst", Math.toDegrees(inputs.positionRads));
     }
 
     @Override

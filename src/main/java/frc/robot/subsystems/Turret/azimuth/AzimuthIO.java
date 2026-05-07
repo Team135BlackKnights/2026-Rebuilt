@@ -15,15 +15,11 @@ public interface AzimuthIO {
         public double motorPositionRads = 0;
         public double turretPositionRads = 0;
         public double bigEncoderRads = 0;
-        public double smallEncoderRads = 0;
         public double appliedVoltage = 0;
         public boolean motorConnected = true;
-        public boolean bothEncodersConnected = true;
         public boolean referenceEncoderConnected = true;
         public boolean magSwitchDetected = false;
         public boolean zeroed = false;
-        public String zeroingState = "UNINITIALIZED";
-        public String name = "Azimuth";
         public double supplyCurrentAmps;
         public double torqueCurrentAmps;
         public double motorVelocityRadsPerSec = 0;
@@ -42,6 +38,7 @@ public interface AzimuthIO {
     default void setCurrentLimit(double amps) {}
     default void requestRezero() {}
     default boolean wantsZeroing() { return false; }
+    default String getZeroingState() { return "UNINITIALIZED"; }
     default List<SelfChecking> getSelfCheckingHardware() {
         return new ArrayList<SelfChecking>();
     }

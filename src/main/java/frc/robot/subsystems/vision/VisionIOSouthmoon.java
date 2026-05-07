@@ -16,7 +16,11 @@ import frc.robot.utils.vision.VisionConstants;
 
 /**
  * Southmoon implementation of VisionIO.
- * Uses the Southmoon AprilTag and object detection system.
+ *
+ * <p>This class is the robot-side bridge to the Mac vision process. It publishes
+ * configuration under /{deviceId}/config and subscribes to results under
+ * /{deviceId}/output. Keep topic names and packet layouts synchronized with the
+ * Python OutputPublisher.
  */
 public class VisionIOSouthmoon implements VisionIO {
   private final Supplier<VisionConstants.AprilTagLayoutType> aprilTagLayoutSupplier;
@@ -42,7 +46,8 @@ public class VisionIOSouthmoon implements VisionIO {
    * Creates a new VisionIOSouthmoon.
    * 
    * @param aprilTagLayoutSupplier Supplier for the current AprilTag layout
-   * @param index Camera index for this Northstar instance
+   * @param id NetworkTables device ID used by the Mac process
+   * @param i Camera index matching VisionConstants.cameras
    * @param cameraConfig Camera configuration (from your VisionConstants)
    */
   public VisionIOSouthmoon(
@@ -56,7 +61,8 @@ public class VisionIOSouthmoon implements VisionIO {
     var northstarTable = NetworkTableInstance.getDefault().getTable(this.deviceId);
     var configTable = northstarTable.getSubTable("config");
 
-    // Publish camera configuration
+    // Publish camera configuration for the Mac to consume. Students should expect
+    // these to appear in NetworkTables at /<deviceId>/config/*.
     configTable.getStringTopic("camera_id").publish().set(cameraConfig.getId());
     configTable.getStringTopic("camera_location").publish().set(cameraConfig.getLocation());
     configTable.getIntegerTopic("camera_resolution_width").publish().set(cameraConfig.getWidth());
@@ -72,6 +78,8 @@ public class VisionIOSouthmoon implements VisionIO {
     configTable.getDoubleTopic("fiducial_size_m").publish().set(VisionConstants.aprilTagWidth);
     configTable.getIntegerArrayTopic("obj_lower_hsv").publish().set(VisionConstants.objLowerHSV);
     configTable.getIntegerArrayTopic("obj_upper_hsv").publish().set(VisionConstants.objUpperHSV);
+    // The Blender/pose lookup pipeline needs to know which object class is the
+    // field object of interest. This ordinal must match the trained model class.
     configTable.getIntegerTopic("obj_blender_ai_id").publish().set(VisionConstants.AITargets.FUEL.ordinal());
 
     isRecordingPublisher = configTable.getBooleanTopic("is_recording").publish();
@@ -84,6 +92,9 @@ public class VisionIOSouthmoon implements VisionIO {
     matchNumberPublisher = configTable.getIntegerTopic("match_number").publish();
     this.camIndex = i;
     var outputTable = northstarTable.getSubTable("output");
+    // keepDuplicates/sendAll/pollStorage preserve bursts of frames so Vision can
+    // process camera timestamps accurately instead of only seeing the newest NT
+    // value each robot loop.
     observationSubscriber =
         outputTable
             .getDoubleArrayTopic("observations")
@@ -122,7 +133,9 @@ public class VisionIOSouthmoon implements VisionIO {
       VisionIOInputs inputs) {
     boolean slowPeriodic = slowPeriodicTimer.advanceIfElapsed(1.0);
 
-    // Update NT connection status
+    // Update NT connection status by checking for a connected client whose
+    // remote_id starts with this device ID. If this is false, the Mac process is
+    // not connected to the same NT server as the robot.
     inputs.ntConnected = false;
     for (var client : NetworkTableInstance.getDefault().getConnections()) {
       if (client.remote_id.startsWith(this.deviceId)) {
@@ -133,7 +146,8 @@ public class VisionIOSouthmoon implements VisionIO {
     inputs.connected = inputs.ntConnected;
     inputs.name = deviceId;
 
-    // Publish timestamp
+    // Slow-changing match metadata is used by the Mac for recording filenames and
+    // synchronization. Do not publish this every 20 ms unless there is a reason.
     if (slowPeriodic) {
       timestampPublisher.set(WPIUtilJNI.getSystemTime() / 1000000);
       eventNamePublisher.set(DriverStation.getEventName());
@@ -141,12 +155,15 @@ public class VisionIOSouthmoon implements VisionIO {
       matchNumberPublisher.set(DriverStation.getMatchNumber());
     }
 
-    // Publish tag layout
+    // Publish the AprilTag layout JSON whenever the selected layout changes. This
+    // keeps robot-side pose filtering and coprocessor solvePnP on the same field.
     var aprilTagType = aprilTagLayoutSupplier.get();
     if (aprilTagType != lastAprilTagLayout) {
       lastAprilTagLayout = aprilTagType;
       tagLayoutPublisher.set(aprilTagType.getLayoutString());
     }
+    // The Mac needs the current field-to-camera pose for object pose solving. This
+    // is drivetrain pose plus the measured robot-to-camera transform.
     Pose3d camPose = new Pose3d(RobotContainer.drivetrainS.getPose())
 			.plus(GeomUtil.poseToTransform(VisionConstants.cameras[camIndex].getPose().get()));
     Quaternion quar = camPose.getRotation().getQuaternion();
@@ -154,14 +171,16 @@ public class VisionIOSouthmoon implements VisionIO {
       (float) camPose.getX(), 
       (float) camPose.getY(),
       (float) camPose.getZ(),
-      //quaternion
+      // Quaternion is ordered w, x, y, z to match WPILib/Python parsing.
       (float) quar.getW(),
       (float) quar.getX(),
       (float) quar.getY(),
       (float) quar.getZ()
     };
     fieldCameraPosePublisher.accept(nums);
-    // Get AprilTag data
+
+    // Get AprilTag data. Each queued NT value is a complete Southmoon packet; the
+    // parser in Vision.java interprets the doubles.
     var aprilTagQueue = observationSubscriber.readQueue();
     inputs.timestamps_april = new double[aprilTagQueue.length];
     inputs.frames_april = new double[aprilTagQueue.length][];
@@ -173,7 +192,10 @@ public class VisionIOSouthmoon implements VisionIO {
       inputs.fps_april = fpsAprilTagsSubscriber.get();
     }
 
-    // Get object detection tx/ty-only data
+    // Get object detection tx/ty-only data. Packet layout:
+    // [count, classId, confidence, txDeg, tyDeg, distanceMeters, ...]
+    // This is the preferred custom object interface because it is lightweight and
+    // lets robot code choose/cluster targets instead of trusting one "best" box.
     var objDetectTxyQueue = objDetectTxySubscriber.readQueue();
     ArrayList<ObjDetectTxyObservation> txyObservations = new ArrayList<>();
     for (int i = 0; i < objDetectTxyQueue.length; i++) {
@@ -184,6 +206,8 @@ public class VisionIOSouthmoon implements VisionIO {
       }
       int count = (int) values[0];
       int expectedLen = 1 + count * 5;
+      // Be defensive around partially published or version-mismatched packets:
+      // parse only complete detections and ignore the rest of the frame.
       int safeLen = Math.min(values.length, expectedLen);
       for (int idx = 0; idx < count; idx++) {
         int base = 1 + idx * 5;
@@ -207,8 +231,9 @@ public class VisionIOSouthmoon implements VisionIO {
     }
     inputs.objDetectTxyObservations = txyObservations.toArray(new ObjDetectTxyObservation[0]);
 
-    // Get object detection data (legacy "best" + pose). If tx/ty-only data is present,
-    // we still drain the queue but do not populate frames_obj.
+    // Get object detection data (legacy "best" + pose). If tx/ty-only data is
+    // present, drain this queue but do not populate frames_obj so downstream code
+    // does not process both protocols for the same camera frame.
     var objDetectQueue = objDetectObservationSubscriber.readQueue();
     if (inputs.objDetectTxyObservations.length == 0) {
       inputs.timestamps_obj = new double[objDetectQueue.length];
@@ -228,6 +253,8 @@ public class VisionIOSouthmoon implements VisionIO {
 
   @Override
   public void setRecording(boolean active) {
+    // The Mac process owns video writing; the robot just publishes the desired
+    // state. Vision enables this automatically during FMS-attached matches.
     isRecordingPublisher.set(active);
   }
 }

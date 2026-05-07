@@ -233,8 +233,6 @@ public class AzimuthIOSim implements AzimuthIO {
                 tempCelsius).isOK();
         inputs.referenceEncoderConnected = BaseStatusSignal.refreshAll(bigAbsRots).isOK();
         BaseStatusSignal.refreshAll(smallAbsRots);
-        inputs.bothEncodersConnected = inputs.referenceEncoderConnected;
-        inputs.name = name;
 
         inputs.motorPositionRads = Units.rotationsToRadians(motorRotorRots.getValueAsDouble());
         inputs.motorVelocityRadsPerSec = Units.rotationsToRadians(motorRotorVelocityRotsPerSec.getValueAsDouble());
@@ -242,7 +240,6 @@ public class AzimuthIOSim implements AzimuthIO {
         double bigRads = MathUtil.inputModulus(Units.rotationsToRadians(bigAbsRots.getValueAsDouble()), 0, 2 * Math.PI);
         double smallRads = MathUtil.inputModulus(Units.rotationsToRadians(smallAbsRots.getValueAsDouble()), 0, 2 * Math.PI);
         inputs.bigEncoderRads = bigRads;
-        inputs.smallEncoderRads = smallRads;
 
         inputs.appliedVoltage = appliedVoltage.getValueAsDouble();
         inputs.supplyCurrentAmps = supplyCurrent.getValueAsDouble();
@@ -310,6 +307,11 @@ public class AzimuthIOSim implements AzimuthIO {
     @Override
     public boolean wantsZeroing() {
         return zeroingRequested || !haveLock;
+    }
+
+    @Override
+    public String getZeroingState() {
+        return haveLock ? "MOTOR_ONLY" : "WAITING_FOR_PREMATCH_ZERO";
     }
 
     @Override

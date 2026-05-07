@@ -92,7 +92,6 @@ public class HoodIOSim implements HoodIO {
     hood.simIterate();
 
     inputs.connected = true;
-    inputs.name = name;
     inputs.positionRads = hood.getAngle().in(Radians);
     inputs.velocityRadsPerSec = motor.getMechanismVelocity().in(RadiansPerSecond);
     inputs.appliedVoltage = motor.getVoltage().in(Volts);
